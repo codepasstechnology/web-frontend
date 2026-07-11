@@ -7,9 +7,15 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
+
+const AUTH_BG_URLS = [
+  "https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1598941101837-e3fdd6d94b24?w=1920&q=90&auto=format&fit=crop",
+];
 
 function NotFoundComponent() {
   return (
@@ -82,13 +88,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" },
+      { rel: "preload", as: "image", href: AUTH_BG_URLS[0] },
+      { rel: "preload", as: "image", href: AUTH_BG_URLS[1] },
     ],
   }),
   shellComponent: RootShell,
@@ -113,6 +118,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    AUTH_BG_URLS.forEach((url) => { new Image().src = url; });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Polygon, Marker, Tooltip, LayersControl, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { landParcels, rentals, statusMeta, type LandParcel, type Rental } from "@/lib/landData";
+import { rentals, statusMeta, type LandParcel, type Rental } from "@/lib/landData";
 
 // Fix default marker icons in bundlers
 const icon = L.divIcon({
@@ -25,6 +25,17 @@ const centroid = (poly: [number, number][]): [number, number] => {
   return [sLat / poly.length, sLng / poly.length];
 };
 
+export interface FlyTarget { lat: number; lng: number; zoom?: number }
+
+function FlyToTarget({ target }: { target: FlyTarget | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!target) return;
+    map.flyTo([target.lat, target.lng], target.zoom ?? 14, { duration: 1.2 });
+  }, [map, target]);
+  return null;
+}
+
 interface Props {
   mode: "land" | "rentals";
   onSelectParcel?: (p: LandParcel | null) => void;
@@ -32,26 +43,28 @@ interface Props {
   selectedId?: string | null;
   parcels?: LandParcel[];
   rentalItems?: Rental[];
+  flyTarget?: FlyTarget | null;
 }
 
 // Fits map to all parcels on first load, and zooms to a selected parcel when chosen.
-function MapController({ mode, selectedId }: { mode: "land" | "rentals"; selectedId?: string | null }) {
+function MapController({ mode, selectedId, parcels }: { mode: "land" | "rentals"; selectedId?: string | null; parcels: LandParcel[] }) {
   const map = useMap();
   useEffect(() => {
-    if (mode !== "land") return;
-    const all = landParcels.flatMap((p) => p.polygon);
+    if (mode !== "land" || parcels.length === 0) return;
+    const all = parcels.flatMap((p) => p.polygon);
     if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, mode]);
   useEffect(() => {
     if (!selectedId) return;
-    const p = landParcels.find((x) => x.id === selectedId);
+    const p = parcels.find((x) => x.id === selectedId);
     if (p) map.fitBounds(p.polygon as L.LatLngBoundsLiteral, { padding: [80, 80], maxZoom: 17 });
-  }, [map, selectedId]);
+  }, [map, selectedId, parcels]);
   return null;
 }
 
-export function LandMap({ mode, onSelectParcel, onSelectRental, selectedId, parcels, rentalItems }: Props) {
-  const parcelList = parcels ?? landParcels;
+export function LandMap({ mode, onSelectParcel, onSelectRental, selectedId, parcels = [], rentalItems, flyTarget }: Props) {
+  const parcelList = parcels;
   const rentalList = rentalItems ?? rentals;
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -71,7 +84,8 @@ export function LandMap({ mode, onSelectParcel, onSelectRental, selectedId, parc
       className="h-full w-full"
       style={{ background: "#e8eef5" }}
     >
-      <MapController mode={mode} selectedId={selectedId} />
+      <MapController mode={mode} selectedId={selectedId} parcels={parcelList} />
+      <FlyToTarget target={flyTarget ?? null} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Road">
           <TileLayer

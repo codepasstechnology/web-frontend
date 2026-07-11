@@ -2,10 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import { MapSearchBar, FlyToLocation } from "@/components/MapSearchBar";
 import { ArrowLeft, ArrowRight, CheckCircle2, Lock, MapPin, UploadCloud, X } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, planById } from "@/lib/plans";
 
 export const Route = createFileRoute("/dashboard/upload")({
@@ -27,7 +28,11 @@ function UploadPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitErr, setSubmitErr] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -37,10 +42,11 @@ function UploadPage() {
     size: "",
     price: "",
     description: "",
-    landStatus: "Available" as "Available" | "Reserved" | "Disputed",
+    listingType: "sale" as "sale" | "lease",
+    landType: "residential" as NewListingInput["landType"],
     pin: null as [number, number] | null,
     photos: [] as { name: string; url: string }[],
-    deedName: "",
+    deedFile: null as File | null,
   });
 
   useEffect(() => {
@@ -71,24 +77,37 @@ function UploadPage() {
       ? !!form.pin
       : true;
 
-  const submit = () => {
-    if (limitReached) {
-      setUpgradeOpen(true);
-      return;
+  const submit = async () => {
+    if (limitReached) { setUpgradeOpen(true); return; }
+    setSubmitting(true);
+    setSubmitErr("");
+    try {
+      await addListing({
+        title:          form.title,
+        parcelNumber:   form.parcelNumber,
+        county:         form.county,
+        area:           form.area || undefined,
+        size:           form.size || undefined,
+        price:          Number(form.price) || 0,
+        description:    form.description || undefined,
+        latitude:       form.pin?.[0],
+        longitude:      form.pin?.[1],
+        listingType:    form.listingType,
+        landType:       form.landType,
+        titleDeedFile:  form.deedFile ?? undefined,
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitErr("Failed to submit listing. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    addListing({
-      title: form.title,
-      parcelNumber: form.parcelNumber,
-      county: form.county,
-      price: Number(form.price) || 0,
-    });
-    setSubmitted(true);
   };
 
   return (
     <DashboardShell active="upload" onChange={() => {}}>
       <div className="mx-auto max-w-3xl">
-        <button onClick={() => navigate({ to: "/dashboard" })} className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <button onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })} className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
         </button>
         <h1 className="text-2xl font-semibold text-foreground">Upload Land</h1>
@@ -113,8 +132,8 @@ function UploadPage() {
             <h2 className="mt-3 text-lg font-semibold text-foreground">Listing submitted</h2>
             <p className="mt-1 text-sm text-muted-foreground">Your listing is under review and will appear on the map within 24 hours.</p>
             <div className="mt-5 flex justify-center gap-2">
-              <button onClick={() => navigate({ to: "/dashboard" })} className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">Go to dashboard</button>
-              <button onClick={() => { setSubmitted(false); setStep(0); setForm({ ...form, title: "", parcelNumber: "", price: "" }); }} className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]">Upload another</button>
+              <button onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })} className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">Go to dashboard</button>
+              <button onClick={() => { setSubmitted(false); setStep(0); setForm({ title: "", parcelNumber: "", county: "", area: "", size: "", price: "", description: "", listingType: "sale", landType: "residential", pin: null, photos: [], deedFile: null }); }} className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]">Upload another</button>
             </div>
           </div>
         ) : (
@@ -132,9 +151,19 @@ function UploadPage() {
                 <Field label="Sub-county / Area"><input className="lv-input" value={form.area} onChange={(e) => set("area", e.target.value)} /></Field>
                 <Field label="Land size"><input className="lv-input" placeholder="50x100, 1 acre" value={form.size} onChange={(e) => set("size", e.target.value)} /></Field>
                 <Field label="Asking price (Ksh)"><input className="lv-input" type="number" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
-                <Field label="Land status">
-                  <select className="lv-input" value={form.landStatus} onChange={(e) => set("landStatus", e.target.value as any)}>
-                    <option>Available</option><option>Reserved</option><option>Disputed</option>
+                <Field label="Listing type">
+                  <select className="lv-input" value={form.listingType} onChange={(e) => set("listingType", e.target.value as "sale" | "lease")}>
+                    <option value="sale">For Sale</option>
+                    <option value="lease">For Lease</option>
+                  </select>
+                </Field>
+                <Field label="Land type">
+                  <select className="lv-input" value={form.landType} onChange={(e) => set("landType", e.target.value as NewListingInput["landType"])}>
+                    <option value="residential">Residential</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="agricultural">Agricultural</option>
+                    <option value="mixed_use">Mixed Use</option>
+                    <option value="industrial">Industrial</option>
                   </select>
                 </Field>
                 <Field label="Description" full>
@@ -146,11 +175,15 @@ function UploadPage() {
             {step === 1 && (
               <div>
                 <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> Click on the map to mark your land location.</p>
-                <div className="h-80 overflow-hidden rounded-md border border-border">
-                  <MapContainer center={[-1.286389, 36.817223]} zoom={11} className="h-full w-full">
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
-                    <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} />
-                  </MapContainer>
+                <div className="relative h-80 rounded-md border border-border">
+                  <div className="h-full overflow-hidden rounded-md">
+                    <MapContainer center={[-1.286389, 36.817223]} zoom={11} className="h-full w-full">
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                      <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} />
+                      {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}
+                    </MapContainer>
+                  </div>
+                  <MapSearchBar onFly={(lat, lng) => setFlyCoords({ lat, lng })} />
                 </div>
                 {form.pin && (
                   <p className="mt-2 text-xs text-muted-foreground">Pin: {form.pin[0].toFixed(5)}, {form.pin[1].toFixed(5)}</p>
@@ -182,10 +215,10 @@ function UploadPage() {
                   </div>
                 )}
                 <div className="mt-5">
-                  <Field label="Title deed (PDF, optional)">
-                    <input type="file" accept="application/pdf" className="lv-input" onChange={(e) => set("deedName", e.target.files?.[0]?.name ?? "")} />
+                  <Field label="Title deed (PDF or image, optional)">
+                    <input type="file" accept="application/pdf,image/*" className="lv-input" onChange={(e) => set("deedFile", e.target.files?.[0] ?? null)} />
                   </Field>
-                  {form.deedName && <p className="mt-1 text-xs text-muted-foreground">Selected: {form.deedName}</p>}
+                  {form.deedFile && <p className="mt-1 text-xs text-muted-foreground">Selected: {form.deedFile.name}</p>}
                 </div>
               </div>
             )}
@@ -193,17 +226,22 @@ function UploadPage() {
             {step === 3 && (
               <div className="space-y-4 text-sm">
                 <Summary label="Title" value={form.title} />
-                <Summary label="Parcel" value={form.parcelNumber} />
+                <Summary label="Parcel" value={form.parcelNumber || "—"} />
                 <Summary label="County" value={`${form.county}${form.area ? " · " + form.area : ""}`} />
-                <Summary label="Size" value={form.size} />
+                <Summary label="Size" value={form.size || "—"} />
                 <Summary label="Price" value={form.price ? `Ksh ${Number(form.price).toLocaleString()}` : "—"} />
-                <Summary label="Status" value={form.landStatus} />
+                <Summary label="Listing type" value={form.listingType === "sale" ? "For Sale" : "For Lease"} />
+                <Summary label="Land type" value={{ residential: "Residential", commercial: "Commercial", agricultural: "Agricultural", mixed_use: "Mixed Use", industrial: "Industrial" }[form.landType!] ?? "—"} />
                 <Summary label="Pin" value={form.pin ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}` : "Not set"} />
                 <Summary label="Photos" value={`${form.photos.length} attached`} />
+                <Summary label="Title deed" value={form.deedFile ? form.deedFile.name : "None"} />
                 <div className="rounded-md border border-border bg-background p-4">
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">Plan</div>
                   <div className="mt-1 text-sm font-medium text-foreground">{plan.name} — {used}/{plan.listings === Infinity ? "∞" : plan.listings} listings used</div>
                 </div>
+                {submitErr && (
+                  <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{submitErr}</div>
+                )}
                 {limitReached && (
                   <div className="rounded-md border border-[#D97706]/40 bg-[#D97706]/10 p-4">
                     <div className="flex items-center gap-2 text-sm font-semibold text-[#D97706]"><Lock className="h-4 w-4" /> Listing limit reached</div>
@@ -223,8 +261,9 @@ function UploadPage() {
                   Next <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <button onClick={submit} className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]">
-                  Publish Listing
+                <button onClick={submit} disabled={submitting} className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60">
+                  {submitting && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                  {submitting ? "Submitting…" : "Publish Listing"}
                 </button>
               )}
             </div>

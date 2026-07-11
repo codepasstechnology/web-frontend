@@ -27,7 +27,7 @@ function PricingPage() {
       return;
     }
     setPlan(id);
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/dashboard", search: { tab: undefined } });
   };
 
   return (

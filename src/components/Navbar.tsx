@@ -24,7 +24,7 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
           <Link to="/rentals" className="text-sm font-medium text-muted-foreground hover:text-foreground" activeProps={{ className: "text-sm font-medium text-foreground" }}>Rentals</Link>
           <Link to="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground" activeProps={{ className: "text-sm font-medium text-foreground" }}>Pricing</Link>
           {user && (
-            <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground" activeProps={{ className: "text-sm font-medium text-foreground" }}>Dashboard</Link>
+            <Link to="/dashboard" search={{ tab: undefined }} className="text-sm font-medium text-muted-foreground hover:text-foreground" activeProps={{ className: "text-sm font-medium text-foreground" }}>Dashboard</Link>
           )}
         </nav>
 
@@ -44,7 +44,7 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
             <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
           </button>
           {user ? (
-            <Link to="/dashboard" className="hidden rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-secondary sm:inline-flex">
+            <Link to="/dashboard" search={{ tab: undefined }} className="hidden rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-secondary sm:inline-flex">
               Dashboard
             </Link>
           ) : (
@@ -72,10 +72,10 @@ export function Navbar({ compact = false }: { compact?: boolean }) {
             <Link to="/land" onClick={() => setMenuOpen(false)} className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">Land</Link>
             <Link to="/rentals" onClick={() => setMenuOpen(false)} className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">Rentals</Link>
             <Link to="/pricing" onClick={() => setMenuOpen(false)} className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">Pricing</Link>
-            {user && <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">Dashboard</Link>}
+            {user && <Link to="/dashboard" search={{ tab: undefined }} onClick={() => setMenuOpen(false)} className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">Dashboard</Link>}
             <div className="mt-2 flex gap-2 border-t border-border pt-2">
               {user ? (
-                <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="flex-1 rounded-md bg-primary px-3 py-1.5 text-center text-xs font-medium text-primary-foreground hover:bg-secondary">Dashboard</Link>
+                <Link to="/dashboard" search={{ tab: undefined }} onClick={() => setMenuOpen(false)} className="flex-1 rounded-md bg-primary px-3 py-1.5 text-center text-xs font-medium text-primary-foreground hover:bg-secondary">Dashboard</Link>
               ) : (
                 <>
                   <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 rounded-md border border-border px-3 py-1.5 text-center text-xs font-medium text-foreground hover:bg-muted">Login</Link>

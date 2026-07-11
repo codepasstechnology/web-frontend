@@ -2,9 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Lock, Plus, Trash2, Pencil, ArrowUpRight, BarChart3, Eye, Inbox, ListChecks,
-  TrendingUp, TrendingDown, MousePointerClick, Bookmark, Phone, MessageSquare, Globe,
+  TrendingUp, TrendingDown, MousePointerClick, Bookmark, Globe,
   Check, CreditCard, Download, Sparkles, Zap, Receipt, Crown,
-  User as UserIcon, Mail, Shield, Bell, KeyRound, Trash, LogOut, Camera, Languages,
+  User as UserIcon, Mail, Phone, Shield, Bell, KeyRound, Trash, LogOut, Camera, Languages,
   CheckCircle2, AlertTriangle, Building2, MapPin, Save, Copy, Link2, Activity,
   CalendarClock, Target, TrendingUp as TUp,
 } from "lucide-react";
@@ -15,6 +15,7 @@ import {
 import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth, type AppUser } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { planById, plans, addOns, type PlanId } from "@/lib/plans";
 
 export const Route = createFileRoute("/dashboard/")({
@@ -108,7 +109,7 @@ function DashboardPage() {
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <button className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => removeListing(l.id)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => removeListing(l.id).catch(() => {})} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -132,7 +133,7 @@ function DashboardPage() {
         <SettingsTab
           user={user}
           onUpdate={updateUser}
-          onDelete={() => { deleteAccount(); navigate({ to: "/" }); }}
+          onDelete={async () => { await deleteAccount(); navigate({ to: "/" }); }}
           onLogout={() => { logout(); navigate({ to: "/" }); }}
         />
       )}
@@ -168,27 +169,91 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${map[status]}`}>{status}</span>;
 }
 
+interface ApiAnalytics {
+  total_views: number;
+  top_listings: { name: string; views: number }[];
+  county_breakdown: { county: string; views: number }[];
+  recent_activity: { title: string; status: string; views: number; created_at: string }[];
+  daily_views: { date: string; views: number }[];
+  traffic_sources: { name: string; value: number; color: string }[];
+}
+
 function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void }) {
+  const { user } = useAuth();
   const locked = plan !== "pro";
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
 
+  useEffect(() => {
+    if (locked) return;
+    setLoading(true);
+    api.get<ApiAnalytics>(`/user/analytics?range=${range}`)
+      .then(setAnalytics)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [range, locked]);
+
+  // Real totals — from API when available, fall back to user listings in context
+  const realTotalViews = analytics?.total_views ?? user?.listings.reduce((a, b) => a + b.views, 0) ?? 0;
+
+  const topListings = analytics?.top_listings.length
+    ? analytics.top_listings
+    : (user?.listings.slice(0, 5).map((l) => ({ name: l.title, views: l.views })) ?? []);
+
+  const countyBreakdown = analytics?.county_breakdown.length
+    ? analytics.county_breakdown
+    : (() => {
+        const byCounty: Record<string, number> = {};
+        user?.listings.forEach((l) => { byCounty[l.county] = (byCounty[l.county] || 0) + l.views; });
+        return Object.entries(byCounty).map(([county, views]) => ({ county, views })).sort((a, b) => b.views - a.views).slice(0, 6);
+      })();
+
+  const recentActivity = analytics?.recent_activity.length
+    ? analytics.recent_activity.map((a) => ({
+        time: a.created_at,
+        text: a.status === "pending"
+          ? `"${a.title}" is under review`
+          : a.status === "active" || a.status === "verified"
+          ? `"${a.title}" is live · ${a.views} views`
+          : `"${a.title}" — ${a.status}`,
+        icon: <ListChecks className="h-3.5 w-3.5" />,
+      }))
+    : (user?.listings.slice(0, 4).map((l) => ({
+        time: l.createdAt,
+        text: l.status === "pending" ? `"${l.title}" is under review` : `"${l.title}" · ${l.views} views`,
+        icon: <ListChecks className="h-3.5 w-3.5" />,
+      })) ?? []);
+
+  // Build the time series: use real daily_views from the API when available,
+  // fall back to proportional distribution only if no log data exists yet.
   const series = useMemo(() => {
     const today = new Date();
+    const realByDate: Record<string, number> = {};
+    (analytics?.daily_views ?? []).forEach((r) => { realByDate[r.date] = r.views; });
+    const hasRealData = Object.keys(realByDate).length > 0;
+
     return Array.from({ length: days }, (_, i) => {
       const d = new Date(today);
       d.setDate(today.getDate() - (days - 1 - i));
-      const base = 30 + Math.sin(i / 3) * 12 + i * 0.8;
-      const views = Math.max(5, Math.round(base + (Math.random() * 18 - 6)));
-      const clicks = Math.round(views * (0.18 + Math.random() * 0.08));
-      const inquiries = Math.round(views * (0.05 + Math.random() * 0.03));
-      const saves = Math.round(views * (0.09 + Math.random() * 0.04));
+      const isoDate     = d.toISOString().slice(0, 10); // YYYY-MM-DD (matches DB DATE())
+      const displayDate = d.toISOString().slice(5, 10); // MM-DD (x-axis label)
+
+      const views = hasRealData
+        ? (realByDate[isoDate] ?? 0)
+        : Math.max(0, Math.round((realTotalViews / days) * (0.6 + Math.sin(i / 3) * 0.25 + (i / days) * 0.3)));
+
       return {
-        date: d.toISOString().slice(5, 10),
-        views, clicks, inquiries, saves,
+        date:      displayDate,
+        views,
+        clicks:    Math.round(views * 0.22),
+        inquiries: Math.round(views * 0.06),
+        saves:     Math.round(views * 0.10),
       };
     });
-  }, [days]);
+  }, [days, realTotalViews, analytics]);
 
   const totals = useMemo(() => series.reduce(
     (a, b) => ({ views: a.views + b.views, clicks: a.clicks + b.clicks, inquiries: a.inquiries + b.inquiries, saves: a.saves + b.saves }),
@@ -202,34 +267,7 @@ function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void
   const ctr = totals.views ? ((totals.clicks / totals.views) * 100).toFixed(1) : "0";
   const convRate = totals.views ? ((totals.inquiries / totals.views) * 100).toFixed(1) : "0";
 
-  const topListings = [
-    { name: "Karen Premium Lot", views: 1284 },
-    { name: "Kitengela Prime Plot", views: 942 },
-    { name: "Ruiru Verified Estate", views: 768 },
-    { name: "Juja Farmstead", views: 521 },
-    { name: "Thika Greens Plot", views: 410 },
-  ];
-
-  const sources = [
-    { name: "Direct map", value: 48, color: "#2563EB" },
-    { name: "Search", value: 27, color: "#0F172A" },
-    { name: "Shared link", value: 15, color: "#16A34A" },
-    { name: "Referral", value: 10, color: "#D97706" },
-  ];
-
-  const countyBreakdown = [
-    { county: "Kiambu", views: 980 },
-    { county: "Nairobi", views: 1420 },
-    { county: "Kajiado", views: 612 },
-    { county: "Machakos", views: 488 },
-  ];
-
-  const activity = [
-    { time: "2h ago", text: "New inquiry on Karen Premium Lot", icon: <MessageSquare className="h-3.5 w-3.5" /> },
-    { time: "5h ago", text: "12 new views on Ruiru Verified Estate", icon: <Eye className="h-3.5 w-3.5" /> },
-    { time: "Yesterday", text: "Call request on Kitengela Prime Plot", icon: <Phone className="h-3.5 w-3.5" /> },
-    { time: "2d ago", text: "Listing saved by 4 users", icon: <Bookmark className="h-3.5 w-3.5" /> },
-  ];
+  const sources = analytics?.traffic_sources ?? [];
 
   return (
     <div className="space-y-6">
@@ -238,30 +276,33 @@ function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void
           <h1 className="text-2xl font-semibold text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground">Performance across all your listings.</p>
         </div>
-        <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs font-medium">
-          {(["7d", "30d", "90d"] as const).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={`px-3 py-1.5 rounded-[5px] transition-colors ${range === r ? "bg-[#0F172A] text-white" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              {r === "7d" ? "Last 7 days" : r === "30d" ? "Last 30 days" : "Last 90 days"}
-            </button>
-          ))}
+        <div className="inline-flex items-center gap-3">
+          {loading && <span className="text-[11px] text-muted-foreground">Updating…</span>}
+          <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs font-medium">
+            {(["7d", "30d", "90d"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-3 py-1.5 rounded-[5px] transition-colors ${range === r ? "bg-[#0F172A] text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {r === "7d" ? "Last 7 days" : r === "30d" ? "Last 30 days" : "Last 90 days"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="relative">
         <div className={`space-y-6 ${locked ? "pointer-events-none select-none blur-sm" : ""}`}>
-          {/* KPI tiles */}
+          {/* KPI tiles — views is real; clicks/inquiries/saves are proportional estimates */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiTile icon={<Eye className="h-4 w-4" />} label="Total views" value={totals.views.toLocaleString()} delta={delta} />
-            <KpiTile icon={<MousePointerClick className="h-4 w-4" />} label="Clicks" value={totals.clicks.toLocaleString()} delta={Math.round(delta * 0.8)} sub={`${ctr}% CTR`} />
-            <KpiTile icon={<Inbox className="h-4 w-4" />} label="Inquiries" value={totals.inquiries.toLocaleString()} delta={Math.round(delta * 1.2)} sub={`${convRate}% conv.`} />
-            <KpiTile icon={<Bookmark className="h-4 w-4" />} label="Saves" value={totals.saves.toLocaleString()} delta={Math.round(delta * 0.6)} />
+            <KpiTile icon={<Eye className="h-4 w-4" />} label="Total views" value={realTotalViews.toLocaleString()} delta={delta} />
+            <KpiTile icon={<MousePointerClick className="h-4 w-4" />} label="Clicks (est.)" value={totals.clicks.toLocaleString()} delta={Math.round(delta * 0.8)} sub={`${ctr}% CTR`} />
+            <KpiTile icon={<Inbox className="h-4 w-4" />} label="Inquiries (est.)" value={totals.inquiries.toLocaleString()} delta={Math.round(delta * 1.2)} sub={`${convRate}% conv.`} />
+            <KpiTile icon={<Bookmark className="h-4 w-4" />} label="Saves (est.)" value={totals.saves.toLocaleString()} delta={Math.round(delta * 0.6)} />
           </div>
 
-          {/* Main views chart */}
+          {/* Main engagement chart */}
           <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <div>
@@ -286,10 +327,7 @@ function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void
                   <CartesianGrid stroke="#E2E8F0" vertical={false} />
                   <XAxis dataKey="date" tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#E2E8F0" }} minTickGap={20} />
                   <YAxis tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }}
-                    cursor={{ stroke: "#E2E8F0" }}
-                  />
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} cursor={{ stroke: "#E2E8F0" }} />
                   <Area type="monotone" dataKey="views" stroke="#2563EB" strokeWidth={2} fill="url(#gv)" />
                   <Area type="monotone" dataKey="clicks" stroke="#0F172A" strokeWidth={1.5} fill="transparent" />
                   <Area type="monotone" dataKey="inquiries" stroke="#16A34A" strokeWidth={1.5} fill="transparent" />
@@ -299,52 +337,66 @@ function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            {/* Top listings */}
+            {/* Top listings — real data */}
             <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-2">
               <h3 className="text-sm font-semibold text-foreground">Top performing listings</h3>
-              <p className="text-xs text-muted-foreground">By total views in selected period</p>
-              <div className="mt-4 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topListings} layout="vertical" margin={{ top: 0, right: 8, left: 10, bottom: 0 }}>
-                    <CartesianGrid stroke="#E2E8F0" horizontal={false} />
-                    <XAxis type="number" tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fill: "#0F172A", fontSize: 11 }} tickLine={false} axisLine={false} width={140} />
-                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} cursor={{ fill: "#F1F5F9" }} />
-                    <Bar dataKey="views" fill="#2563EB" radius={[0, 4, 4, 0]} barSize={18} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <p className="text-xs text-muted-foreground">By total views</p>
+              {topListings.length === 0 ? (
+                <div className="mt-10 text-center text-sm text-muted-foreground">No listings yet.</div>
+              ) : (
+                <div className="mt-4 h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topListings} layout="vertical" margin={{ top: 0, right: 8, left: 10, bottom: 0 }}>
+                      <CartesianGrid stroke="#E2E8F0" horizontal={false} />
+                      <XAxis type="number" tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fill: "#0F172A", fontSize: 11 }} tickLine={false} axisLine={false} width={140} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} cursor={{ fill: "#F1F5F9" }} />
+                      <Bar dataKey="views" fill="#2563EB" radius={[0, 4, 4, 0]} barSize={18} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
 
-            {/* Traffic sources donut */}
+            {/* Traffic sources — real once view logs with source data exist */}
             <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-foreground">Traffic sources</h3>
-              <p className="text-xs text-muted-foreground">Where viewers come from</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={sources} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={2} stroke="none">
-                      {sources.map((s) => <Cell key={s.name} fill={s.color} />)}
-                    </Pie>
-                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <ul className="mt-2 space-y-1.5">
-                {sources.map((s) => (
-                  <li key={s.name} className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-2 text-foreground">
-                      <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} /> {s.name}
-                    </span>
-                    <span className="font-medium text-foreground">{s.value}%</span>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-xs text-muted-foreground">Where viewers came from</p>
+              {sources.length === 0 ? (
+                <div className="flex h-48 flex-col items-center justify-center text-center">
+                  <Globe className="h-6 w-6 text-muted-foreground/40" />
+                  <p className="mt-2 text-sm text-muted-foreground">No traffic data yet.</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Sources appear once viewers open your listings on the map.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={sources} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={2} stroke="none">
+                          {sources.map((s) => <Cell key={s.name} fill={s.color} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {sources.map((s) => (
+                      <li key={s.name} className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-2 text-foreground">
+                          <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} /> {s.name}
+                        </span>
+                        <span className="font-medium text-foreground">{s.value}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Inquiries by county */}
+            {/* Views by county — real data */}
             <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -353,42 +405,50 @@ function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void
                 </div>
                 <Globe className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="mt-4 h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={countyBreakdown} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
-                    <CartesianGrid stroke="#E2E8F0" vertical={false} />
-                    <XAxis dataKey="county" tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#E2E8F0" }} />
-                    <YAxis tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} cursor={{ fill: "#F1F5F9" }} />
-                    <Bar dataKey="views" fill="#0F172A" radius={[4, 4, 0, 0]} barSize={36} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {countyBreakdown.length === 0 ? (
+                <div className="mt-10 text-center text-sm text-muted-foreground">No data yet.</div>
+              ) : (
+                <div className="mt-4 h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={countyBreakdown} margin={{ top: 0, right: 8, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="#E2E8F0" vertical={false} />
+                      <XAxis dataKey="county" tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#E2E8F0" }} />
+                      <YAxis tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12 }} cursor={{ fill: "#F1F5F9" }} />
+                      <Bar dataKey="views" fill="#0F172A" radius={[4, 4, 0, 0]} barSize={36} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
 
-            {/* Recent activity */}
+            {/* Recent activity — real listing events */}
             <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-foreground">Recent activity</h3>
               <p className="text-xs text-muted-foreground">Latest events on your listings</p>
-              <ul className="mt-4 divide-y divide-border">
-                {activity.map((a, i) => (
-                  <li key={i} className="flex items-start gap-3 py-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">{a.icon}</div>
-                    <div className="flex-1">
-                      <p className="text-sm text-foreground">{a.text}</p>
-                      <p className="text-[11px] text-muted-foreground">{a.time}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {recentActivity.length === 0 ? (
+                <div className="mt-10 text-center text-sm text-muted-foreground">No activity yet.</div>
+              ) : (
+                <ul className="mt-4 divide-y divide-border">
+                  {recentActivity.map((a, i) => (
+                    <li key={i} className="flex items-start gap-3 py-3">
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">{a.icon}</div>
+                      <div className="flex-1">
+                        <p className="text-sm text-foreground">{a.text}</p>
+                        <p className="text-[11px] text-muted-foreground">{a.time}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
-          {/* Best day / Avg time / Inquiry rate */}
+          {/* Summary stats — real */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <SmallStat label="Best performing day" value="Saturday" sub="38% above avg" />
-            <SmallStat label="Avg time on listing" value="2m 14s" sub="+12s vs last period" />
-            <SmallStat label="Inquiry rate" value={`${convRate}%`} sub="Views → inquiries" />
+            <SmallStat label="Total listings" value={String(user?.listings.length ?? 0)} sub={`${user?.listings.filter((l) => l.status === "active").length ?? 0} active`} />
+            <SmallStat label="Avg views / listing" value={user?.listings.length ? String(Math.round(realTotalViews / user.listings.length)) : "0"} sub="Per published listing" />
+            <SmallStat label="Inquiry rate (est.)" value={`${convRate}%`} sub="Views → inquiries" />
           </div>
         </div>
 
@@ -932,8 +992,8 @@ function SettingsTab({
   onLogout,
 }: {
   user: AppUser;
-  onUpdate: (patch: Partial<AppUser>) => void;
-  onDelete: () => void;
+  onUpdate: (patch: Partial<AppUser>) => Promise<void>;
+  onDelete: () => Promise<void>;
   onLogout: () => void;
 }) {
   const [form, setForm] = useState({
@@ -959,8 +1019,8 @@ function SettingsTab({
   const initials = form.fullName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
   const avatarColor = user.avatarColor || "#2563EB";
 
-  const saveProfile = () => {
-    onUpdate({
+  const saveProfile = async () => {
+    await onUpdate({
       fullName: form.fullName,
       email: form.email,
       phone: form.phone,
@@ -972,12 +1032,12 @@ function SettingsTab({
     });
     setSavedAt(new Date().toLocaleTimeString());
   };
-  const saveNotif = () => {
-    onUpdate({ notifications: notif });
+  const saveNotif = async () => {
+    await onUpdate({ notifications: notif });
     setSavedAt(new Date().toLocaleTimeString());
   };
-  const saveSecurity = () => {
-    onUpdate({ twoFactor });
+  const saveSecurity = async () => {
+    await onUpdate({ twoFactor });
     setSavedAt(new Date().toLocaleTimeString());
   };
   const changePassword = () => {
