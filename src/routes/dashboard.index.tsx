@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Lock,
   Plus,
@@ -43,6 +43,10 @@ import {
   CalendarClock,
   Target,
   TrendingUp as TUp,
+  ShieldCheck,
+  MessageSquare,
+  Clock,
+  Send,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -74,6 +78,7 @@ export const Route = createFileRoute("/dashboard/")({
       "analytics",
       "billing",
       "settings",
+      "kyc",
     ];
     const t =
       typeof s.tab === "string" && (allowed as string[]).includes(s.tab)
@@ -230,6 +235,8 @@ function DashboardPage() {
           }}
         />
       )}
+
+      {tab === "kyc" && <KycTab />}
 
       <UpgradeModal
         open={upgradeOpen}
@@ -1989,6 +1996,198 @@ function ToggleRow({
         <div className="text-[11px] text-muted-foreground">{desc}</div>
       </div>
       <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+// ─── KYC Status Tab ──────────────────────────────────────────────────────────
+
+interface KycApplication {
+  id: string;
+  reference: string;
+  status: string;
+  document_type: string | null;
+  info_request_message: string | null;
+  user_reply: string | null;
+  user_replied_at: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  parcel: { id: string; title: string; parcel_number: string | null } | null;
+}
+
+const kycStatusConfig: Record<string, { label: string; bg: string; fg: string; icon: React.ReactNode }> = {
+  pending: { label: "Pending Review", bg: "#FEF9C3", fg: "#854D0E", icon: <Clock className="h-4 w-4" /> },
+  under_review: { label: "Under Review", bg: "#DBEAFE", fg: "#1D4ED8", icon: <ShieldCheck className="h-4 w-4" /> },
+  info_requested: { label: "Information Requested", bg: "#FEF3C7", fg: "#D97706", icon: <MessageSquare className="h-4 w-4" /> },
+  approved: { label: "Approved", bg: "#DCFCE7", fg: "#15803D", icon: <CheckCircle2 className="h-4 w-4" /> },
+  rejected: { label: "Rejected", bg: "#FEE2E2", fg: "#DC2626", icon: <AlertTriangle className="h-4 w-4" /> },
+};
+
+function KycTab() {
+  const [applications, setApplications] = useState<KycApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<string[]>([]);
+  const replyRefs = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    api
+      .get<KycApplication[]>("/user/kyc")
+      .then(setApplications)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleReply = async (kyc: KycApplication) => {
+    const text = replyText[kyc.id]?.trim();
+    if (!text || submitting) return;
+    setSubmitting(kyc.id);
+    try {
+      await api.post(`/user/kyc/${kyc.id}/reply`, { reply: text });
+      setSubmitted((prev) => [...prev, kyc.id]);
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === kyc.id
+            ? { ...a, user_reply: text, user_replied_at: new Date().toISOString() }
+            : a,
+        ),
+      );
+    } catch {
+      // error silently — user can retry
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const fmtDate = (s: string) =>
+    new Date(s).toLocaleDateString("en-KE", { year: "numeric", month: "short", day: "numeric" });
+
+  if (loading) {
+    return (
+      <div className="flex h-40 items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#2563EB] border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">KYC Status</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Track your land parcel verification applications and respond to admin requests.
+        </p>
+      </div>
+
+      {applications.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
+          <ShieldCheck className="mx-auto h-8 w-8 text-muted-foreground" />
+          <h3 className="mt-3 text-base font-semibold text-foreground">No KYC applications</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            When you submit a land parcel for verification, its status will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {applications.map((kyc) => {
+            const cfg = kycStatusConfig[kyc.status] ?? {
+              label: kyc.status,
+              bg: "#F1F5F9",
+              fg: "#0F172A",
+              icon: <ShieldCheck className="h-4 w-4" />,
+            };
+            const alreadyReplied = !!kyc.user_reply || submitted.includes(kyc.id);
+            replyRefs.current[kyc.id] = alreadyReplied;
+
+            return (
+              <div key={kyc.id} className="rounded-lg border border-border bg-card p-5">
+                {/* Header row */}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {kyc.parcel?.title ?? "Land Parcel"}
+                    </p>
+                    {kyc.parcel?.parcel_number && (
+                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                        {kyc.parcel.parcel_number}
+                      </p>
+                    )}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Submitted {fmtDate(kyc.created_at)} · Ref: {kyc.reference}
+                    </p>
+                  </div>
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                    style={{ background: cfg.bg, color: cfg.fg }}
+                  >
+                    {cfg.icon}
+                    {cfg.label}
+                  </span>
+                </div>
+
+                {/* Info requested section */}
+                {kyc.status === "info_requested" && kyc.info_request_message && (
+                  <div className="mt-4 rounded-md border border-[#D97706]/30 bg-[#FFFBEB] p-4">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#D97706]">
+                      Additional information needed
+                    </p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                      {kyc.info_request_message}
+                    </p>
+
+                    {/* Reply section */}
+                    <div className="mt-4 border-t border-[#D97706]/20 pt-4">
+                      {alreadyReplied ? (
+                        <div className="rounded-md bg-[#F0FDF4] p-3">
+                          <p className="mb-1 text-xs font-semibold text-[#15803D]">Your reply</p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                            {kyc.user_reply}
+                          </p>
+                          {kyc.user_replied_at && (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Sent {fmtDate(kyc.user_replied_at)}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <p className="mb-2 text-xs font-medium text-foreground">Your reply</p>
+                          <textarea
+                            value={replyText[kyc.id] ?? ""}
+                            onChange={(e) =>
+                              setReplyText((prev) => ({ ...prev, [kyc.id]: e.target.value }))
+                            }
+                            placeholder="Provide the requested information or explain what you've uploaded…"
+                            rows={4}
+                            className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                          />
+                          <button
+                            onClick={() => handleReply(kyc)}
+                            disabled={!replyText[kyc.id]?.trim() || submitting === kyc.id}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            {submitting === kyc.id ? "Sending…" : "Send reply"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reviewed at */}
+                {kyc.reviewed_at && kyc.status !== "info_requested" && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Reviewed on {fmtDate(kyc.reviewed_at)}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

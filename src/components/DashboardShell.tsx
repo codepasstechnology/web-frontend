@@ -8,11 +8,21 @@ import {
   Settings,
   LogOut,
   MapPinned,
+  ShieldCheck,
+  Bell,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 
-export type DashTab = "overview" | "listings" | "upload" | "analytics" | "billing" | "settings";
+export type DashTab =
+  | "overview"
+  | "listings"
+  | "upload"
+  | "analytics"
+  | "billing"
+  | "settings"
+  | "kyc";
 
 const items: { id: DashTab; label: string; icon: ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <LayoutGrid className="h-4 w-4" /> },
@@ -20,8 +30,90 @@ const items: { id: DashTab; label: string; icon: ReactNode }[] = [
   { id: "upload", label: "Upload Land", icon: <Upload className="h-4 w-4" /> },
   { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
   { id: "billing", label: "Billing & Plan", icon: <Wallet className="h-4 w-4" /> },
+  { id: "kyc", label: "KYC Status", icon: <ShieldCheck className="h-4 w-4" /> },
   { id: "settings", label: "Account Settings", icon: <Settings className="h-4 w-4" /> },
 ];
+
+interface Notification {
+  id: string;
+  data: { type: string; message?: string; reference?: string };
+  read_at: string | null;
+  created_at: string;
+}
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    api.get<Notification[]>("/user/notifications").then(setNotifications).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const unread = notifications.filter((n) => !n.read_at).length;
+
+  const handleOpen = () => {
+    setOpen((v) => !v);
+    if (unread > 0) {
+      api.post("/user/notifications/read-all").catch(() => {});
+      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+    }
+  };
+
+  const fmtDate = (s: string) =>
+    new Date(s).toLocaleDateString("en-KE", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={handleOpen}
+        className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Bell className="h-4 w-4" />
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#2563EB] text-[9px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 z-50 w-80 rounded-lg border border-border bg-card shadow-lg">
+          <div className="border-b border-border px-4 py-2.5">
+            <h3 className="text-xs font-semibold text-foreground">Notifications</h3>
+          </div>
+          {notifications.length === 0 ? (
+            <p className="px-4 py-6 text-center text-xs text-muted-foreground">No notifications yet</p>
+          ) : (
+            <ul className="max-h-72 divide-y divide-border overflow-y-auto">
+              {notifications.map((n) => (
+                <li key={n.id} className="px-4 py-3">
+                  <p className="text-xs font-medium text-foreground">
+                    {n.data.type === "kyc_info_requested"
+                      ? "KYC — Additional information requested"
+                      : n.data.type}
+                  </p>
+                  {n.data.message && (
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{n.data.message}</p>
+                  )}
+                  <p className="mt-1 text-[10px] text-muted-foreground">{fmtDate(n.created_at)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   active: DashTab;
@@ -39,8 +131,6 @@ export function DashboardShell({ active, onChange, children }: Props) {
       return;
     }
     onChange?.(t);
-    // Always navigate to dashboard with the tab in the URL so this works
-    // from any sub-page (e.g. /dashboard/upload) where onChange is a no-op.
     navigate({ to: "/dashboard", search: { tab: t } });
   };
 
@@ -61,6 +151,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
             </div>
           </Link>
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="hidden text-right md:block">
               <div className="text-xs font-medium text-foreground">{user?.fullName ?? "Guest"}</div>
               <div className="text-[11px] capitalize text-muted-foreground">
@@ -108,7 +199,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-6 border-t border-border bg-card md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-7 border-t border-border bg-card md:hidden">
         {items.map((it) => {
           const isActive = it.id === active;
           return (
