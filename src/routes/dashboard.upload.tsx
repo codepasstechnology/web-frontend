@@ -293,7 +293,9 @@ function UploadPage() {
                       <TileLayer
                         key={isSatellite ? "sat" : "osm"}
                         url={isSatellite ? SATELLITE_TILES : OSM_TILES}
-                        attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
+                        attribution={
+                          isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"
+                        }
                       />
                       <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} />
                       {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}

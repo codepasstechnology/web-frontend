@@ -92,7 +92,11 @@ function KycPinDropper({
   pin: [number, number] | null;
   onPin: (p: [number, number]) => void;
 }) {
-  useMapEvents({ click(e) { onPin([e.latlng.lat, e.latlng.lng]); } });
+  useMapEvents({
+    click(e) {
+      onPin([e.latlng.lat, e.latlng.lng]);
+    },
+  });
   if (!pin) return null;
   return <Marker position={pin} icon={kycPinIcon} />;
 }
@@ -2058,7 +2062,13 @@ interface KycApplication {
   submitted_at: string | null;
   reviewed_at: string | null;
   created_at: string;
-  parcel: { id: string; title: string; parcel_number: string | null; latitude: number | null; longitude: number | null } | null;
+  parcel: {
+    id: string;
+    title: string;
+    parcel_number: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  } | null;
   documents: KycDocument[];
 }
 
@@ -2511,7 +2521,9 @@ function KycCard({
               </div>
               {kyc.correction_note && (
                 <div className="px-4 py-3">
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{kyc.correction_note}</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">
+                    {kyc.correction_note}
+                  </p>
                 </div>
               )}
               <div className="border-t border-[#F97316]/30 px-4 py-4">
@@ -2536,7 +2548,9 @@ function KycCard({
                         <TileLayer
                           key={locSatellite ? "sat" : "osm"}
                           url={locSatellite ? SATELLITE_TILES : OSM_TILES}
-                          attribution={locSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
+                          attribution={
+                            locSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"
+                          }
                         />
                         <KycPinDropper pin={locPin} onPin={setLocPin} />
                         {locFlyCoords && (
@@ -2563,7 +2577,9 @@ function KycCard({
                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#C2410C] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                       >
                         <MapPin className="h-3.5 w-3.5" />
-                        {submitting === `loc:${kyc.id}` ? "Submitting…" : "Submit corrected location"}
+                        {submitting === `loc:${kyc.id}`
+                          ? "Submitting…"
+                          : "Submit corrected location"}
                       </button>
                     </div>
                   </div>

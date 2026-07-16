@@ -1,13 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Polygon,
-  Marker,
-  Tooltip,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Marker, Tooltip, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { rentals, statusMeta, type LandParcel, type Rental } from "@/lib/landData";
 import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/MapSearchBar";
@@ -108,83 +100,83 @@ export function LandMap({
 
   return (
     <div className="relative h-full w-full">
-    <MapContainer
-      center={[-1.286389, 36.817223]}
-      zoom={11}
-      scrollWheelZoom
-      className="h-full w-full"
-      style={{ background: "#e8eef5" }}
-    >
-      <MapController mode={mode} selectedId={selectedId} parcels={parcelList} />
-      <FlyToTarget target={flyTarget ?? null} />
-      <TileLayer
-        key={isSatellite ? "sat" : "osm"}
-        url={isSatellite ? SATELLITE_TILES : OSM_TILES}
-        attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
-      />
+      <MapContainer
+        center={[-1.286389, 36.817223]}
+        zoom={11}
+        scrollWheelZoom
+        className="h-full w-full"
+        style={{ background: "#e8eef5" }}
+      >
+        <MapController mode={mode} selectedId={selectedId} parcels={parcelList} />
+        <FlyToTarget target={flyTarget ?? null} />
+        <TileLayer
+          key={isSatellite ? "sat" : "osm"}
+          url={isSatellite ? SATELLITE_TILES : OSM_TILES}
+          attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
+        />
 
-      {mode === "land" &&
-        parcelList.map((p) => {
-          const meta = statusMeta[p.status];
-          const isSelected = selectedId === p.id;
-          return (
-            <Polygon
-              key={p.id}
-              positions={p.polygon}
-              pathOptions={{
-                color: meta.color,
-                weight: isSelected ? 3.5 : 2,
-                fillColor: meta.fill,
-                fillOpacity: isSelected ? 0.6 : 0.42,
-                dashArray: p.status === "disputed" ? "6 4" : undefined,
-              }}
+        {mode === "land" &&
+          parcelList.map((p) => {
+            const meta = statusMeta[p.status];
+            const isSelected = selectedId === p.id;
+            return (
+              <Polygon
+                key={p.id}
+                positions={p.polygon}
+                pathOptions={{
+                  color: meta.color,
+                  weight: isSelected ? 3.5 : 2,
+                  fillColor: meta.fill,
+                  fillOpacity: isSelected ? 0.6 : 0.42,
+                  dashArray: p.status === "disputed" ? "6 4" : undefined,
+                }}
+                eventHandlers={{ click: () => onSelectParcel?.(p) }}
+              >
+                <Tooltip direction="top" sticky offset={[0, -4]}>
+                  <div className="text-xs">
+                    <div className="font-semibold text-foreground">{p.title}</div>
+                    <div className="text-muted-foreground">
+                      {p.parcelNumber} · {meta.label} · KES {p.price.toLocaleString()}
+                    </div>
+                  </div>
+                </Tooltip>
+              </Polygon>
+            );
+          })}
+
+        {mode === "land" &&
+          parcelList.map((p) => (
+            <Marker
+              key={`label-${p.id}`}
+              position={centroid(p.polygon)}
+              icon={labelIcon(p.parcelNumber, p.size)}
+              interactive
+              keyboard={false}
               eventHandlers={{ click: () => onSelectParcel?.(p) }}
+            />
+          ))}
+
+        {mode === "rentals" &&
+          rentalList.map((r) => (
+            <Marker
+              key={r.id}
+              position={r.position}
+              icon={icon}
+              eventHandlers={{ click: () => onSelectRental?.(r) }}
             >
-              <Tooltip direction="top" sticky offset={[0, -4]}>
+              <Popup>
                 <div className="text-xs">
-                  <div className="font-semibold text-foreground">{p.title}</div>
+                  <div className="font-semibold">{r.title}</div>
+                  <div>KES {r.price.toLocaleString()} / mo</div>
                   <div className="text-muted-foreground">
-                    {p.parcelNumber} · {meta.label} · KES {p.price.toLocaleString()}
+                    {r.area}, {r.county}
                   </div>
                 </div>
-              </Tooltip>
-            </Polygon>
-          );
-        })}
-
-      {mode === "land" &&
-        parcelList.map((p) => (
-          <Marker
-            key={`label-${p.id}`}
-            position={centroid(p.polygon)}
-            icon={labelIcon(p.parcelNumber, p.size)}
-            interactive
-            keyboard={false}
-            eventHandlers={{ click: () => onSelectParcel?.(p) }}
-          />
-        ))}
-
-      {mode === "rentals" &&
-        rentalList.map((r) => (
-          <Marker
-            key={r.id}
-            position={r.position}
-            icon={icon}
-            eventHandlers={{ click: () => onSelectRental?.(r) }}
-          >
-            <Popup>
-              <div className="text-xs">
-                <div className="font-semibold">{r.title}</div>
-                <div>KES {r.price.toLocaleString()} / mo</div>
-                <div className="text-muted-foreground">
-                  {r.area}, {r.county}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-    </MapContainer>
-    <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
+              </Popup>
+            </Marker>
+          ))}
+      </MapContainer>
+      <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
     </div>
   );
 }
