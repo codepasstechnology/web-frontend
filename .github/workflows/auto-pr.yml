@@ -16,7 +16,7 @@ jobs:
 
       - name: Create PR if none exists
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           count=$(gh pr list --base main --head dev --state open --json number --jq length)
           if [ "$count" -eq 0 ]; then
