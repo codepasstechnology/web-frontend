@@ -20,7 +20,6 @@ function ForgotPasswordPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black">
-
       {/* Full-screen background photo */}
       <img
         src="https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop"
@@ -34,20 +33,24 @@ function ForgotPasswordPage() {
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" />
 
-
       {/* Logo — top left */}
       <div className="absolute left-6 top-6 z-20 sm:left-8 sm:top-8">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB] shadow-lg shadow-blue-900/60">
             <MapPinned className="h-5 w-5 text-white" />
           </div>
-          <span className="text-base font-semibold tracking-tight text-white drop-shadow">LandConnect</span>
+          <span className="text-base font-semibold tracking-tight text-white drop-shadow">
+            LandConnect
+          </span>
         </Link>
       </div>
 
       {/* Back to home — top right */}
       <div className="absolute right-6 top-6 z-20 sm:right-8 sm:top-8">
-        <Link to="/" className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20">
+        <Link
+          to="/"
+          className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+        >
           <ArrowLeft className="h-4 w-4" />
           Home
         </Link>
@@ -61,7 +64,6 @@ function ForgotPasswordPage() {
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[400px] mx-4">
         <div className="rounded-2xl bg-white/15 px-8 py-9 shadow-2xl shadow-black/50 ring-1 ring-white/25 backdrop-blur-2xl">
-
           {!submitted ? (
             <>
               {/* Icon */}
@@ -115,12 +117,15 @@ function ForgotPasswordPage() {
                 <h1 className="text-2xl font-bold text-white drop-shadow">Check your inbox</h1>
                 <p className="mt-2 text-sm text-white/70">
                   We've sent a password reset link to{" "}
-                  <span className="font-semibold text-white">{email}</span>.
-                  Check your spam folder if you don't see it.
+                  <span className="font-semibold text-white">{email}</span>. Check your spam folder
+                  if you don't see it.
                 </p>
               </div>
               <button
-                onClick={() => { setSubmitted(false); setEmail(""); }}
+                onClick={() => {
+                  setSubmitted(false);
+                  setEmail("");
+                }}
                 className="w-full rounded-xl border border-white/25 bg-white/10 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20"
               >
                 Try a different email

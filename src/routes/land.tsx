@@ -15,7 +15,10 @@ export const Route = createFileRoute("/land")({
   head: () => ({
     meta: [
       { title: "Land Parcels Map — LandVerify Kenya" },
-      { name: "description", content: "Interactive GIS map of plotted, verified land parcels across Kenya." },
+      {
+        name: "description",
+        content: "Interactive GIS map of plotted, verified land parcels across Kenya.",
+      },
     ],
   }),
 });
@@ -46,8 +49,11 @@ interface ApiParcel {
 
 // Generate a 4-point polygon around a lat/lng point, same formula as landData.ts
 function makePolygon(lat: number, lng: number): [number, number][] {
-  const dLat = 0.0035, dLng = 0.0045, skew = 0.18;
-  const sx = dLng * skew, sy = dLat * skew;
+  const dLat = 0.0035,
+    dLng = 0.0045,
+    skew = 0.18;
+  const sx = dLng * skew,
+    sy = dLat * skew;
   return [
     [lat - dLat + sy * 0.4, lng - dLng - sx * 0.2],
     [lat - dLat - sy * 0.6, lng + dLng + sx * 0.3],
@@ -58,26 +64,30 @@ function makePolygon(lat: number, lng: number): [number, number][] {
 
 function mapApiParcel(p: ApiParcel): LandParcel {
   return {
-    id:           p.id,
-    title:        p.title,
+    id: p.id,
+    title: p.title,
     parcelNumber: p.parcel_number,
-    size:         p.size || "—",
-    price:        p.price,
-    status:       (p.status === "verified" ? "verified" : "available") as LandStatus,
-    listingType:  p.listing_type,
-    postedBy:     p.posted_by,
-    county:       p.county,
-    description:  p.description || "",
-    verified:     p.verified,
+    size: p.size || "—",
+    price: p.price,
+    status: (p.status === "verified" ? "verified" : "available") as LandStatus,
+    listingType: p.listing_type,
+    postedBy: p.posted_by,
+    county: p.county,
+    description: p.description || "",
+    verified: p.verified,
     seller: {
-      name:   p.seller_name  || "—",
-      phone:  p.seller_phone || "—",
+      name: p.seller_name || "—",
+      phone: p.seller_phone || "—",
       agency: p.seller_agency || "",
     },
     amenities: {
-      school: "—", hospital: "—", shopping: "—",
-      mainRoad: "—", distanceToTarmac: "—",
-      utilities: [], developmentScore: 0,
+      school: "—",
+      hospital: "—",
+      shopping: "—",
+      mainRoad: "—",
+      distanceToTarmac: "—",
+      utilities: [],
+      developmentScore: 0,
     },
     polygon: makePolygon(p.latitude, p.longitude),
   };
@@ -88,7 +98,8 @@ function classifyReferrer(ref: string): "direct" | "search" | "social" | "referr
   try {
     const host = new URL(ref).hostname;
     if (/google\.|bing\.|yahoo\.|duckduckgo\.|ecosia\./.test(host)) return "search";
-    if (/facebook\.|twitter\.|instagram\.|whatsapp\.|linkedin\.|tiktok\./.test(host)) return "social";
+    if (/facebook\.|twitter\.|instagram\.|whatsapp\.|linkedin\.|tiktok\./.test(host))
+      return "social";
     return "referral";
   } catch {
     return "direct";
@@ -111,7 +122,8 @@ function LandPage() {
 
   // Fetch real parcels from backend; static demo parcels fill the rest
   useEffect(() => {
-    api.get<ApiParcel[]>("/parcels")
+    api
+      .get<ApiParcel[]>("/parcels")
       .then((data) => setDbParcels(data.map(mapApiParcel)))
       .catch(() => {});
   }, []);
@@ -150,10 +162,18 @@ function LandPage() {
       <div className="relative flex flex-1 overflow-hidden">
         <MapSidebar filters={filters} setFilters={setFilters} count={filtered.length} />
         <div className="relative flex-1">
-          <LandMap mode="land" parcels={filtered} onSelectParcel={handleSelectParcel} selectedId={selected?.id ?? null} flyTarget={flyTarget} />
+          <LandMap
+            mode="land"
+            parcels={filtered}
+            onSelectParcel={handleSelectParcel}
+            selectedId={selected?.id ?? null}
+            flyTarget={flyTarget}
+          />
           <MapSearchBar onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 14 })} />
           <div className="pointer-events-none absolute bottom-4 left-4 z-10">
-            <div className="pointer-events-auto"><MapLegend /></div>
+            <div className="pointer-events-auto">
+              <MapLegend />
+            </div>
           </div>
           {selected && <ParcelPanel parcel={selected} onClose={() => setSelected(null)} />}
         </div>

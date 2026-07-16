@@ -16,14 +16,15 @@ interface Props {
 }
 
 export function LegalDocPage({ type }: Props) {
-  const [doc, setDoc]         = useState<LegalDoc | null>(null);
+  const [doc, setDoc] = useState<LegalDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     setNotFound(false);
-    api.get<LegalDoc>(`/legal/${type}`)
+    api
+      .get<LegalDoc>(`/legal/${type}`)
       .then(setDoc)
       .catch((e: unknown) => {
         if ((e as { status?: number }).status === 404) setNotFound(true);
@@ -36,7 +37,6 @@ export function LegalDocPage({ type }: Props) {
       <Navbar />
 
       <div className="mx-auto max-w-3xl px-4 py-10 md:py-16">
-
         {/* Loading skeleton */}
         {loading && (
           <div className="animate-pulse space-y-4">
@@ -83,7 +83,9 @@ export function LegalDocPage({ type }: Props) {
                     <Calendar className="h-3.5 w-3.5" />
                     Effective{" "}
                     {new Date(doc.effective_date).toLocaleDateString("en-KE", {
-                      day: "numeric", month: "long", year: "numeric",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
                     })}
                   </span>
                 )}
@@ -100,7 +102,9 @@ export function LegalDocPage({ type }: Props) {
             <p className="mt-12 border-t border-border pt-5 text-xs text-muted-foreground">
               Last published:{" "}
               {new Date(doc.published_at).toLocaleDateString("en-KE", {
-                day: "numeric", month: "long", year: "numeric",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
               })}
             </p>
           </>

@@ -12,7 +12,10 @@ export const Route = createFileRoute("/rentals")({
   head: () => ({
     meta: [
       { title: "Rentals Map — LandVerify Kenya" },
-      { name: "description", content: "Browse verified rental properties across Kenya on an interactive map." },
+      {
+        name: "description",
+        content: "Browse verified rental properties across Kenya on an interactive map.",
+      },
     ],
   }),
 });
@@ -46,21 +49,24 @@ function RentalsPage() {
         )}
 
         {isMobile && listOpen && (
-          <div onClick={() => setListOpen(false)} className="fixed inset-0 z-[1050] bg-black/40 md:hidden" />
+          <div
+            onClick={() => setListOpen(false)}
+            className="fixed inset-0 z-[1050] bg-black/40 md:hidden"
+          />
         )}
 
         {(listOpen || !isMobile) && (
           <aside
             className={`${
-              isMobile
-                ? "fixed left-0 top-0 z-[1060] h-full w-[85%] max-w-xs"
-                : "relative w-72"
+              isMobile ? "fixed left-0 top-0 z-[1060] h-full w-[85%] max-w-xs" : "relative w-72"
             } overflow-y-auto border-r border-border bg-card`}
           >
             <div className="flex items-center gap-2 border-b border-border px-4 py-3">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Rental Listings</h3>
-                <p className="text-[11px] text-muted-foreground">{rentals.length} verified properties</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {rentals.length} verified properties
+                </p>
               </div>
               {isMobile && (
                 <button
@@ -75,14 +81,21 @@ function RentalsPage() {
               {rentals.map((r) => (
                 <li key={r.id}>
                   <button
-                    onClick={() => { setSelected(r); if (isMobile) setListOpen(false); }}
+                    onClick={() => {
+                      setSelected(r);
+                      if (isMobile) setListOpen(false);
+                    }}
                     className={`flex w-full flex-col gap-0.5 border-b border-border px-4 py-3 text-left hover:bg-muted ${
                       selected?.id === r.id ? "bg-muted" : ""
                     }`}
                   >
                     <span className="text-sm font-medium text-foreground">{r.title}</span>
-                    <span className="text-xs text-muted-foreground">{r.area}, {r.county}</span>
-                    <span className="text-xs font-semibold text-foreground">KES {r.price.toLocaleString()}/mo</span>
+                    <span className="text-xs text-muted-foreground">
+                      {r.area}, {r.county}
+                    </span>
+                    <span className="text-xs font-semibold text-foreground">
+                      KES {r.price.toLocaleString()}/mo
+                    </span>
                   </button>
                 </li>
               ))}

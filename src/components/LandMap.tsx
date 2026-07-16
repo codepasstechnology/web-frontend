@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Tooltip, LayersControl, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Polygon,
+  Marker,
+  Tooltip,
+  LayersControl,
+  Popup,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
 import { rentals, statusMeta, type LandParcel, type Rental } from "@/lib/landData";
 
@@ -25,7 +34,11 @@ const centroid = (poly: [number, number][]): [number, number] => {
   return [sLat / poly.length, sLng / poly.length];
 };
 
-export interface FlyTarget { lat: number; lng: number; zoom?: number }
+export interface FlyTarget {
+  lat: number;
+  lng: number;
+  zoom?: number;
+}
 
 function FlyToTarget({ target }: { target: FlyTarget | null }) {
   const map = useMap();
@@ -47,13 +60,21 @@ interface Props {
 }
 
 // Fits map to all parcels on first load, and zooms to a selected parcel when chosen.
-function MapController({ mode, selectedId, parcels }: { mode: "land" | "rentals"; selectedId?: string | null; parcels: LandParcel[] }) {
+function MapController({
+  mode,
+  selectedId,
+  parcels,
+}: {
+  mode: "land" | "rentals";
+  selectedId?: string | null;
+  parcels: LandParcel[];
+}) {
   const map = useMap();
   useEffect(() => {
     if (mode !== "land" || parcels.length === 0) return;
     const all = parcels.flatMap((p) => p.polygon);
     if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, mode]);
   useEffect(() => {
     if (!selectedId) return;
@@ -63,7 +84,15 @@ function MapController({ mode, selectedId, parcels }: { mode: "land" | "rentals"
   return null;
 }
 
-export function LandMap({ mode, onSelectParcel, onSelectRental, selectedId, parcels = [], rentalItems, flyTarget }: Props) {
+export function LandMap({
+  mode,
+  onSelectParcel,
+  onSelectRental,
+  selectedId,
+  parcels = [],
+  rentalItems,
+  flyTarget,
+}: Props) {
   const parcelList = parcels;
   const rentalList = rentalItems ?? rentals;
   const [mounted, setMounted] = useState(false);
@@ -89,13 +118,13 @@ export function LandMap({ mode, onSelectParcel, onSelectRental, selectedId, parc
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Road">
           <TileLayer
-            attribution='&copy; OpenStreetMap'
+            attribution="&copy; OpenStreetMap"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Satellite">
           <TileLayer
-            attribution='Tiles &copy; Esri'
+            attribution="Tiles &copy; Esri"
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
         </LayersControl.BaseLayer>
@@ -154,7 +183,9 @@ export function LandMap({ mode, onSelectParcel, onSelectRental, selectedId, parc
               <div className="text-xs">
                 <div className="font-semibold">{r.title}</div>
                 <div>KES {r.price.toLocaleString()} / mo</div>
-                <div className="text-muted-foreground">{r.area}, {r.county}</div>
+                <div className="text-muted-foreground">
+                  {r.area}, {r.county}
+                </div>
               </div>
             </Popup>
           </Marker>

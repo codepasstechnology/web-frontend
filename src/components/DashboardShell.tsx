@@ -1,5 +1,14 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { LayoutGrid, List, Upload, BarChart3, Wallet, Settings, LogOut, MapPinned } from "lucide-react";
+import {
+  LayoutGrid,
+  List,
+  Upload,
+  BarChart3,
+  Wallet,
+  Settings,
+  LogOut,
+  MapPinned,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 
@@ -46,16 +55,23 @@ export function DashboardShell({ active, onChange, children }: Props) {
             </div>
             <div className="leading-tight">
               <div className="text-sm font-semibold text-foreground">LandVerify</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Dashboard</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Dashboard
+              </div>
             </div>
           </Link>
           <div className="flex items-center gap-3">
             <div className="hidden text-right md:block">
               <div className="text-xs font-medium text-foreground">{user?.fullName ?? "Guest"}</div>
-              <div className="text-[11px] capitalize text-muted-foreground">{user?.plan ?? "free"} plan</div>
+              <div className="text-[11px] capitalize text-muted-foreground">
+                {user?.plan ?? "free"} plan
+              </div>
             </div>
             <button
-              onClick={() => { logout(); navigate({ to: "/" }); }}
+              onClick={() => {
+                logout();
+                navigate({ to: "/" });
+              }}
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
             >
               <LogOut className="h-3.5 w-3.5" /> Logout
@@ -69,13 +85,15 @@ export function DashboardShell({ active, onChange, children }: Props) {
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-border bg-card md:block">
           <nav className="p-3">
             {items.map((it) => {
-              const isActive = (it.id === "upload" ? false : it.id === active);
+              const isActive = it.id === "upload" ? false : it.id === active;
               return (
                 <button
                   key={it.id}
                   onClick={() => handleSelect(it.id)}
                   className={`mb-1 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive ? "bg-[#2563EB]/10 text-[#2563EB]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    isActive
+                      ? "bg-[#2563EB]/10 text-[#2563EB]"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   {it.icon}

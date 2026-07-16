@@ -24,7 +24,9 @@ export function PlanCard({ plan, current, onSelect }: Props) {
           {plan.badge.label}
         </span>
       )}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{plan.name}</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        {plan.name}
+      </h3>
       <div className="mt-3 flex items-baseline gap-1">
         <span className="text-3xl font-semibold text-foreground">
           {plan.price === 0 ? "Ksh 0" : `Ksh ${plan.price.toLocaleString()}`}
