@@ -28,3 +28,12 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Create cPanel env
+        run: printf 'VITE_API_URL=\nVITE_CPANEL=true\n' > .env.cpanel
+
+      - name: Build (cPanel)
+        run: npm run build:cpanel
