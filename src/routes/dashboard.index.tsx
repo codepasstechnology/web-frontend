@@ -2020,6 +2020,7 @@ interface KycApplication {
   reviewer_notes: string | null;
   rejection_reason: string | null;
   info_request_message: string | null;
+  correction_note: string | null;
   user_reply: string | null;
   user_replied_at: string | null;
   user_reply_document_path: string | null;
@@ -2029,7 +2030,7 @@ interface KycApplication {
   submitted_at: string | null;
   reviewed_at: string | null;
   created_at: string;
-  parcel: { id: string; title: string; parcel_number: string | null } | null;
+  parcel: { id: string; title: string; parcel_number: string | null; latitude: number | null; longitude: number | null } | null;
   documents: KycDocument[];
 }
 
@@ -2077,6 +2078,14 @@ const kycStatusConfig: Record<
     icon: <AlertTriangle className="h-3.5 w-3.5" />,
     step: 3,
   },
+  location_correction_requested: {
+    label: "Fix Location",
+    bg: "#FFF7ED",
+    fg: "#C2410C",
+    border: "#F97316",
+    icon: <MapPin className="h-3.5 w-3.5" />,
+    step: 2,
+  },
 };
 
 const STEPS = ["Submitted", "In Review", "Decision"];
@@ -2091,6 +2100,7 @@ function KycCard({
   submitted,
   fileInputRefs,
   handleReply,
+  handleUpdateLocation,
   fmtDate,
 }: {
   kyc: KycApplication;
@@ -2102,6 +2112,7 @@ function KycCard({
   submitted: string[];
   fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
   handleReply: (kyc: KycApplication) => void;
+  handleUpdateLocation: (kyc: KycApplication, lat: string, lng: string) => void;
   fmtDate: (s: string) => string;
 }) {
   const cfg = kycStatusConfig[kyc.status] ?? {
@@ -2117,10 +2128,16 @@ function KycCard({
   const isInfo = kyc.status === "info_requested";
   const isApproved = kyc.status === "approved";
   const isRejected = kyc.status === "rejected";
+  const isLocationCorrection = kyc.status === "location_correction_requested";
+  const locationCorrected = submitted.includes(`loc:${kyc.id}`);
   const acknowledged = !!kyc.admin_acknowledgment;
-  // Auto-expand: unanswered info requests and cards with a new acknowledgment
-  const [expanded, setExpanded] = useState((isInfo && !alreadyReplied) || acknowledged);
+  // Auto-expand: unanswered info requests, location corrections, and acknowledged cards
+  const [expanded, setExpanded] = useState(
+    (isInfo && !alreadyReplied) || (isLocationCorrection && !locationCorrected) || acknowledged,
+  );
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
+  const [locLat, setLocLat] = useState(String(kyc.parcel?.latitude ?? ""));
+  const [locLng, setLocLng] = useState(String(kyc.parcel?.longitude ?? ""));
 
   async function handleViewDoc(docId: string) {
     setViewingDoc(docId);
@@ -2152,6 +2169,16 @@ function KycCard({
               {isInfo && !alreadyReplied && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10px] font-semibold text-[#D97706]">
                   Action required
+                </span>
+              )}
+              {isLocationCorrection && !locationCorrected && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7ED] px-2 py-0.5 text-[10px] font-semibold text-[#C2410C]">
+                  Fix location required
+                </span>
+              )}
+              {isLocationCorrection && locationCorrected && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#15803D]">
+                  <Check className="h-2.5 w-2.5" /> Location updated
                 </span>
               )}
               {isInfo && alreadyReplied && acknowledged && (
@@ -2436,6 +2463,79 @@ function KycCard({
             </div>
           )}
 
+          {/* Location correction */}
+          {isLocationCorrection && (
+            <div className="rounded-lg border border-[#F97316]/40 bg-[#FFF7ED]">
+              <div className="flex items-center gap-2 border-b border-[#F97316]/30 px-4 py-3">
+                <MapPin className="h-4 w-4 text-[#C2410C]" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#C2410C]">
+                  Location correction requested
+                </p>
+              </div>
+              {kyc.correction_note && (
+                <div className="px-4 py-3">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{kyc.correction_note}</p>
+                </div>
+              )}
+              <div className="border-t border-[#F97316]/30 px-4 py-4">
+                {locationCorrected ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-[#F0FDF4] p-3">
+                    <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
+                    <p className="text-sm font-medium text-[#15803D]">
+                      Updated location submitted — under review.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {kyc.parcel?.latitude != null && kyc.parcel?.longitude != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Current location: {kyc.parcel.latitude}, {kyc.parcel.longitude}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-foreground">
+                          Latitude
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={locLat}
+                          onChange={(e) => setLocLat(e.target.value)}
+                          placeholder="e.g. -1.2921"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-foreground">
+                          Longitude
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={locLng}
+                          onChange={(e) => setLocLng(e.target.value)}
+                          placeholder="e.g. 36.8219"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleUpdateLocation(kyc, locLat, locLng)}
+                        disabled={!locLat || !locLng || submitting === `loc:${kyc.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#C2410C] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        {submitting === `loc:${kyc.id}` ? "Submitting…" : "Submit corrected location"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Submitted documents */}
           {kyc.documents && kyc.documents.length > 0 && (
             <div className="rounded-lg border border-border p-4">
@@ -2525,6 +2625,30 @@ function KycTab() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleUpdateLocation = async (kyc: KycApplication, lat: string, lng: string) => {
+    if (!lat || !lng || submitting) return;
+    setSubmitting(`loc:${kyc.id}`);
+    try {
+      await api.patch(`/user/kyc/${kyc.id}/update-location`, { latitude: parseFloat(lat), longitude: parseFloat(lng) });
+      setSubmitted((prev) => [...prev, `loc:${kyc.id}`]);
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === kyc.id
+            ? {
+                ...a,
+                status: "pending",
+                parcel: a.parcel ? { ...a.parcel, latitude: parseFloat(lat), longitude: parseFloat(lng) } : a.parcel,
+              }
+            : a,
+        ),
+      );
+    } catch {
+      // silent
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
   const handleReply = async (kyc: KycApplication) => {
     const text = replyText[kyc.id]?.trim();
     const file = replyFile[kyc.id];
@@ -2612,10 +2736,11 @@ function KycTab() {
 
   const needsAction = applications.filter(
     (a) =>
-      a.status === "info_requested" &&
-      !a.user_reply &&
-      !a.user_reply_document_path &&
-      !submitted.includes(a.id),
+      (a.status === "info_requested" &&
+        !a.user_reply &&
+        !a.user_reply_document_path &&
+        !submitted.includes(a.id)) ||
+      (a.status === "location_correction_requested" && !submitted.includes(`loc:${a.id}`)),
   );
   const rest = applications.filter((a) => !needsAction.includes(a));
 
@@ -2637,6 +2762,7 @@ function KycTab() {
     submitted,
     fileInputRefs,
     handleReply,
+    handleUpdateLocation,
     fmtDate,
   };
 
