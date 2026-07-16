@@ -34,14 +34,19 @@ function PostedByBadge({ postedBy }: { postedBy: "owner" | "broker" }) {
   );
 }
 
+interface NavigatorWithShare extends Navigator {
+  share?: (data: ShareData) => Promise<void>;
+}
+
 function ShareButton({ title, text }: { title: string; text: string }) {
   const [copied, setCopied] = useState(false);
   const onShare = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     const data = { title, text, url };
     try {
-      if (typeof navigator !== "undefined" && (navigator as any).share) {
-        await (navigator as any).share(data);
+      const nav = navigator as NavigatorWithShare;
+      if (typeof navigator !== "undefined" && nav.share) {
+        await nav.share(data);
         return;
       }
       await navigator.clipboard.writeText(`${title}\n${text}\n${url}`);
