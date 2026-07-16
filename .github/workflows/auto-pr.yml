@@ -1,0 +1,27 @@
+name: Auto PR dev → main
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  auto-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create PR if none exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          count=$(gh pr list --base main --head dev --state open --json number --jq length)
+          if [ "$count" -eq 0 ]; then
+            gh pr create \
+              --base main \
+              --head dev \
+              --title "dev → main" \
+              --body "Ongoing integration PR. Push to \`dev\` to update; merge when ready to release."
+          fi
