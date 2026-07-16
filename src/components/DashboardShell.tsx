@@ -16,13 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
 export type DashTab =
-  | "overview"
-  | "listings"
-  | "upload"
-  | "analytics"
-  | "billing"
-  | "settings"
-  | "kyc";
+  "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
 
 const items: { id: DashTab; label: string; icon: ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <LayoutGrid className="h-4 w-4" /> },
@@ -47,7 +41,10 @@ function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.get<Notification[]>("/user/notifications").then(setNotifications).catch(() => {});
+    api
+      .get<Notification[]>("/user/notifications")
+      .then(setNotifications)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -64,12 +61,19 @@ function NotificationBell() {
     setOpen((v) => !v);
     if (unread > 0) {
       api.post("/user/notifications/read-all").catch(() => {});
-      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })),
+      );
     }
   };
 
   const fmtDate = (s: string) =>
-    new Date(s).toLocaleDateString("en-KE", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    new Date(s).toLocaleDateString("en-KE", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <div className="relative" ref={ref}>
@@ -91,7 +95,9 @@ function NotificationBell() {
             <h3 className="text-xs font-semibold text-foreground">Notifications</h3>
           </div>
           {notifications.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-muted-foreground">No notifications yet</p>
+            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+              No notifications yet
+            </p>
           ) : (
             <ul className="max-h-72 divide-y divide-border overflow-y-auto">
               {notifications.map((n) => (
@@ -102,7 +108,9 @@ function NotificationBell() {
                       : n.data.type}
                   </p>
                   {n.data.message && (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{n.data.message}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                      {n.data.message}
+                    </p>
                   )}
                   <p className="mt-1 text-[10px] text-muted-foreground">{fmtDate(n.created_at)}</p>
                 </li>

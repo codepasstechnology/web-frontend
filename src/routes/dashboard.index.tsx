@@ -2037,11 +2037,46 @@ const kycStatusConfig: Record<
   string,
   { label: string; bg: string; fg: string; border: string; icon: React.ReactNode; step: number }
 > = {
-  pending:        { label: "Pending Review",          bg: "#FEF9C3", fg: "#854D0E", border: "#EAB308", icon: <Clock className="h-3.5 w-3.5" />,        step: 1 },
-  under_review:   { label: "Under Review",            bg: "#DBEAFE", fg: "#1D4ED8", border: "#3B82F6", icon: <ShieldCheck className="h-3.5 w-3.5" />,   step: 2 },
-  info_requested: { label: "Info Requested",          bg: "#FEF3C7", fg: "#D97706", border: "#F59E0B", icon: <MessageSquare className="h-3.5 w-3.5" />, step: 2 },
-  approved:       { label: "Approved",                bg: "#DCFCE7", fg: "#15803D", border: "#22C55E", icon: <CheckCircle2 className="h-3.5 w-3.5" />,  step: 3 },
-  rejected:       { label: "Rejected",                bg: "#FEE2E2", fg: "#DC2626", border: "#EF4444", icon: <AlertTriangle className="h-3.5 w-3.5" />, step: 3 },
+  pending: {
+    label: "Pending Review",
+    bg: "#FEF9C3",
+    fg: "#854D0E",
+    border: "#EAB308",
+    icon: <Clock className="h-3.5 w-3.5" />,
+    step: 1,
+  },
+  under_review: {
+    label: "Under Review",
+    bg: "#DBEAFE",
+    fg: "#1D4ED8",
+    border: "#3B82F6",
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+    step: 2,
+  },
+  info_requested: {
+    label: "Info Requested",
+    bg: "#FEF3C7",
+    fg: "#D97706",
+    border: "#F59E0B",
+    icon: <MessageSquare className="h-3.5 w-3.5" />,
+    step: 2,
+  },
+  approved: {
+    label: "Approved",
+    bg: "#DCFCE7",
+    fg: "#15803D",
+    border: "#22C55E",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+    step: 3,
+  },
+  rejected: {
+    label: "Rejected",
+    bg: "#FEE2E2",
+    fg: "#DC2626",
+    border: "#EF4444",
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    step: 3,
+  },
 };
 
 const STEPS = ["Submitted", "In Review", "Decision"];
@@ -2070,10 +2105,15 @@ function KycCard({
   fmtDate: (s: string) => string;
 }) {
   const cfg = kycStatusConfig[kyc.status] ?? {
-    label: kyc.status, bg: "#F1F5F9", fg: "#0F172A", border: "#CBD5E1",
-    icon: <ShieldCheck className="h-3.5 w-3.5" />, step: 1,
+    label: kyc.status,
+    bg: "#F1F5F9",
+    fg: "#0F172A",
+    border: "#CBD5E1",
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+    step: 1,
   };
-  const alreadyReplied = !!kyc.user_reply || !!kyc.user_reply_document_path || submitted.includes(kyc.id);
+  const alreadyReplied =
+    !!kyc.user_reply || !!kyc.user_reply_document_path || submitted.includes(kyc.id);
   const isInfo = kyc.status === "info_requested";
   const isApproved = kyc.status === "approved";
   const isRejected = kyc.status === "rejected";
@@ -2102,10 +2142,7 @@ function KycCard({
       style={{ borderLeftWidth: 4, borderLeftColor: cfg.border }}
     >
       {/* Card header — always visible */}
-      <button
-        className="w-full px-5 py-4 text-left"
-        onClick={() => setExpanded((v) => !v)}
-      >
+      <button className="w-full px-5 py-4 text-left" onClick={() => setExpanded((v) => !v)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -2145,10 +2182,27 @@ function KycCard({
               {cfg.label}
             </span>
             <span className="text-muted-foreground">
-              {expanded
-                ? <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
-                : <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              }
+              {expanded ? (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                </svg>
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
             </span>
           </div>
         </div>
@@ -2167,8 +2221,8 @@ function KycCard({
                       done
                         ? "bg-[#22C55E] text-white"
                         : active
-                        ? "text-white"
-                        : "bg-muted text-muted-foreground"
+                          ? "text-white"
+                          : "bg-muted text-muted-foreground"
                     }`}
                     style={active ? { background: cfg.border } : undefined}
                   >
@@ -2183,9 +2237,7 @@ function KycCard({
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div
-                    className={`mb-4 h-px flex-1 ${done ? "bg-[#22C55E]" : "bg-border"}`}
-                  />
+                  <div className={`mb-4 h-px flex-1 ${done ? "bg-[#22C55E]" : "bg-border"}`} />
                 )}
               </div>
             );
@@ -2196,7 +2248,6 @@ function KycCard({
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-border px-5 pb-5 pt-4 space-y-4">
-
           {/* Approved message */}
           {isApproved && (
             <div className="flex items-start gap-3 rounded-lg bg-[#F0FDF4] p-4">
@@ -2218,7 +2269,9 @@ function KycCard({
               <div>
                 <p className="text-sm font-semibold text-[#DC2626]">Application rejected</p>
                 {kyc.rejection_reason ? (
-                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{kyc.rejection_reason}</p>
+                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+                    {kyc.rejection_reason}
+                  </p>
                 ) : (
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Your application did not meet the verification requirements.
@@ -2234,7 +2287,9 @@ function KycCard({
             <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
               <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium text-foreground">Your application is being reviewed</p>
+                <p className="text-sm font-medium text-foreground">
+                  Your application is being reviewed
+                </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   We'll notify you once a decision is made. No action needed right now.
                 </p>
@@ -2252,7 +2307,9 @@ function KycCard({
                 </p>
               </div>
               <div className="px-4 py-3">
-                <p className="text-sm text-foreground whitespace-pre-wrap">{kyc.info_request_message}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">
+                  {kyc.info_request_message}
+                </p>
               </div>
 
               {/* Reply area */}
@@ -2270,7 +2327,9 @@ function KycCard({
                         )}
                       </div>
                       {kyc.user_reply && (
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{kyc.user_reply}</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {kyc.user_reply}
+                        </p>
                       )}
                       {kyc.user_reply_document_name && (
                         <a
@@ -2290,15 +2349,21 @@ function KycCard({
                       <div className="rounded-lg border border-[#3B82F6]/30 bg-[#EFF6FF] p-4">
                         <div className="flex items-center gap-2 mb-1">
                           <CheckCircle2 className="h-4 w-4 text-[#2563EB]" />
-                          <p className="text-xs font-semibold text-[#1D4ED8]">Message from reviewer</p>
+                          <p className="text-xs font-semibold text-[#1D4ED8]">
+                            Message from reviewer
+                          </p>
                           {kyc.admin_acknowledged_at && (
                             <span className="ml-auto text-[11px] text-muted-foreground">
                               {fmtDate(kyc.admin_acknowledged_at)}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{kyc.admin_acknowledgment}</p>
-                        <p className="mt-2 text-xs font-medium text-[#2563EB]">No further action needed from you.</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {kyc.admin_acknowledgment}
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-[#2563EB]">
+                          No further action needed from you.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -2307,14 +2372,18 @@ function KycCard({
                     <p className="mb-2 text-xs font-semibold text-foreground">Your reply</p>
                     <textarea
                       value={replyText[kyc.id] ?? ""}
-                      onChange={(e) => setReplyText((prev) => ({ ...prev, [kyc.id]: e.target.value }))}
+                      onChange={(e) =>
+                        setReplyText((prev) => ({ ...prev, [kyc.id]: e.target.value }))
+                      }
                       placeholder="Provide the requested information or explain what you've uploaded…"
                       rows={4}
                       className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <input
-                        ref={(el) => { fileInputRefs.current[kyc.id] = el; }}
+                        ref={(el) => {
+                          fileInputRefs.current[kyc.id] = el;
+                        }}
                         type="file"
                         accept="image/jpeg,image/png,application/pdf"
                         className="hidden"
@@ -2337,7 +2406,8 @@ function KycCard({
                             type="button"
                             onClick={() => {
                               setReplyFile((prev) => ({ ...prev, [kyc.id]: null }));
-                              if (fileInputRefs.current[kyc.id]) fileInputRefs.current[kyc.id]!.value = "";
+                              if (fileInputRefs.current[kyc.id])
+                                fileInputRefs.current[kyc.id]!.value = "";
                             }}
                             className="text-[11px] text-muted-foreground hover:text-destructive"
                           >
@@ -2345,10 +2415,15 @@ function KycCard({
                           </button>
                         )}
                       </div>
-                      <span className="text-[11px] text-muted-foreground">JPG, PNG or PDF · max 10 MB</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        JPG, PNG or PDF · max 10 MB
+                      </span>
                       <button
                         onClick={() => handleReply(kyc)}
-                        disabled={(!replyText[kyc.id]?.trim() && !replyFile[kyc.id]) || submitting === kyc.id}
+                        disabled={
+                          (!replyText[kyc.id]?.trim() && !replyFile[kyc.id]) ||
+                          submitting === kyc.id
+                        }
                         className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                       >
                         <Send className="h-3.5 w-3.5" />
@@ -2371,7 +2446,9 @@ function KycCard({
                 {kyc.documents.map((doc) => (
                   <div key={doc.id} className="flex items-center gap-2">
                     <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.original_name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                      {doc.original_name}
+                    </span>
                     {doc.verification_status === "accepted" && (
                       <span className="text-[11px] font-medium text-[#16A34A]">Verified</span>
                     )}
@@ -2406,14 +2483,18 @@ function KycCard({
   );
 }
 
-interface UserParcel { id: string; title: string; parcel_number: string | null; }
+interface UserParcel {
+  id: string;
+  title: string;
+  parcel_number: string | null;
+}
 
 const DOC_TYPES = [
-  { value: "title_deed",               label: "Title Deed" },
-  { value: "lease_agreement",          label: "Lease Agreement" },
+  { value: "title_deed", label: "Title Deed" },
+  { value: "lease_agreement", label: "Lease Agreement" },
   { value: "certificate_of_occupancy", label: "Certificate of Occupancy" },
-  { value: "survey_map",               label: "Survey Map" },
-  { value: "other",                    label: "Other" },
+  { value: "survey_map", label: "Survey Map" },
+  { value: "other", label: "Other" },
 ];
 
 function KycTab() {
@@ -2530,26 +2611,44 @@ function KycTab() {
   }
 
   const needsAction = applications.filter(
-    (a) => a.status === "info_requested" && !a.user_reply && !a.user_reply_document_path && !submitted.includes(a.id),
+    (a) =>
+      a.status === "info_requested" &&
+      !a.user_reply &&
+      !a.user_reply_document_path &&
+      !submitted.includes(a.id),
   );
   const rest = applications.filter((a) => !needsAction.includes(a));
 
   const counts = {
     total: applications.length,
-    pending: applications.filter((a) => a.status === "pending" || a.status === "under_review").length,
+    pending: applications.filter((a) => a.status === "pending" || a.status === "under_review")
+      .length,
     approved: applications.filter((a) => a.status === "approved").length,
     rejected: applications.filter((a) => a.status === "rejected").length,
     action: needsAction.length,
   };
 
-  const cardProps = { replyText, setReplyText, replyFile, setReplyFile, submitting, submitted, fileInputRefs, handleReply, fmtDate };
+  const cardProps = {
+    replyText,
+    setReplyText,
+    replyFile,
+    setReplyFile,
+    submitting,
+    submitted,
+    fileInputRefs,
+    handleReply,
+    fmtDate,
+  };
 
   return (
     <div className="space-y-6">
       {/* Submit KYC modal */}
       {showSubmit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !submittingKyc && setShowSubmit(false)} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !submittingKyc && setShowSubmit(false)}
+          />
           <div className="relative w-full max-w-md rounded-xl border border-border bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <h2 className="text-sm font-semibold text-foreground">Submit KYC Application</h2>
@@ -2558,16 +2657,28 @@ function KycTab() {
                 disabled={submittingKyc}
                 className="rounded p-1 text-muted-foreground hover:bg-muted"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
             <div className="space-y-4 px-5 py-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-foreground">Land parcel</label>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">
+                  Land parcel
+                </label>
                 {loadingParcels ? (
                   <p className="text-xs text-muted-foreground">Loading your parcels…</p>
                 ) : parcels.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No land parcels found. Add a listing first.</p>
+                  <p className="text-xs text-muted-foreground">
+                    No land parcels found. Add a listing first.
+                  </p>
                 ) : (
                   <select
                     value={submitParcel}
@@ -2577,26 +2688,33 @@ function KycTab() {
                     <option value="">Select a parcel…</option>
                     {parcels.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.title}{p.parcel_number ? ` · ${p.parcel_number}` : ""}
+                        {p.title}
+                        {p.parcel_number ? ` · ${p.parcel_number}` : ""}
                       </option>
                     ))}
                   </select>
                 )}
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-foreground">Document type</label>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">
+                  Document type
+                </label>
                 <select
                   value={submitDocType}
                   onChange={(e) => setSubmitDocType(e.target.value)}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                 >
                   {DOC_TYPES.map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-foreground">Document file</label>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">
+                  Document file
+                </label>
                 <input
                   ref={submitFileRef}
                   type="file"
@@ -2616,17 +2734,24 @@ function KycTab() {
                   {submitFile && (
                     <button
                       type="button"
-                      onClick={() => { setSubmitFile(null); if (submitFileRef.current) submitFileRef.current.value = ""; }}
+                      onClick={() => {
+                        setSubmitFile(null);
+                        if (submitFileRef.current) submitFileRef.current.value = "";
+                      }}
                       className="text-[11px] text-muted-foreground hover:text-destructive"
                     >
                       Remove
                     </button>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">JPG, PNG or PDF · max 10 MB</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  JPG, PNG or PDF · max 10 MB
+                </p>
               </div>
               {submitError && (
-                <p className="rounded-md bg-[#FEE2E2] px-3 py-2 text-xs font-medium text-[#DC2626]">{submitError}</p>
+                <p className="rounded-md bg-[#FEE2E2] px-3 py-2 text-xs font-medium text-[#DC2626]">
+                  {submitError}
+                </p>
               )}
             </div>
             <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
@@ -2660,7 +2785,15 @@ function KycTab() {
           onClick={openSubmitModal}
           className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
         >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
           Submit KYC
         </button>
       </div>
@@ -2676,7 +2809,15 @@ function KycTab() {
             onClick={openSubmitModal}
             className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
           >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
             Submit KYC application
           </button>
         </div>
@@ -2686,8 +2827,16 @@ function KycTab() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: "Total", value: counts.total, color: "text-foreground" },
-              { label: "Needs action", value: counts.action, color: counts.action > 0 ? "text-[#D97706]" : "text-muted-foreground" },
-              { label: "Approved", value: counts.approved, color: counts.approved > 0 ? "text-[#16A34A]" : "text-muted-foreground" },
+              {
+                label: "Needs action",
+                value: counts.action,
+                color: counts.action > 0 ? "text-[#D97706]" : "text-muted-foreground",
+              },
+              {
+                label: "Approved",
+                value: counts.approved,
+                color: counts.approved > 0 ? "text-[#16A34A]" : "text-muted-foreground",
+              },
               { label: "Pending", value: counts.pending, color: "text-muted-foreground" },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-border bg-card px-4 py-3">
