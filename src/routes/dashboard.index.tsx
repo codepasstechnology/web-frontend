@@ -70,7 +70,13 @@ import { api } from "@/lib/api";
 import { planById, plans, addOns, type PlanId } from "@/lib/plans";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { MapSearchBar, FlyToLocation } from "@/components/MapSearchBar";
+import {
+  MapSearchBar,
+  FlyToLocation,
+  MapSatelliteToggle,
+  OSM_TILES,
+  SATELLITE_TILES,
+} from "@/components/MapSearchBar";
 
 const kycPinIcon = L.divIcon({
   className: "lv-marker",
@@ -2168,6 +2174,7 @@ function KycCard({
       ? { lat: kyc.parcel.latitude, lng: kyc.parcel.longitude }
       : null,
   );
+  const [locSatellite, setLocSatellite] = useState(false);
 
   async function handleViewDoc(docId: string) {
     setViewingDoc(docId);
@@ -2527,8 +2534,9 @@ function KycCard({
                         className="h-full w-full"
                       >
                         <TileLayer
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution="&copy; OpenStreetMap"
+                          key={locSatellite ? "sat" : "osm"}
+                          url={locSatellite ? SATELLITE_TILES : OSM_TILES}
+                          attribution={locSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
                         />
                         <KycPinDropper pin={locPin} onPin={setLocPin} />
                         {locFlyCoords && (
@@ -2536,6 +2544,10 @@ function KycCard({
                         )}
                       </MapContainer>
                       <MapSearchBar onFly={(lat, lng) => setLocFlyCoords({ lat, lng })} />
+                      <MapSatelliteToggle
+                        satellite={locSatellite}
+                        onToggle={() => setLocSatellite((s) => !s)}
+                      />
                     </div>
                     {locPin ? (
                       <p className="text-xs text-muted-foreground">

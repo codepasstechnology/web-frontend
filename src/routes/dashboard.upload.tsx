@@ -2,7 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { MapSearchBar, FlyToLocation } from "@/components/MapSearchBar";
+import {
+  MapSearchBar,
+  FlyToLocation,
+  MapSatelliteToggle,
+  OSM_TILES,
+  SATELLITE_TILES,
+} from "@/components/MapSearchBar";
 import { ArrowLeft, ArrowRight, CheckCircle2, Lock, MapPin, UploadCloud, X } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -33,6 +39,7 @@ function UploadPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isSatellite, setIsSatellite] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -284,14 +291,19 @@ function UploadPage() {
                       className="h-full w-full"
                     >
                       <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution="&copy; OpenStreetMap"
+                        key={isSatellite ? "sat" : "osm"}
+                        url={isSatellite ? SATELLITE_TILES : OSM_TILES}
+                        attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
                       />
                       <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} />
                       {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}
                     </MapContainer>
                   </div>
                   <MapSearchBar onFly={(lat, lng) => setFlyCoords({ lat, lng })} />
+                  <MapSatelliteToggle
+                    satellite={isSatellite}
+                    onToggle={() => setIsSatellite((s) => !s)}
+                  />
                 </div>
                 {form.pin && (
                   <p className="mt-2 text-xs text-muted-foreground">
