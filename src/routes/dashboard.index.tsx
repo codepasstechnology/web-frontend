@@ -68,6 +68,28 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { planById, plans, addOns, type PlanId } from "@/lib/plans";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import { MapSearchBar, FlyToLocation } from "@/components/MapSearchBar";
+
+const kycPinIcon = L.divIcon({
+  className: "lv-marker",
+  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#C2410C;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+function KycPinDropper({
+  pin,
+  onPin,
+}: {
+  pin: [number, number] | null;
+  onPin: (p: [number, number]) => void;
+}) {
+  useMapEvents({ click(e) { onPin([e.latlng.lat, e.latlng.lng]); } });
+  if (!pin) return null;
+  return <Marker position={pin} icon={kycPinIcon} />;
+}
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({ meta: [{ title: "Dashboard — LandVerify Kenya" }] }),
@@ -2112,7 +2134,7 @@ function KycCard({
   submitted: string[];
   fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
   handleReply: (kyc: KycApplication) => void;
-  handleUpdateLocation: (kyc: KycApplication, lat: string, lng: string) => void;
+  handleUpdateLocation: (kyc: KycApplication, pin: [number, number] | null) => void;
   fmtDate: (s: string) => string;
 }) {
   const cfg = kycStatusConfig[kyc.status] ?? {
@@ -2136,8 +2158,16 @@ function KycCard({
     (isInfo && !alreadyReplied) || (isLocationCorrection && !locationCorrected) || acknowledged,
   );
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
-  const [locLat, setLocLat] = useState(String(kyc.parcel?.latitude ?? ""));
-  const [locLng, setLocLng] = useState(String(kyc.parcel?.longitude ?? ""));
+  const [locPin, setLocPin] = useState<[number, number] | null>(
+    kyc.parcel?.latitude != null && kyc.parcel?.longitude != null
+      ? [kyc.parcel.latitude, kyc.parcel.longitude]
+      : null,
+  );
+  const [locFlyCoords, setLocFlyCoords] = useState<{ lat: number; lng: number } | null>(
+    kyc.parcel?.latitude != null && kyc.parcel?.longitude != null
+      ? { lat: kyc.parcel.latitude, lng: kyc.parcel.longitude }
+      : null,
+  );
 
   async function handleViewDoc(docId: string) {
     setViewingDoc(docId);
@@ -2487,43 +2517,37 @@ function KycCard({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {kyc.parcel?.latitude != null && kyc.parcel?.longitude != null && (
-                      <p className="text-xs text-muted-foreground">
-                        Current location: {kyc.parcel.latitude}, {kyc.parcel.longitude}
-                      </p>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-foreground">
-                          Latitude
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={locLat}
-                          onChange={(e) => setLocLat(e.target.value)}
-                          placeholder="e.g. -1.2921"
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                    <p className="text-xs text-muted-foreground">
+                      Click anywhere on the map to drop a pin at the correct location.
+                    </p>
+                    <div className="relative h-64 overflow-hidden rounded-lg border border-[#F97316]/40">
+                      <MapContainer
+                        center={locPin ?? [-1.286389, 36.817223]}
+                        zoom={locPin ? 14 : 11}
+                        className="h-full w-full"
+                      >
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution="&copy; OpenStreetMap"
                         />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] font-semibold text-foreground">
-                          Longitude
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={locLng}
-                          onChange={(e) => setLocLng(e.target.value)}
-                          placeholder="e.g. 36.8219"
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
-                        />
-                      </div>
+                        <KycPinDropper pin={locPin} onPin={setLocPin} />
+                        {locFlyCoords && (
+                          <FlyToLocation lat={locFlyCoords.lat} lng={locFlyCoords.lng} />
+                        )}
+                      </MapContainer>
+                      <MapSearchBar onFly={(lat, lng) => setLocFlyCoords({ lat, lng })} />
                     </div>
+                    {locPin ? (
+                      <p className="text-xs text-muted-foreground">
+                        Pin: {locPin[0].toFixed(6)}, {locPin[1].toFixed(6)}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/60">No pin placed yet.</p>
+                    )}
                     <div className="flex justify-end">
                       <button
-                        onClick={() => handleUpdateLocation(kyc, locLat, locLng)}
-                        disabled={!locLat || !locLng || submitting === `loc:${kyc.id}`}
+                        onClick={() => handleUpdateLocation(kyc, locPin)}
+                        disabled={!locPin || submitting === `loc:${kyc.id}`}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#C2410C] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                       >
                         <MapPin className="h-3.5 w-3.5" />
@@ -2625,11 +2649,12 @@ function KycTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleUpdateLocation = async (kyc: KycApplication, lat: string, lng: string) => {
-    if (!lat || !lng || submitting) return;
+  const handleUpdateLocation = async (kyc: KycApplication, pin: [number, number] | null) => {
+    if (!pin || submitting) return;
+    const [lat, lng] = pin;
     setSubmitting(`loc:${kyc.id}`);
     try {
-      await api.patch(`/user/kyc/${kyc.id}/update-location`, { latitude: parseFloat(lat), longitude: parseFloat(lng) });
+      await api.patch(`/user/kyc/${kyc.id}/update-location`, { latitude: lat, longitude: lng });
       setSubmitted((prev) => [...prev, `loc:${kyc.id}`]);
       setApplications((prev) =>
         prev.map((a) =>
@@ -2637,7 +2662,7 @@ function KycTab() {
             ? {
                 ...a,
                 status: "pending",
-                parcel: a.parcel ? { ...a.parcel, latitude: parseFloat(lat), longitude: parseFloat(lng) } : a.parcel,
+                parcel: a.parcel ? { ...a.parcel, latitude: lat, longitude: lng } : a.parcel,
               }
             : a,
         ),
