@@ -23,7 +23,10 @@ export function clearToken(): void {
   sessionStorage.removeItem(TOKEN_KEY);
 }
 
-async function request<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  opts: { method?: string; body?: unknown } = {},
+): Promise<T> {
   const isFormData = opts.body instanceof FormData;
   const headers: Record<string, string> = { Accept: "application/json" };
   if (!isFormData) headers["Content-Type"] = "application/json";
@@ -33,9 +36,12 @@ async function request<T>(path: string, opts: { method?: string; body?: unknown 
   const res = await fetch(`${BASE}${path}`, {
     method: opts.method ?? "GET",
     headers,
-    body: opts.body !== undefined
-      ? (isFormData ? (opts.body as FormData) : JSON.stringify(opts.body))
-      : undefined,
+    body:
+      opts.body !== undefined
+        ? isFormData
+          ? (opts.body as FormData)
+          : JSON.stringify(opts.body)
+        : undefined,
   });
 
   if (res.status === 401) {
@@ -57,9 +63,9 @@ async function request<T>(path: string, opts: { method?: string; body?: unknown 
 }
 
 export const api = {
-  get:    <T>(path: string) => request<T>(path),
-  post:   <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
-  put:    <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
-  patch:  <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
+  get: <T>(path: string) => request<T>(path),
+  post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

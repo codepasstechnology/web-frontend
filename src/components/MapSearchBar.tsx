@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 
-interface NominatimResult { display_name: string; lat: string; lon: string }
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 // FlyTo controller — must live inside MapContainer
 export function FlyToLocation({ lat, lng }: { lat: number | null; lng: number | null }) {
@@ -22,14 +26,21 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setResults([]); setOpen(false); return; }
+    if (q.length < 2) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
     const t = setTimeout(() => {
       fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=ke&format=json&limit=6`,
         { headers: { "Accept-Language": "en" } },
       )
         .then((r) => r.json())
-        .then((data: NominatimResult[]) => { setResults(data); setOpen(data.length > 0); })
+        .then((data: NominatimResult[]) => {
+          setResults(data);
+          setOpen(data.length > 0);
+        })
         .catch(() => {});
     }, 400);
     return () => clearTimeout(t);
@@ -68,10 +79,23 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
       <div style={{ display: "flex", gap: 6 }}>
         <div style={{ position: "relative", flex: 1 }}>
           <svg
-            style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#94a3b8", width: 13, height: 13 }}
-            fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+            style={{
+              position: "absolute",
+              left: 9,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              color: "#94a3b8",
+              width: 13,
+              height: 13,
+            }}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
           >
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
           </svg>
           <input
             type="text"
@@ -80,31 +104,57 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => results.length > 0 && setOpen(true)}
             style={{
-              height: 34, width: "100%", borderRadius: 6,
-              border: "1px solid #e2e8f0", background: "rgba(255,255,255,0.97)",
-              paddingLeft: 30, paddingRight: 8, fontSize: 12, outline: "none",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.18)", boxSizing: "border-box", color: "#0f172a",
+              height: 34,
+              width: "100%",
+              borderRadius: 6,
+              border: "1px solid #e2e8f0",
+              background: "rgba(255,255,255,0.97)",
+              paddingLeft: 30,
+              paddingRight: 8,
+              fontSize: 12,
+              outline: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+              boxSizing: "border-box",
+              color: "#0f172a",
             }}
           />
           {open && results.length > 0 && (
-            <div style={{
-              position: "absolute", left: 0, right: 0, top: "calc(100% + 4px)",
-              zIndex: 801, background: "#fff", border: "1px solid #e2e8f0",
-              borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.14)", overflow: "hidden",
-            }}>
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: "calc(100% + 4px)",
+                zIndex: 801,
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 6,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.14)",
+                overflow: "hidden",
+              }}
+            >
               {results.map((r, i) => (
-                <button key={i}
+                <button
+                  key={i}
                   onClick={() => {
                     onFly(parseFloat(r.lat), parseFloat(r.lon));
                     setQuery(r.display_name.split(",")[0].trim());
                     setOpen(false);
                   }}
                   style={{
-                    display: "block", width: "100%", padding: "7px 10px", textAlign: "left",
-                    fontSize: 12, color: "#0f172a", background: "transparent", border: "none",
+                    display: "block",
+                    width: "100%",
+                    padding: "7px 10px",
+                    textAlign: "left",
+                    fontSize: 12,
+                    color: "#0f172a",
+                    background: "transparent",
+                    border: "none",
                     cursor: "pointer",
                     borderBottom: i < results.length - 1 ? "1px solid #f1f5f9" : "none",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -119,15 +169,30 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
           onClick={handleNearMe}
           title="My location"
           style={{
-            height: 34, width: 34, flexShrink: 0, borderRadius: 6,
-            border: "1px solid #e2e8f0", background: "rgba(255,255,255,0.97)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.18)", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", color: "#334155",
+            height: 34,
+            width: 34,
+            flexShrink: 0,
+            borderRadius: 6,
+            border: "1px solid #e2e8f0",
+            background: "rgba(255,255,255,0.97)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#334155",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
         >
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <svg
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
             <circle cx="12" cy="12" r="3" />
             <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
           </svg>

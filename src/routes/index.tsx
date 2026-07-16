@@ -24,7 +24,8 @@ function Index() {
               Verified land & property intelligence for Kenya.
             </h1>
             <p className="mt-4 max-w-xl text-base text-muted-foreground">
-              Explore plotted parcels with accurate boundaries, ownership status, and location insights — all on one professional GIS platform.
+              Explore plotted parcels with accurate boundaries, ownership status, and location
+              insights — all on one professional GIS platform.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -55,19 +56,28 @@ function Index() {
                   <MapPinned className="h-3.5 w-3.5 text-[var(--accent)]" />
                   Live Parcel Index
                 </div>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Sample</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Sample
+                </span>
               </div>
               <ul className="divide-y divide-border">
                 {landParcels.slice(0, 5).map((p) => {
                   const m = statusMeta[p.status];
                   return (
                     <li key={p.id} className="flex items-center gap-3 px-4 py-3">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: m.color }} />
+                      <span
+                        className="h-2.5 w-2.5 rounded-sm"
+                        style={{ backgroundColor: m.color }}
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">{p.title}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{p.parcelNumber} · {p.county}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {p.parcelNumber} · {p.county}
+                        </p>
                       </div>
-                      <span className="text-[11px] font-semibold text-foreground">KES {(p.price / 1_000_000).toFixed(1)}M</span>
+                      <span className="text-[11px] font-semibold text-foreground">
+                        KES {(p.price / 1_000_000).toFixed(1)}M
+                      </span>
                     </li>
                   );
                 })}
@@ -110,7 +120,9 @@ function Index() {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
       <dd className="mt-1 text-2xl font-semibold text-foreground">{value}</dd>
     </div>
   );
@@ -119,7 +131,9 @@ function Metric({ label, value }: { label: string; value: string }) {
 function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground">{icon}</div>
+      <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground">
+        {icon}
+      </div>
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
     </div>

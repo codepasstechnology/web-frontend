@@ -7,7 +7,7 @@ export interface LandParcel {
   title: string;
   parcelNumber: string;
   size: string;
-  price: number;          // KES (sale) or KES/year (lease)
+  price: number; // KES (sale) or KES/year (lease)
   status: LandStatus;
   listingType: ListingType;
   postedBy: PostedBy;
@@ -91,7 +91,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity", "Sewer"],
       developmentScore: 92,
     },
-    polygon: parcel(-1.1485, 36.9612, 0.0040, 0.0052),
+    polygon: parcel(-1.1485, 36.9612, 0.004, 0.0052),
   },
   {
     id: "LV-003",
@@ -139,7 +139,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity"],
       developmentScore: 81,
     },
-    polygon: parcel(-1.3712, 36.9402, 0.0030, 0.0040),
+    polygon: parcel(-1.3712, 36.9402, 0.003, 0.004),
   },
   {
     id: "LV-005",
@@ -163,7 +163,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water"],
       developmentScore: 55,
     },
-    polygon: parcel(-1.3543, 36.6534, 0.0070, 0.0090, 0.25),
+    polygon: parcel(-1.3543, 36.6534, 0.007, 0.009, 0.25),
   },
   {
     id: "LV-006",
@@ -187,7 +187,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity", "Sewer", "Fibre"],
       developmentScore: 95,
     },
-    polygon: parcel(-1.319, 36.706, 0.0060, 0.0080, 0.15),
+    polygon: parcel(-1.319, 36.706, 0.006, 0.008, 0.15),
   },
   {
     id: "LV-007",
@@ -211,7 +211,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity"],
       developmentScore: 74,
     },
-    polygon: parcel(-1.1018, 37.0144, 0.0085, 0.0110, 0.20),
+    polygon: parcel(-1.1018, 37.0144, 0.0085, 0.011, 0.2),
   },
   {
     id: "LV-008",
@@ -235,7 +235,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity"],
       developmentScore: 70,
     },
-    polygon: parcel(-1.0374, 37.131, 0.0040, 0.0052),
+    polygon: parcel(-1.0374, 37.131, 0.004, 0.0052),
   },
   {
     id: "LV-009",
@@ -259,7 +259,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity", "Fibre"],
       developmentScore: 83,
     },
-    polygon: parcel(-1.7423, 37.115, 0.0090, 0.0115, 0.22),
+    polygon: parcel(-1.7423, 37.115, 0.009, 0.0115, 0.22),
   },
   {
     id: "LV-010",
@@ -283,7 +283,7 @@ export const landParcels: LandParcel[] = [
       utilities: ["Water", "Electricity"],
       developmentScore: 68,
     },
-    polygon: parcel(-1.4198, 36.6829, 0.0050, 0.0065, 0.20),
+    polygon: parcel(-1.4198, 36.6829, 0.005, 0.0065, 0.2),
   },
 ];
 
@@ -313,13 +313,112 @@ export interface Rental {
 }
 
 export const rentals: Rental[] = [
-  { id: "R-1", title: "Kilimani 2BR Apartment", type: "Apartment", price: 75000, bedrooms: 2, county: "Nairobi", area: "Kilimani", postedBy: "broker", agent: { name: "Urban Stays", phone: "+254 712 010 200" }, position: [-1.2921, 36.7836] },
-  { id: "R-2", title: "Westlands Studio", type: "Studio", price: 55000, bedrooms: 1, county: "Nairobi", area: "Westlands", postedBy: "owner", agent: { name: "Aisha N.", phone: "+254 720 554 100" }, position: [-1.2649, 36.8025] },
-  { id: "R-3", title: "Karen 4BR Townhouse", type: "Townhouse", price: 220000, bedrooms: 4, county: "Nairobi", area: "Karen", postedBy: "broker", agent: { name: "Knight Frank", phone: "+254 709 200 000" }, position: [-1.319, 36.706] },
-  { id: "R-4", title: "Ruiru Office Space", type: "Commercial", price: 180000, bedrooms: 0, county: "Kiambu", area: "Ruiru", postedBy: "broker", agent: { name: "Greenfield", phone: "+254 722 998 112" }, position: [-1.1485, 36.9612] },
-  { id: "R-5", title: "Syokimau Family Home", type: "House", price: 95000, bedrooms: 3, county: "Machakos", area: "Syokimau", postedBy: "owner", agent: { name: "Daniel Mutua", phone: "+254 733 221 988" }, position: [-1.3712, 36.9402] },
-  { id: "R-6", title: "Lavington Penthouse", type: "Apartment", price: 320000, bedrooms: 4, county: "Nairobi", area: "Lavington", postedBy: "broker", agent: { name: "Hass Consult", phone: "+254 709 435 000" }, position: [-1.2792, 36.7669] },
-  { id: "R-7", title: "Kileleshwa 3BR House", type: "House", price: 145000, bedrooms: 3, county: "Nairobi", area: "Kileleshwa", postedBy: "owner", agent: { name: "Grace W.", phone: "+254 711 030 400" }, position: [-1.2837, 36.7777] },
-  { id: "R-8", title: "Runda Family House", type: "House", price: 280000, bedrooms: 5, county: "Nairobi", area: "Runda", postedBy: "broker", agent: { name: "Pam Golding", phone: "+254 709 100 000" }, position: [-1.2236, 36.8217] },
-  { id: "R-9", title: "Juja 2BR Apartment", type: "Apartment", price: 28000, bedrooms: 2, county: "Kiambu", area: "Juja", postedBy: "owner", agent: { name: "Samuel K.", phone: "+254 720 776 002" }, position: [-1.1018, 37.0144] },
+  {
+    id: "R-1",
+    title: "Kilimani 2BR Apartment",
+    type: "Apartment",
+    price: 75000,
+    bedrooms: 2,
+    county: "Nairobi",
+    area: "Kilimani",
+    postedBy: "broker",
+    agent: { name: "Urban Stays", phone: "+254 712 010 200" },
+    position: [-1.2921, 36.7836],
+  },
+  {
+    id: "R-2",
+    title: "Westlands Studio",
+    type: "Studio",
+    price: 55000,
+    bedrooms: 1,
+    county: "Nairobi",
+    area: "Westlands",
+    postedBy: "owner",
+    agent: { name: "Aisha N.", phone: "+254 720 554 100" },
+    position: [-1.2649, 36.8025],
+  },
+  {
+    id: "R-3",
+    title: "Karen 4BR Townhouse",
+    type: "Townhouse",
+    price: 220000,
+    bedrooms: 4,
+    county: "Nairobi",
+    area: "Karen",
+    postedBy: "broker",
+    agent: { name: "Knight Frank", phone: "+254 709 200 000" },
+    position: [-1.319, 36.706],
+  },
+  {
+    id: "R-4",
+    title: "Ruiru Office Space",
+    type: "Commercial",
+    price: 180000,
+    bedrooms: 0,
+    county: "Kiambu",
+    area: "Ruiru",
+    postedBy: "broker",
+    agent: { name: "Greenfield", phone: "+254 722 998 112" },
+    position: [-1.1485, 36.9612],
+  },
+  {
+    id: "R-5",
+    title: "Syokimau Family Home",
+    type: "House",
+    price: 95000,
+    bedrooms: 3,
+    county: "Machakos",
+    area: "Syokimau",
+    postedBy: "owner",
+    agent: { name: "Daniel Mutua", phone: "+254 733 221 988" },
+    position: [-1.3712, 36.9402],
+  },
+  {
+    id: "R-6",
+    title: "Lavington Penthouse",
+    type: "Apartment",
+    price: 320000,
+    bedrooms: 4,
+    county: "Nairobi",
+    area: "Lavington",
+    postedBy: "broker",
+    agent: { name: "Hass Consult", phone: "+254 709 435 000" },
+    position: [-1.2792, 36.7669],
+  },
+  {
+    id: "R-7",
+    title: "Kileleshwa 3BR House",
+    type: "House",
+    price: 145000,
+    bedrooms: 3,
+    county: "Nairobi",
+    area: "Kileleshwa",
+    postedBy: "owner",
+    agent: { name: "Grace W.", phone: "+254 711 030 400" },
+    position: [-1.2837, 36.7777],
+  },
+  {
+    id: "R-8",
+    title: "Runda Family House",
+    type: "House",
+    price: 280000,
+    bedrooms: 5,
+    county: "Nairobi",
+    area: "Runda",
+    postedBy: "broker",
+    agent: { name: "Pam Golding", phone: "+254 709 100 000" },
+    position: [-1.2236, 36.8217],
+  },
+  {
+    id: "R-9",
+    title: "Juja 2BR Apartment",
+    type: "Apartment",
+    price: 28000,
+    bedrooms: 2,
+    county: "Kiambu",
+    area: "Juja",
+    postedBy: "owner",
+    agent: { name: "Samuel K.", phone: "+254 720 776 002" },
+    position: [-1.1018, 37.0144],
+  },
 ];

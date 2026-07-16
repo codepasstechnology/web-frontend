@@ -6,19 +6,19 @@ React 19 SPA powering the public-facing LandVerify marketplace — property sear
 
 ## Tech Stack
 
-| Layer | Choice |
-|---|---|
-| Framework | React 19 |
-| Language | TypeScript 5.8 |
-| Router | TanStack Router v1 (file-based routes) |
-| Data fetching | TanStack Query v5 (React Query) |
-| Styling | Tailwind CSS v4 |
-| UI primitives | Radix UI + shadcn/ui |
-| Icons | Lucide React |
-| Maps | Leaflet + React Leaflet |
-| Forms | React Hook Form + Zod |
-| Toasts | Sonner |
-| Build tool | Vite 7 |
+| Layer         | Choice                                 |
+| ------------- | -------------------------------------- |
+| Framework     | React 19                               |
+| Language      | TypeScript 5.8                         |
+| Router        | TanStack Router v1 (file-based routes) |
+| Data fetching | TanStack Query v5 (React Query)        |
+| Styling       | Tailwind CSS v4                        |
+| UI primitives | Radix UI + shadcn/ui                   |
+| Icons         | Lucide React                           |
+| Maps          | Leaflet + React Leaflet                |
+| Forms         | React Hook Form + Zod                  |
+| Toasts        | Sonner                                 |
+| Build tool    | Vite 7                                 |
 
 ---
 
@@ -125,19 +125,19 @@ Without a file, a plain JSON body is sent and no KYC document is created.
 
 ## Routes
 
-| Route | Auth | Description |
-|---|---|---|
-| `/` | Public | Landing page |
-| `/land` | Public | Interactive map with parcel search and property panel |
-| `/pricing` | Public | Subscription plan comparison |
-| `/login` | Guest | User login |
-| `/register` | Guest | User registration |
-| `/forgot-password` | Guest | Password reset request |
-| `/terms` | Public | Terms of Service (CMS-driven) |
-| `/privacy` | Public | Privacy Policy (CMS-driven) |
-| `/rentals` | Public | Rental listings |
-| `/dashboard` | Auth | User dashboard — listings, payments, analytics |
-| `/dashboard/upload` | Auth | New property listing form with optional title deed upload |
+| Route               | Auth   | Description                                               |
+| ------------------- | ------ | --------------------------------------------------------- |
+| `/`                 | Public | Landing page                                              |
+| `/land`             | Public | Interactive map with parcel search and property panel     |
+| `/pricing`          | Public | Subscription plan comparison                              |
+| `/login`            | Guest  | User login                                                |
+| `/register`         | Guest  | User registration                                         |
+| `/forgot-password`  | Guest  | Password reset request                                    |
+| `/terms`            | Public | Terms of Service (CMS-driven)                             |
+| `/privacy`          | Public | Privacy Policy (CMS-driven)                               |
+| `/rentals`          | Public | Rental listings                                           |
+| `/dashboard`        | Auth   | User dashboard — listings, payments, analytics            |
+| `/dashboard/upload` | Auth   | New property listing form with optional title deed upload |
 
 ---
 
