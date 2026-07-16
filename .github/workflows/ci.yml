@@ -1,11 +1,11 @@
-name: CI
+name: Web Frontend CI
 
 on:
   pull_request:
     branches: [main, dev]
 
 jobs:
-  lint-and-typecheck:
+  eslint-prettier-tsc:
     runs-on: ubuntu-latest
 
     steps:
