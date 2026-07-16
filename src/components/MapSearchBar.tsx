@@ -1,6 +1,56 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 
+export const OSM_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const SATELLITE_TILES =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+export function MapSatelliteToggle({
+  satellite,
+  onToggle,
+}: {
+  satellite: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      title={satellite ? "Switch to street map" : "Switch to satellite view"}
+      style={{
+        position: "absolute",
+        bottom: 10,
+        left: 10,
+        zIndex: 800,
+        height: 30,
+        padding: "0 10px",
+        borderRadius: 6,
+        border: "1px solid #e2e8f0",
+        background: satellite ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.97)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        fontSize: 11,
+        fontWeight: 600,
+        color: satellite ? "#f1f5f9" : "#334155",
+        letterSpacing: "0.02em",
+        pointerEvents: "auto",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = satellite ? "rgba(30,41,59,0.95)" : "#f1f5f9";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = satellite
+          ? "rgba(15,23,42,0.85)"
+          : "rgba(255,255,255,0.97)";
+      }}
+    >
+      {satellite ? "🗺 Map" : "🛰 Satellite"}
+    </button>
+  );
+}
+
 interface NominatimResult {
   display_name: string;
   lat: string;
