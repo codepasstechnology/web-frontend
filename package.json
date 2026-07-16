@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:cpanel": "vite build --config vite.cpanel.config.ts --mode cpanel",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
