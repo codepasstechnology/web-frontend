@@ -12,17 +12,20 @@ jobs:
       pull-requests: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-
       - name: Create PR if none exists
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          count=$(gh pr list --base main --head dev --state open --json number --jq length)
+          count=$(gh pr list --repo ${{ github.repository }} --base main --head dev --state open --json number --jq length)
+          echo "Open PRs from dev → main: $count"
           if [ "$count" -eq 0 ]; then
             gh pr create \
+              --repo ${{ github.repository }} \
               --base main \
               --head dev \
               --title "dev → main" \
               --body "Ongoing integration PR. Push to \`dev\` to update; merge when ready to release."
+            echo "PR created."
+          else
+            echo "PR already exists, nothing to do."
           fi
