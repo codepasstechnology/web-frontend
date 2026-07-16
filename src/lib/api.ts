@@ -62,10 +62,29 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+async function requestBlob(path: string): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, { headers });
+
+  if (res.status === 401) {
+    clearToken();
+    if (typeof window !== "undefined") window.location.href = "/login";
+    throw new Error("Unauthenticated");
+  }
+
+  if (!res.ok) throw new Error("Request failed");
+
+  return res.blob();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  getBlob: (path: string) => requestBlob(path),
 };

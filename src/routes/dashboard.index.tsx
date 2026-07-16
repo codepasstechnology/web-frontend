@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Lock,
   Plus,
@@ -18,6 +18,7 @@ import {
   Check,
   CreditCard,
   Download,
+  Upload,
   Sparkles,
   Zap,
   Receipt,
@@ -43,6 +44,10 @@ import {
   CalendarClock,
   Target,
   TrendingUp as TUp,
+  ShieldCheck,
+  MessageSquare,
+  Clock,
+  Send,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -74,6 +79,7 @@ export const Route = createFileRoute("/dashboard/")({
       "analytics",
       "billing",
       "settings",
+      "kyc",
     ];
     const t =
       typeof s.tab === "string" && (allowed as string[]).includes(s.tab)
@@ -230,6 +236,8 @@ function DashboardPage() {
           }}
         />
       )}
+
+      {tab === "kyc" && <KycTab />}
 
       <UpgradeModal
         open={upgradeOpen}
@@ -1989,6 +1997,888 @@ function ToggleRow({
         <div className="text-[11px] text-muted-foreground">{desc}</div>
       </div>
       <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+// ─── KYC Status Tab ──────────────────────────────────────────────────────────
+
+interface KycDocument {
+  id: string;
+  type: string;
+  original_name: string;
+  mime_type: string | null;
+  size: number | null;
+  verification_status: string;
+}
+
+interface KycApplication {
+  id: string;
+  reference: string;
+  status: string;
+  document_type: string | null;
+  reviewer_notes: string | null;
+  rejection_reason: string | null;
+  info_request_message: string | null;
+  user_reply: string | null;
+  user_replied_at: string | null;
+  user_reply_document_path: string | null;
+  user_reply_document_name: string | null;
+  admin_acknowledgment: string | null;
+  admin_acknowledged_at: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  parcel: { id: string; title: string; parcel_number: string | null } | null;
+  documents: KycDocument[];
+}
+
+const kycStatusConfig: Record<
+  string,
+  { label: string; bg: string; fg: string; border: string; icon: React.ReactNode; step: number }
+> = {
+  pending: {
+    label: "Pending Review",
+    bg: "#FEF9C3",
+    fg: "#854D0E",
+    border: "#EAB308",
+    icon: <Clock className="h-3.5 w-3.5" />,
+    step: 1,
+  },
+  under_review: {
+    label: "Under Review",
+    bg: "#DBEAFE",
+    fg: "#1D4ED8",
+    border: "#3B82F6",
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+    step: 2,
+  },
+  info_requested: {
+    label: "Info Requested",
+    bg: "#FEF3C7",
+    fg: "#D97706",
+    border: "#F59E0B",
+    icon: <MessageSquare className="h-3.5 w-3.5" />,
+    step: 2,
+  },
+  approved: {
+    label: "Approved",
+    bg: "#DCFCE7",
+    fg: "#15803D",
+    border: "#22C55E",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+    step: 3,
+  },
+  rejected: {
+    label: "Rejected",
+    bg: "#FEE2E2",
+    fg: "#DC2626",
+    border: "#EF4444",
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    step: 3,
+  },
+};
+
+const STEPS = ["Submitted", "In Review", "Decision"];
+
+function KycCard({
+  kyc,
+  replyText,
+  setReplyText,
+  replyFile,
+  setReplyFile,
+  submitting,
+  submitted,
+  fileInputRefs,
+  handleReply,
+  fmtDate,
+}: {
+  kyc: KycApplication;
+  replyText: Record<string, string>;
+  setReplyText: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  replyFile: Record<string, File | null>;
+  setReplyFile: React.Dispatch<React.SetStateAction<Record<string, File | null>>>;
+  submitting: string | null;
+  submitted: string[];
+  fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  handleReply: (kyc: KycApplication) => void;
+  fmtDate: (s: string) => string;
+}) {
+  const cfg = kycStatusConfig[kyc.status] ?? {
+    label: kyc.status,
+    bg: "#F1F5F9",
+    fg: "#0F172A",
+    border: "#CBD5E1",
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+    step: 1,
+  };
+  const alreadyReplied =
+    !!kyc.user_reply || !!kyc.user_reply_document_path || submitted.includes(kyc.id);
+  const isInfo = kyc.status === "info_requested";
+  const isApproved = kyc.status === "approved";
+  const isRejected = kyc.status === "rejected";
+  const acknowledged = !!kyc.admin_acknowledgment;
+  // Auto-expand: unanswered info requests and cards with a new acknowledgment
+  const [expanded, setExpanded] = useState((isInfo && !alreadyReplied) || acknowledged);
+  const [viewingDoc, setViewingDoc] = useState<string | null>(null);
+
+  async function handleViewDoc(docId: string) {
+    setViewingDoc(docId);
+    try {
+      const blob = await api.getBlob(`/user/kyc/${kyc.id}/documents/${docId}`);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      // silent — user will see nothing opened
+    } finally {
+      setViewingDoc(null);
+    }
+  }
+
+  return (
+    <div
+      className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+      style={{ borderLeftWidth: 4, borderLeftColor: cfg.border }}
+    >
+      {/* Card header — always visible */}
+      <button className="w-full px-5 py-4 text-left" onClick={() => setExpanded((v) => !v)}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-foreground truncate">
+                {kyc.parcel?.title ?? "Land Parcel"}
+              </p>
+              {isInfo && !alreadyReplied && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10px] font-semibold text-[#D97706]">
+                  Action required
+                </span>
+              )}
+              {isInfo && alreadyReplied && acknowledged && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#DBEAFE] px-2 py-0.5 text-[10px] font-semibold text-[#1D4ED8]">
+                  <Check className="h-2.5 w-2.5" /> Acknowledged
+                </span>
+              )}
+              {isInfo && alreadyReplied && !acknowledged && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#15803D]">
+                  <Check className="h-2.5 w-2.5" /> Reply sent
+                </span>
+              )}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              {kyc.parcel?.parcel_number && (
+                <span className="font-mono">{kyc.parcel.parcel_number}</span>
+              )}
+              <span>Ref: {kyc.reference}</span>
+              <span>Submitted {fmtDate(kyc.created_at)}</span>
+            </div>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              style={{ background: cfg.bg, color: cfg.fg }}
+            >
+              {cfg.icon}
+              {cfg.label}
+            </span>
+            <span className="text-muted-foreground">
+              {expanded ? (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                </svg>
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* Progress steps */}
+        <div className="mt-4 flex items-center gap-0">
+          {STEPS.map((step, i) => {
+            const stepNum = i + 1;
+            const done = cfg.step > stepNum;
+            const active = cfg.step === stepNum;
+            return (
+              <div key={step} className="flex flex-1 items-center">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
+                      done
+                        ? "bg-[#22C55E] text-white"
+                        : active
+                          ? "text-white"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                    style={active ? { background: cfg.border } : undefined}
+                  >
+                    {done ? <Check className="h-3 w-3" /> : stepNum}
+                  </div>
+                  <span
+                    className={`mt-1 text-[10px] font-medium ${
+                      done ? "text-[#16A34A]" : active ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {step}
+                  </span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={`mb-4 h-px flex-1 ${done ? "bg-[#22C55E]" : "bg-border"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-border px-5 pb-5 pt-4 space-y-4">
+          {/* Approved message */}
+          {isApproved && (
+            <div className="flex items-start gap-3 rounded-lg bg-[#F0FDF4] p-4">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#16A34A]" />
+              <div>
+                <p className="text-sm font-semibold text-[#15803D]">Verification approved</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Your land parcel has been verified and your KYC is complete.
+                  {kyc.reviewed_at && ` · ${fmtDate(kyc.reviewed_at)}`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Rejected message */}
+          {isRejected && (
+            <div className="flex items-start gap-3 rounded-lg bg-[#FEF2F2] p-4">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#DC2626]" />
+              <div>
+                <p className="text-sm font-semibold text-[#DC2626]">Application rejected</p>
+                {kyc.rejection_reason ? (
+                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+                    {kyc.rejection_reason}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Your application did not meet the verification requirements.
+                    {kyc.reviewed_at && ` · ${fmtDate(kyc.reviewed_at)}`}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Pending / under review */}
+          {(kyc.status === "pending" || kyc.status === "under_review") && (
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+              <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Your application is being reviewed
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  We'll notify you once a decision is made. No action needed right now.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Info requested */}
+          {isInfo && kyc.info_request_message && (
+            <div className="rounded-lg border border-[#F59E0B]/40 bg-[#FFFBEB]">
+              <div className="flex items-center gap-2 border-b border-[#F59E0B]/30 px-4 py-3">
+                <MessageSquare className="h-4 w-4 text-[#D97706]" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#D97706]">
+                  Additional information needed
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm text-foreground whitespace-pre-wrap">
+                  {kyc.info_request_message}
+                </p>
+              </div>
+
+              {/* Reply area */}
+              <div className="border-t border-[#F59E0B]/30 px-4 py-4">
+                {alreadyReplied ? (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-[#22C55E]/30 bg-[#F0FDF4] p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
+                        <p className="text-xs font-semibold text-[#15803D]">Your reply was sent</p>
+                        {kyc.user_replied_at && (
+                          <span className="ml-auto text-[11px] text-muted-foreground">
+                            {fmtDate(kyc.user_replied_at)}
+                          </span>
+                        )}
+                      </div>
+                      {kyc.user_reply && (
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {kyc.user_reply}
+                        </p>
+                      )}
+                      {kyc.user_reply_document_name && (
+                        <a
+                          href={`${import.meta.env.VITE_API_URL ?? "http://localhost/Landconnect/backend/public/api"}/user/kyc/${kyc.id}/reply-document`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#2563EB] hover:underline"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {kyc.user_reply_document_name}
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Reviewer acknowledgment */}
+                    {kyc.admin_acknowledgment && (
+                      <div className="rounded-lg border border-[#3B82F6]/30 bg-[#EFF6FF] p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle2 className="h-4 w-4 text-[#2563EB]" />
+                          <p className="text-xs font-semibold text-[#1D4ED8]">
+                            Message from reviewer
+                          </p>
+                          {kyc.admin_acknowledged_at && (
+                            <span className="ml-auto text-[11px] text-muted-foreground">
+                              {fmtDate(kyc.admin_acknowledged_at)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {kyc.admin_acknowledgment}
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-[#2563EB]">
+                          No further action needed from you.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-foreground">Your reply</p>
+                    <textarea
+                      value={replyText[kyc.id] ?? ""}
+                      onChange={(e) =>
+                        setReplyText((prev) => ({ ...prev, [kyc.id]: e.target.value }))
+                      }
+                      placeholder="Provide the requested information or explain what you've uploaded…"
+                      rows={4}
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <input
+                        ref={(el) => {
+                          fileInputRefs.current[kyc.id] = el;
+                        }}
+                        type="file"
+                        accept="image/jpeg,image/png,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] ?? null;
+                          setReplyFile((prev) => ({ ...prev, [kyc.id]: f }));
+                        }}
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRefs.current[kyc.id]?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          {replyFile[kyc.id] ? replyFile[kyc.id]!.name : "Attach file"}
+                        </button>
+                        {replyFile[kyc.id] && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyFile((prev) => ({ ...prev, [kyc.id]: null }));
+                              if (fileInputRefs.current[kyc.id])
+                                fileInputRefs.current[kyc.id]!.value = "";
+                            }}
+                            className="text-[11px] text-muted-foreground hover:text-destructive"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        JPG, PNG or PDF · max 10 MB
+                      </span>
+                      <button
+                        onClick={() => handleReply(kyc)}
+                        disabled={
+                          (!replyText[kyc.id]?.trim() && !replyFile[kyc.id]) ||
+                          submitting === kyc.id
+                        }
+                        className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        {submitting === kyc.id ? "Sending…" : "Send reply"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Submitted documents */}
+          {kyc.documents && kyc.documents.length > 0 && (
+            <div className="rounded-lg border border-border p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Submitted Documents
+              </p>
+              <div className="space-y-2">
+                {kyc.documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                      {doc.original_name}
+                    </span>
+                    {doc.verification_status === "accepted" && (
+                      <span className="text-[11px] font-medium text-[#16A34A]">Verified</span>
+                    )}
+                    {doc.verification_status === "rejected" && (
+                      <span className="text-[11px] font-medium text-[#DC2626]">Rejected</span>
+                    )}
+                    <button
+                      onClick={() => handleViewDoc(doc.id)}
+                      disabled={viewingDoc === doc.id}
+                      className="flex-shrink-0 text-[11px] font-medium text-[#2563EB] hover:underline disabled:opacity-50"
+                    >
+                      {viewingDoc === doc.id ? "Loading…" : "View"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Reviewer notes */}
+          {kyc.reviewer_notes && (
+            <div className="rounded-lg border border-border p-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Reviewer notes
+              </p>
+              <p className="text-sm text-foreground">{kyc.reviewer_notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface UserParcel {
+  id: string;
+  title: string;
+  parcel_number: string | null;
+}
+
+const DOC_TYPES = [
+  { value: "title_deed", label: "Title Deed" },
+  { value: "lease_agreement", label: "Lease Agreement" },
+  { value: "certificate_of_occupancy", label: "Certificate of Occupancy" },
+  { value: "survey_map", label: "Survey Map" },
+  { value: "other", label: "Other" },
+];
+
+function KycTab() {
+  const [applications, setApplications] = useState<KycApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replyFile, setReplyFile] = useState<Record<string, File | null>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<string[]>([]);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Submit modal
+  const [showSubmit, setShowSubmit] = useState(false);
+  const [parcels, setParcels] = useState<UserParcel[]>([]);
+  const [loadingParcels, setLoadingParcels] = useState(false);
+  const [submitParcel, setSubmitParcel] = useState("");
+  const [submitDocType, setSubmitDocType] = useState("title_deed");
+  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitError, setSubmitError] = useState("");
+  const [submittingKyc, setSubmittingKyc] = useState(false);
+  const submitFileRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    api
+      .get<KycApplication[]>("/user/kyc")
+      .then(setApplications)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleReply = async (kyc: KycApplication) => {
+    const text = replyText[kyc.id]?.trim();
+    const file = replyFile[kyc.id];
+    if (!text && !file) return;
+    if (submitting) return;
+    setSubmitting(kyc.id);
+    try {
+      const fd = new FormData();
+      if (text) fd.append("reply", text);
+      if (file) fd.append("document", file);
+      await api.post(`/user/kyc/${kyc.id}/reply`, fd);
+      setSubmitted((prev) => [...prev, kyc.id]);
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === kyc.id
+            ? {
+                ...a,
+                user_reply: text || a.user_reply,
+                user_replied_at: new Date().toISOString(),
+                user_reply_document_name: file?.name ?? a.user_reply_document_name,
+                user_reply_document_path: file ? "pending" : a.user_reply_document_path,
+              }
+            : a,
+        ),
+      );
+    } catch {
+      // error silently — user can retry
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const openSubmitModal = async () => {
+    setShowSubmit(true);
+    setSubmitParcel("");
+    setSubmitDocType("title_deed");
+    setSubmitFile(null);
+    setSubmitError("");
+    if (parcels.length === 0) {
+      setLoadingParcels(true);
+      try {
+        const data = await api.get<{ data: UserParcel[] }>("/user/listings");
+        setParcels(data.data ?? []);
+      } catch {
+        setParcels([]);
+      } finally {
+        setLoadingParcels(false);
+      }
+    }
+  };
+
+  const handleSubmitKyc = async () => {
+    if (!submitParcel || !submitFile) {
+      setSubmitError("Please select a parcel and upload a document.");
+      return;
+    }
+    setSubmittingKyc(true);
+    setSubmitError("");
+    try {
+      const fd = new FormData();
+      fd.append("parcel_id", submitParcel);
+      fd.append("document_type", submitDocType);
+      fd.append("document", submitFile);
+      const res = await api.post<{ data: KycApplication }>("/user/kyc", fd);
+      setApplications((prev) => [res.data, ...prev]);
+      setShowSubmit(false);
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? "Submission failed. Please try again.";
+      setSubmitError(msg);
+    } finally {
+      setSubmittingKyc(false);
+    }
+  };
+
+  const fmtDate = (s: string) =>
+    new Date(s).toLocaleDateString("en-KE", { year: "numeric", month: "short", day: "numeric" });
+
+  if (loading) {
+    return (
+      <div className="flex h-40 items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#2563EB] border-t-transparent" />
+      </div>
+    );
+  }
+
+  const needsAction = applications.filter(
+    (a) =>
+      a.status === "info_requested" &&
+      !a.user_reply &&
+      !a.user_reply_document_path &&
+      !submitted.includes(a.id),
+  );
+  const rest = applications.filter((a) => !needsAction.includes(a));
+
+  const counts = {
+    total: applications.length,
+    pending: applications.filter((a) => a.status === "pending" || a.status === "under_review")
+      .length,
+    approved: applications.filter((a) => a.status === "approved").length,
+    rejected: applications.filter((a) => a.status === "rejected").length,
+    action: needsAction.length,
+  };
+
+  const cardProps = {
+    replyText,
+    setReplyText,
+    replyFile,
+    setReplyFile,
+    submitting,
+    submitted,
+    fileInputRefs,
+    handleReply,
+    fmtDate,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Submit KYC modal */}
+      {showSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !submittingKyc && setShowSubmit(false)}
+          />
+          <div className="relative w-full max-w-md rounded-xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="text-sm font-semibold text-foreground">Submit KYC Application</h2>
+              <button
+                onClick={() => setShowSubmit(false)}
+                disabled={submittingKyc}
+                className="rounded p-1 text-muted-foreground hover:bg-muted"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4 px-5 py-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">
+                  Land parcel
+                </label>
+                {loadingParcels ? (
+                  <p className="text-xs text-muted-foreground">Loading your parcels…</p>
+                ) : parcels.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No land parcels found. Add a listing first.
+                  </p>
+                ) : (
+                  <select
+                    value={submitParcel}
+                    onChange={(e) => setSubmitParcel(e.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                  >
+                    <option value="">Select a parcel…</option>
+                    {parcels.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                        {p.parcel_number ? ` · ${p.parcel_number}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">
+                  Document type
+                </label>
+                <select
+                  value={submitDocType}
+                  onChange={(e) => setSubmitDocType(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                >
+                  {DOC_TYPES.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">
+                  Document file
+                </label>
+                <input
+                  ref={submitFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,application/pdf"
+                  className="hidden"
+                  onChange={(e) => setSubmitFile(e.target.files?.[0] ?? null)}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => submitFileRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {submitFile ? submitFile.name : "Choose file"}
+                  </button>
+                  {submitFile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubmitFile(null);
+                        if (submitFileRef.current) submitFileRef.current.value = "";
+                      }}
+                      className="text-[11px] text-muted-foreground hover:text-destructive"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  JPG, PNG or PDF · max 10 MB
+                </p>
+              </div>
+              {submitError && (
+                <p className="rounded-md bg-[#FEE2E2] px-3 py-2 text-xs font-medium text-[#DC2626]">
+                  {submitError}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
+              <button
+                onClick={() => setShowSubmit(false)}
+                disabled={submittingKyc}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitKyc}
+                disabled={submittingKyc || !submitParcel || !submitFile}
+                className="rounded-md bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {submittingKyc ? "Submitting…" : "Submit application"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">KYC Status</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track your land parcel verification applications.
+          </p>
+        </div>
+        <button
+          onClick={openSubmitModal}
+          className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+        >
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Submit KYC
+        </button>
+      </div>
+
+      {applications.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
+          <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h3 className="mt-4 text-base font-semibold text-foreground">No KYC applications yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Submit your first application to get started.
+          </p>
+          <button
+            onClick={openSubmitModal}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Submit KYC application
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Summary strip */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: "Total", value: counts.total, color: "text-foreground" },
+              {
+                label: "Needs action",
+                value: counts.action,
+                color: counts.action > 0 ? "text-[#D97706]" : "text-muted-foreground",
+              },
+              {
+                label: "Approved",
+                value: counts.approved,
+                color: counts.approved > 0 ? "text-[#16A34A]" : "text-muted-foreground",
+              },
+              { label: "Pending", value: counts.pending, color: "text-muted-foreground" },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl border border-border bg-card px-4 py-3">
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p className={`mt-0.5 text-2xl font-bold ${s.color}`}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Needs action section */}
+          {needsAction.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-[#D97706]" />
+                <h2 className="text-sm font-semibold text-foreground">Needs your attention</h2>
+                <span className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#D97706]">
+                  {needsAction.length}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {needsAction.map((kyc) => (
+                  <KycCard key={kyc.id} kyc={kyc} {...cardProps} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All other applications */}
+          {rest.length > 0 && (
+            <div>
+              {needsAction.length > 0 && (
+                <h2 className="mb-3 text-sm font-semibold text-foreground">All applications</h2>
+              )}
+              <div className="space-y-3">
+                {rest.map((kyc) => (
+                  <KycCard key={kyc.id} kyc={kyc} {...cardProps} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
