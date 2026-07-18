@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Navbar } from "@/components/Navbar";
 import { LandMap, type FlyTarget } from "@/components/LandMap";
 import { MapSidebar, type Filters } from "@/components/MapSidebar";
 import { ParcelPanel } from "@/components/PropertyPanel";
@@ -158,7 +157,6 @@ function LandPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <Navbar compact />
       <div className="relative flex flex-1 overflow-hidden">
         <MapSidebar filters={filters} setFilters={setFilters} count={filtered.length} />
         <div className="relative flex-1">

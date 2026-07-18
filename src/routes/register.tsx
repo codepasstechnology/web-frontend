@@ -148,11 +148,6 @@ function RegisterPage() {
         </Link>
       </div>
 
-      {/* Photo credit — bottom left */}
-      <p className="absolute bottom-4 left-6 z-20 text-[10px] text-white/30">
-        Joecalih / Unsplash — Nairobi, Kenya
-      </p>
-
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[480px] mx-4 mt-16">
         <div className="rounded-2xl bg-white/15 px-8 py-8 shadow-2xl shadow-black/50 ring-1 ring-white/25 backdrop-blur-2xl">

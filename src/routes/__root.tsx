@@ -4,10 +4,12 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { Navbar } from "@/components/Navbar";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -129,8 +131,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+const NO_NAVBAR_PREFIXES = ["/dashboard", "/login", "/register", "/forgot-password"];
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { pathname } = useLocation();
+  const showNavbar = !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {
@@ -141,6 +147,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {showNavbar && <Navbar scrollAware />}
         <Outlet />
       </AuthProvider>
     </QueryClientProvider>
