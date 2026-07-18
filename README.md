@@ -163,10 +163,10 @@ Defined in `src/lib/plans.ts`. Plan IDs: `free`, `basic`, `pro`, `enterprise`.
 
 API failures are surfaced with user-friendly messages rather than empty or misleading states:
 
-| Component | Failure | Message shown |
-|---|---|---|
+| Component                           | Failure                           | Message shown                                           |
+| ----------------------------------- | --------------------------------- | ------------------------------------------------------- |
 | `NotificationBell` (DashboardShell) | Fetch `/user/notifications` fails | "Unable to load notifications. Please try again later." |
-| `KycTab` (dashboard) | Fetch `/user/kyc` fails | "Unable to load applications. Something went wrong…" |
+| `KycTab` (dashboard)                | Fetch `/user/kyc` fails           | "Unable to load applications. Something went wrong…"    |
 
 Both components track a `fetchError` boolean state. The notification bell clears the error on a successful reload; the KYC tab prompts the user to refresh the page.
 
