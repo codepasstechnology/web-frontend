@@ -76,7 +76,11 @@ src/
 
 ## Authentication
 
-`AuthProvider` (in `src/lib/auth.tsx`) manages all auth state. On app load it reads the Bearer token from `localStorage` (`lv_token`) and re-hydrates the user via `/api/user/me`.
+Login → `POST /api/auth/login` returns `{ user, token }`. **Only marketplace accounts are accepted** (`individual`, `agent`, `developer` roles). Admin/staff accounts are rejected — they must use the admin portal at `POST /api/auth/admin/login`.
+
+The token is stored in `localStorage` as `lv_token_v1` (or `sessionStorage` when the user does not tick "remember me"). Every API request sends `Authorization: Bearer <token>`. On app load, `AuthProvider` reads the token and calls `/api/user/me` to rehydrate the user.
+
+All `/api/user/*` routes are protected by the `user.active` backend middleware, which additionally checks that the token carries the `user` ability and that the account is not suspended. Using an admin account's token on the customer frontend will produce a 403.
 
 `useAuth()` exposes:
 
@@ -152,6 +156,19 @@ Without a file, a plain JSON body is sent and no KYC document is created.
 Defined in `src/lib/plans.ts`. Plan IDs: `free`, `basic`, `pro`, `enterprise`.
 
 `setPlan` in `AuthProvider` is currently local-only (updates in-memory state). Real payment integration is not yet wired.
+
+---
+
+## Error States
+
+API failures are surfaced with user-friendly messages rather than empty or misleading states:
+
+| Component | Failure | Message shown |
+|---|---|---|
+| `NotificationBell` (DashboardShell) | Fetch `/user/notifications` fails | "Unable to load notifications. Please try again later." |
+| `KycTab` (dashboard) | Fetch `/user/kyc` fails | "Unable to load applications. Something went wrong…" |
+
+Both components track a `fetchError` boolean state. The notification bell clears the error on a successful reload; the KYC tab prompts the user to refresh the page.
 
 ---
 

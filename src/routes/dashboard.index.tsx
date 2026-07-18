@@ -2652,6 +2652,7 @@ const DOC_TYPES = [
 function KycTab() {
   const [applications, setApplications] = useState<KycApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replyFile, setReplyFile] = useState<Record<string, File | null>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -2672,8 +2673,11 @@ function KycTab() {
   useEffect(() => {
     api
       .get<KycApplication[]>("/user/kyc")
-      .then(setApplications)
-      .catch(() => {})
+      .then((data) => {
+        setApplications(data);
+        setFetchError(false);
+      })
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -2977,7 +2981,17 @@ function KycTab() {
         </button>
       </div>
 
-      {applications.length === 0 ? (
+      {fetchError ? (
+        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
+          <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h3 className="mt-4 text-base font-semibold text-foreground">
+            Unable to load applications
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Something went wrong. Please refresh the page or try again later.
+          </p>
+        </div>
+      ) : applications.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
           <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 text-base font-semibold text-foreground">No KYC applications yet</h3>

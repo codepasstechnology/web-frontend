@@ -38,13 +38,17 @@ interface Notification {
 function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [fetchError, setFetchError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
       .get<Notification[]>("/user/notifications")
-      .then(setNotifications)
-      .catch(() => {});
+      .then((data) => {
+        setNotifications(data);
+        setFetchError(false);
+      })
+      .catch(() => setFetchError(true));
   }, []);
 
   useEffect(() => {
@@ -94,7 +98,11 @@ function NotificationBell() {
           <div className="border-b border-border px-4 py-2.5">
             <h3 className="text-xs font-semibold text-foreground">Notifications</h3>
           </div>
-          {notifications.length === 0 ? (
+          {fetchError ? (
+            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+              Unable to load notifications. Please try again later.
+            </p>
+          ) : notifications.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-muted-foreground">
               No notifications yet
             </p>
