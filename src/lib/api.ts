@@ -80,6 +80,13 @@ async function requestBlob(path: string): Promise<Blob> {
   return res.blob();
 }
 
+export interface Faq {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),

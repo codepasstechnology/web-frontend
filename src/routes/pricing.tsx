@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Navbar } from "@/components/Navbar";
 import { PlanCard } from "@/components/PlanCard";
 import { plans, addOns, type PlanId } from "@/lib/plans";
 import { useAuth } from "@/lib/auth";
@@ -39,7 +38,6 @@ function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <section className="mx-auto max-w-7xl px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

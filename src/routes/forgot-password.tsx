@@ -56,10 +56,6 @@ function ForgotPasswordPage() {
         </Link>
       </div>
 
-      {/* Photo credit */}
-      <p className="absolute bottom-4 left-6 z-20 text-[10px] text-white/30">
-        David Clode / Unsplash — Samburu, Kenya
-      </p>
 
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[400px] mx-4">

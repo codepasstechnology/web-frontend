@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { List, X } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
 import { LandMap } from "@/components/LandMap";
 import { RentalPanel } from "@/components/PropertyPanel";
 import { rentals, type Rental } from "@/lib/landData";
@@ -37,7 +36,6 @@ function RentalsPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <Navbar compact />
       <div className="relative flex flex-1 overflow-hidden">
         {isMobile && !listOpen && (
           <button
