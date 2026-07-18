@@ -56,7 +56,6 @@ function ForgotPasswordPage() {
         </Link>
       </div>
 
-
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[400px] mx-4">
         <div className="rounded-2xl bg-white/15 px-8 py-9 shadow-2xl shadow-black/50 ring-1 ring-white/25 backdrop-blur-2xl">

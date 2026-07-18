@@ -32,7 +32,9 @@ function ContactPage() {
   const [sent, setSent] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
@@ -98,7 +100,10 @@ function ContactPage() {
                 We'll get back to you at {form.email} within one business day.
               </p>
               <button
-                onClick={() => { setSent(false); setForm({ name: "", email: "", subject: "", message: "" }); }}
+                onClick={() => {
+                  setSent(false);
+                  setForm({ name: "", email: "", subject: "", message: "" });
+                }}
                 className="mt-6 text-sm font-medium text-primary hover:underline"
               >
                 Send another message

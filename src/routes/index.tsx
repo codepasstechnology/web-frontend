@@ -133,7 +133,6 @@ function Index() {
             </div>
           </div>
         </div>
-
       </section>
 
       {/* ── Platform features ── */}
@@ -211,10 +210,26 @@ function Index() {
                 <svg viewBox="0 0 400 180" className="w-full">
                   <rect width="400" height="180" fill="#EFF6FF" />
                   {[50, 100, 150, 200, 250, 300, 350].map((x) => (
-                    <line key={x} x1={x} y1="0" x2={x} y2="180" stroke="#BFDBFE" strokeWidth="0.5" />
+                    <line
+                      key={x}
+                      x1={x}
+                      y1="0"
+                      x2={x}
+                      y2="180"
+                      stroke="#BFDBFE"
+                      strokeWidth="0.5"
+                    />
                   ))}
                   {[45, 90, 135].map((y) => (
-                    <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#BFDBFE" strokeWidth="0.5" />
+                    <line
+                      key={y}
+                      x1="0"
+                      y1={y}
+                      x2="400"
+                      y2={y}
+                      stroke="#BFDBFE"
+                      strokeWidth="0.5"
+                    />
                   ))}
                   <polygon
                     points="110,38 270,32 288,125 242,150 105,140"
@@ -243,7 +258,10 @@ function Index() {
                   { label: "Status", value: "Available" },
                   { label: "Dev score", value: "78 / 100" },
                 ].map(({ label, value }) => (
-                  <div key={label} className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2">
+                  <div
+                    key={label}
+                    className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2"
+                  >
                     <p className="text-[10px] text-[#94A3B8]">{label}</p>
                     <p className="mt-0.5 text-xs font-semibold text-[#0F172A]">{value}</p>
                   </div>
@@ -322,7 +340,11 @@ function Index() {
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             {[
-              { value: landParcels.length.toString(), label: "Parcels indexed", note: "and growing" },
+              {
+                value: landParcels.length.toString(),
+                label: "Parcels indexed",
+                note: "and growing",
+              },
               { value: verifiedCount.toString(), label: "Verified titles", note: "cross-checked" },
               { value: countiesSet.size.toString(), label: "Counties covered", note: "Kenya-wide" },
               { value: "12+", label: "Intelligence factors", note: "per development score" },
@@ -604,4 +626,3 @@ function Metric({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

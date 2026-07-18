@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { api, type Faq } from "@/lib/api";
-import { ChevronDown, Search, MessageCircle, BookOpen, ShieldCheck, CreditCard } from "lucide-react";
+import {
+  ChevronDown,
+  Search,
+  MessageCircle,
+  BookOpen,
+  ShieldCheck,
+  CreditCard,
+} from "lucide-react";
 
 export const Route = createFileRoute("/help")({
   head: () => ({ meta: [{ title: "Help Centre — LandVerify Kenya" }] }),

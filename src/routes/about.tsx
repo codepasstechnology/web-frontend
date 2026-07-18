@@ -48,9 +48,9 @@ function AboutPage() {
             <span className="text-primary">safe and transparent</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground">
-            LandVerify was founded in Nairobi in 2023 with a single mission: eliminate land fraud
-            in Kenya by putting verified, government-sourced data in the hands of every buyer,
-            seller, and professional.
+            LandVerify was founded in Nairobi in 2023 with a single mission: eliminate land fraud in
+            Kenya by putting verified, government-sourced data in the hands of every buyer, seller,
+            and professional.
           </p>
         </div>
       </section>
@@ -95,8 +95,8 @@ function AboutPage() {
             </p>
             <p>
               Today LandVerify serves individual buyers, real estate agents, lawyers, and SACCO
-              mortgage departments. We are proud to be a Nairobi-built product solving a
-              uniquely Kenyan problem.
+              mortgage departments. We are proud to be a Nairobi-built product solving a uniquely
+              Kenyan problem.
             </p>
           </div>
         </div>

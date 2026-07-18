@@ -1,6 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Bell, Search, MapPinned, Menu, X, ChevronDown, BookOpen, Info, HelpCircle, Mail } from "lucide-react";
+import {
+  Bell,
+  Search,
+  MapPinned,
+  Menu,
+  X,
+  ChevronDown,
+  BookOpen,
+  Info,
+  HelpCircle,
+  Mail,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const moreLinks = [
@@ -87,21 +98,27 @@ export function Navbar({
           <Link
             to="/land"
             className={`text-sm font-medium ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
-            activeProps={{ className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}` }}
+            activeProps={{
+              className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}`,
+            }}
           >
             Land
           </Link>
           <Link
             to="/rentals"
             className={`text-sm font-medium ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
-            activeProps={{ className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}` }}
+            activeProps={{
+              className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}`,
+            }}
           >
             Rentals
           </Link>
           <Link
             to="/pricing"
             className={`text-sm font-medium ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
-            activeProps={{ className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}` }}
+            activeProps={{
+              className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}`,
+            }}
           >
             Pricing
           </Link>
@@ -112,7 +129,9 @@ export function Navbar({
               key={to}
               to={to}
               className={`hidden text-sm font-medium xl:inline ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
-              activeProps={{ className: `hidden text-sm font-medium xl:inline ${transparent ? "text-white" : "text-foreground"}` }}
+              activeProps={{
+                className: `hidden text-sm font-medium xl:inline ${transparent ? "text-white" : "text-foreground"}`,
+              }}
             >
               {label}
             </Link>
@@ -125,7 +144,9 @@ export function Navbar({
               className={`flex items-center gap-1 text-sm font-medium ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               More
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
+              />
             </button>
             {moreOpen && (
               <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-card p-1.5 shadow-lg">
@@ -152,7 +173,9 @@ export function Navbar({
               to="/dashboard"
               search={{ tab: undefined }}
               className={`text-sm font-medium ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
-              activeProps={{ className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}` }}
+              activeProps={{
+                className: `text-sm font-medium ${transparent ? "text-white" : "text-foreground"}`,
+              }}
             >
               Dashboard
             </Link>
