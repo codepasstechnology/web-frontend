@@ -172,6 +172,38 @@ Both components track a `fetchError` boolean state. The notification bell clears
 
 ---
 
+## Testing
+
+Tests live in `src/test/` and use **Vitest** with **React Testing Library** and **jsdom**.
+
+### Test files
+
+| File | Tests |
+|---|---|
+| `src/test/login.test.tsx` | Renders email and password inputs; shows "Email is required." on empty submit; shows "Password is required." when only email filled; calls `login()` with entered credentials and `remember=false`; displays `errors.email` from a 422 API response; falls back to `message` when no `errors.email`; shows "Taking you to your dashboard…" and navigates after success; toggles password field between `type="password"` and `type="text"` |
+| `src/test/auth.test.tsx` | `user` is null and `ready` is true when no token in storage; `login()` calls `POST /auth/login` and stores the token; `login(remember=false)` passes `false` to `setToken`; `logout()` calls `POST /auth/logout` then clears the token and sets user to null; `logout()` still clears token and user when the API call throws |
+
+### Run locally
+
+```bash
+# Run all tests once (same as CI)
+npm test
+
+# Run in watch mode — re-runs on file save (not in CI, useful during development)
+npm run test:watch
+```
+
+### What runs on every pull request
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the unit tests as the first job before lint, type-check, and build:
+
+| Job | Command | What it checks |
+|---|---|---|
+| `unit-tests` | `npm test` | All 13 Vitest tests (login form + auth context) |
+| `eslint-prettier-tsc` | `npm run lint`, `npx prettier --check .`, `npx tsc --noEmit` | Code quality + types |
+
+---
+
 ## Deploying to cPanel
 
 ```bash
