@@ -38,6 +38,10 @@ Every pull request runs Prettier, ESLint, and TypeScript checks. Code that fails
 - Backend tests use PHPUnit with `RefreshDatabase`. Assert outcomes via the database or response body — do not re-use revoked tokens within the same test (Sanctum guard caches the user).
 - Tests must pass `npm test` (frontend) and `C:\xampp\php\php.exe artisan test` (backend) before committing.
 
+## General philosophy
+
+Extend the backend without increasing accidental complexity. Favor changes that leave the repo easier to understand and safer for the next engineer or agent.
+
 ## Backend (Laravel)
 
 - Always use `C:\xampp\php\php.exe` for artisan commands — never the system `php` binary (Herd 8.3 is missing DLLs).
