@@ -31,7 +31,7 @@ function GoogleIcon() {
   );
 }
 
-function LoginPage() {
+export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
