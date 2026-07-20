@@ -202,6 +202,16 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the unit tests as the first job
 | `unit-tests`          | `npm test`                                                   | All 13 Vitest tests (login form + auth context) |
 | `eslint-prettier-tsc` | `npm run lint`, `npx prettier --check .`, `npx tsc --noEmit` | Code quality + types                            |
 
+### Run all checks locally
+
+`npm run check` bundles ESLint, `tsc --noEmit`, `prettier --check`, and Vitest into one command — the same gates CI runs, in one shot:
+
+```bash
+npm run check
+```
+
+Stops at the first failing step.
+
 ---
 
 ## Deploying to cPanel
