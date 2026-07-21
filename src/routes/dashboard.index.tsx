@@ -67,7 +67,7 @@ import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { planById, plans, addOns, type PlanId } from "@/lib/plans";
+import { usePlans, addOns, type Plan } from "@/lib/plans";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import {
@@ -123,11 +123,40 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function DashboardPage() {
-  const { user, ready, removeListing, setPlan, updateUser, deleteAccount, logout } = useAuth();
+  const {
+    user,
+    ready,
+    removeListing,
+    bulkAddListings,
+    setPlan,
+    updateUser,
+    deleteAccount,
+    logout,
+  } = useAuth();
+  const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const exportListings = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob("/user/listings/export");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `listings_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — export button stays available to retry
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     if (search.tab && search.tab !== tab) setTab(search.tab);
@@ -136,12 +165,11 @@ function DashboardPage() {
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/login" });
+    else if (ready && user?.role === "account_manager") navigate({ to: "/manager" });
   }, [ready, user, navigate]);
 
-  if (!user) return null;
-  const plan = planById(user.plan);
+  if (!user || user.role === "account_manager") return null;
   const used = user.listings.length;
-  const limitText = plan.listings === Infinity ? "∞" : plan.listings;
 
   return (
     <DashboardShell active={tab} onChange={setTab}>
@@ -157,12 +185,31 @@ function DashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-foreground">My Listings</h1>
-            <button
-              onClick={() => navigate({ to: "/dashboard/upload" })}
-              className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
-            >
-              <Plus className="h-3.5 w-3.5" /> New
-            </button>
+            <div className="flex items-center gap-2">
+              {user.customReports && (
+                <button
+                  onClick={exportListings}
+                  disabled={exporting}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                >
+                  <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
+                </button>
+              )}
+              {user.bulkUpload && (
+                <button
+                  onClick={() => setBulkOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Bulk upload
+                </button>
+              )}
+              <button
+                onClick={() => navigate({ to: "/dashboard/upload" })}
+                className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+              >
+                <Plus className="h-3.5 w-3.5" /> New
+              </button>
+            </div>
           </div>
           {user.listings.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
@@ -240,17 +287,18 @@ function DashboardPage() {
         </div>
       )}
 
-      {tab === "analytics" && (
-        <AnalyticsTab plan={user.plan} onUpgrade={() => setUpgradeOpen(true)} />
-      )}
+      {tab === "analytics" && <AnalyticsTab onUpgrade={() => setUpgradeOpen(true)} />}
 
       {tab === "billing" && (
         <BillingTab
           plan={user.plan}
+          plans={plans}
+          maxListings={user.maxListings}
           usedListings={used}
           onUpgrade={() => setUpgradeOpen(true)}
           payments={user.payments}
           onSelectPlan={(p) => setPlan(p)}
+          manager={user.manager}
         />
       )}
 
@@ -277,7 +325,88 @@ function DashboardPage() {
         onClose={() => setUpgradeOpen(false)}
         onSelect={(p) => setPlan(p)}
       />
+
+      <BulkUploadModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onSubmit={bulkAddListings}
+      />
     </DashboardShell>
+  );
+}
+
+function BulkUploadModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!open) return null;
+
+  const rows = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [title, county, price] = line.split(",").map((v) => v.trim());
+      return { title: title ?? "", county: county ?? "", price: Number(price) || 0 };
+    });
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      await onSubmit(rows);
+      setText("");
+      onClose();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setError(e?.message ?? "Bulk upload failed. Please check the format and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-lg">
+        <h2 className="text-base font-semibold text-foreground">Bulk upload listings</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          One listing per line: <code>title, county, price</code>
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={8}
+          placeholder={"5 Acre Parcel, Nakuru, 800000\n1/8 Acre Plot, Kiambu, 1200000"}
+          className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-[#2563EB]"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">{rows.length} listing(s) detected</p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={submitting || rows.length === 0}
+            className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+          >
+            {submitting ? "Uploading…" : "Upload"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -319,9 +448,9 @@ interface ApiAnalytics {
   traffic_sources: { name: string; value: number; color: string }[];
 }
 
-function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void }) {
+function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
   const { user } = useAuth();
-  const locked = plan !== "pro";
+  const locked = !user?.analyticsAccess;
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
   const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -838,22 +967,32 @@ function SmallStat({ label, value, sub }: { label: string; value: string; sub: s
 
 function BillingTab({
   plan,
+  plans,
+  maxListings,
   usedListings,
   onUpgrade: _onUpgrade,
   payments,
   onSelectPlan,
+  manager,
 }: {
   plan: string;
+  plans: Plan[];
+  maxListings: number;
   usedListings: number;
   onUpgrade: () => void;
   payments: { date: string; amount: number; plan: string; status: string }[];
-  onSelectPlan: (p: PlanId) => void;
+  onSelectPlan: (p: string) => void;
+  manager: { name: string; email: string } | null;
 }) {
-  const p = planById(plan as PlanId);
-  const limitNum = p.listings === Infinity ? Infinity : p.listings;
+  const p = plans.find((pl) => pl.id === plan);
+  const limitNum = maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
   const pct =
     limitNum === Infinity ? 8 : Math.min(100, Math.round((usedListings / limitNum) * 100));
+
+  if (!p) {
+    return <div className="text-sm text-muted-foreground">Loading plan details…</div>;
+  }
   const nextBillDate = new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -945,6 +1084,16 @@ function BillingTab({
           </div>
         </div>
       </div>
+
+      {manager && (
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Your dedicated account manager
+          </div>
+          <div className="mt-2 text-sm font-medium text-foreground">{manager.name}</div>
+          <div className="text-xs text-muted-foreground">{manager.email}</div>
+        </div>
+      )}
 
       {/* Plan picker */}
       <div>
@@ -1139,9 +1288,10 @@ function OverviewTab({
   onGoTab: (t: DashTab) => void;
 }) {
   const navigate = useNavigate();
-  const plan = planById(user.plan);
+  const { data: plans = [] } = usePlans();
+  const plan = plans.find((p) => p.id === user.plan);
   const used = user.listings.length;
-  const limitNum = plan.listings === Infinity ? Infinity : plan.listings;
+  const limitNum = user.maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
   const pct = limitNum === Infinity ? 12 : Math.min(100, Math.round((used / limitNum) * 100));
   const totalViews = user.listings.reduce((a, b) => a + b.views, 0);
@@ -1258,7 +1408,9 @@ function OverviewTab({
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <Crown className="h-3.5 w-3.5 text-[#2563EB]" /> Current plan
               </div>
-              <div className="mt-1 text-xl font-semibold text-foreground">{plan.name}</div>
+              <div className="mt-1 text-xl font-semibold text-foreground">
+                {plan?.name ?? user.plan}
+              </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {used} of {limitText} listings used
               </div>
@@ -1422,7 +1574,7 @@ function OverviewTab({
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
           Next billing:{" "}
           <span className="font-medium">
-            {plan.price === 0
+            {(plan?.price ?? 0) === 0
               ? "—"
               : new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
                   day: "2-digit",

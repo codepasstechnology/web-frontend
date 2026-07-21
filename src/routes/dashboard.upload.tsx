@@ -13,7 +13,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Lock, MapPin, UploadCloud, X } fro
 import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth, type NewListingInput } from "@/lib/auth";
-import { kenyaCounties, planById } from "@/lib/plans";
+import { kenyaCounties, usePlans } from "@/lib/plans";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({ meta: [{ title: "Upload Land — LandVerify Kenya" }] }),
@@ -31,6 +31,7 @@ const steps = ["Basic Details", "Location on Map", "Photos & Documents", "Review
 
 function UploadPage() {
   const { user, ready, addListing } = useAuth();
+  const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -52,19 +53,21 @@ function UploadPage() {
     listingType: "sale" as "sale" | "lease",
     landType: "residential" as NewListingInput["landType"],
     pin: null as [number, number] | null,
-    photos: [] as { name: string; url: string }[],
+    photos: [] as { name: string; url: string; file: File }[],
     deedFile: null as File | null,
   });
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/login" });
+    else if (ready && user?.role === "account_manager") navigate({ to: "/manager" });
   }, [ready, user, navigate]);
 
-  if (!user) return null;
-  const plan = planById(user.plan);
+  if (!user || user.role === "account_manager") return null;
+  const plan = plans.find((p) => p.id === user.plan);
   const used = user.listings.length;
-  const remaining = plan.listings === Infinity ? Infinity : plan.listings - used;
+  const remaining = user.maxListings === Infinity ? Infinity : user.maxListings - used;
   const limitReached = remaining <= 0;
+  const photoLimit = plan?.photos ?? 0;
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -72,9 +75,9 @@ function UploadPage() {
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files);
-    const allowed = plan.photos - form.photos.length;
+    const allowed = photoLimit - form.photos.length;
     const slice = arr.slice(0, Math.max(0, allowed));
-    const mapped = slice.map((f) => ({ name: f.name, url: URL.createObjectURL(f) }));
+    const mapped = slice.map((f) => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
     set("photos", [...form.photos, ...mapped]);
   };
 
@@ -106,10 +109,12 @@ function UploadPage() {
         listingType: form.listingType,
         landType: form.landType,
         titleDeedFile: form.deedFile ?? undefined,
+        photoFiles: form.photos.map((p) => p.file),
       });
       setSubmitted(true);
-    } catch {
-      setSubmitErr("Failed to submit listing. Please try again.");
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setSubmitErr(e?.message ?? "Failed to submit listing. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -319,9 +324,9 @@ function UploadPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>
-                    Photos ({form.photos.length}/{plan.photos} allowed on {plan.name})
+                    Photos ({form.photos.length}/{photoLimit} allowed on {plan?.name ?? user.plan})
                   </span>
-                  {form.photos.length >= plan.photos && (
+                  {form.photos.length >= photoLimit && (
                     <button
                       onClick={() => setUpgradeOpen(true)}
                       className="font-medium text-[#2563EB] hover:underline"
@@ -339,7 +344,7 @@ function UploadPage() {
                     multiple
                     className="hidden"
                     onChange={(e) => handlePhotos(e.target.files)}
-                    disabled={form.photos.length >= plan.photos}
+                    disabled={form.photos.length >= photoLimit}
                   />
                 </label>
                 {form.photos.length > 0 && (
@@ -420,8 +425,8 @@ function UploadPage() {
                 <div className="rounded-md border border-border bg-background p-4">
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">Plan</div>
                   <div className="mt-1 text-sm font-medium text-foreground">
-                    {plan.name} — {used}/{plan.listings === Infinity ? "∞" : plan.listings} listings
-                    used
+                    {plan?.name ?? user.plan} — {used}/
+                    {user.maxListings === Infinity ? "∞" : user.maxListings} listings used
                   </div>
                 </div>
                 {submitErr && (
@@ -435,8 +440,8 @@ function UploadPage() {
                       <Lock className="h-4 w-4" /> Listing limit reached
                     </div>
                     <p className="mt-1 text-xs text-foreground">
-                      You've used all {plan.listings} listings on the {plan.name} plan. Upgrade to
-                      publish this listing.
+                      You've used all {user.maxListings} listings on the {plan?.name ?? user.plan}{" "}
+                      plan. Upgrade to publish this listing.
                     </p>
                     <button
                       onClick={() => setUpgradeOpen(true)}

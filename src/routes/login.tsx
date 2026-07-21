@@ -55,9 +55,15 @@ export function LoginPage() {
     }
     setLoading(true);
     try {
-      await login(email, password, rememberMe);
+      const u = await login(email, password, rememberMe);
       setSuccess(true);
-      setTimeout(() => navigate({ to: "/dashboard", search: { tab: undefined } }), 1500);
+      setTimeout(() => {
+        if (u.role === "account_manager") {
+          navigate({ to: "/manager" });
+        } else {
+          navigate({ to: "/dashboard", search: { tab: undefined } });
+        }
+      }, 1500);
     } catch (err: unknown) {
       const e = err as { errors?: Record<string, string[]>; message?: string };
       setErr(
