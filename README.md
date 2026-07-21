@@ -67,6 +67,7 @@ src/
     rentals.tsx          # Rentals listing page
     dashboard.index.tsx  # Authenticated dashboard home
     dashboard.upload.tsx # New listing submission form
+    manager.tsx          # Account manager portal (/manager) — assigned clients list + edit
   hooks/
     use-mobile.tsx       # Responsive breakpoint hook
   router.tsx             # TanStack Router configuration
@@ -76,7 +77,9 @@ src/
 
 ## Authentication
 
-Login → `POST /api/auth/login` returns `{ user, token }`. **Only marketplace accounts are accepted** (`individual`, `agent`, `developer` roles). Admin/staff accounts are rejected — they must use the admin portal at `POST /api/auth/admin/login`.
+Login → `POST /api/auth/login` returns `{ user, token }`. **Marketplace accounts and account managers are accepted** (`individual`, `agent`, `developer`, `account_manager` roles). Admin/staff accounts are rejected — they must use the admin portal at `POST /api/auth/admin/login`.
+
+A user with `role: "account_manager"` is redirected to `/manager` instead of `/dashboard` after login — they get a distinct, standalone view (no navbar, no dashboard shell) rather than admin-panel access. See [Routes](#routes) below.
 
 The token is stored in `localStorage` as `lv_token_v1` (or `sessionStorage` when the user does not tick "remember me"). Every API request sends `Authorization: Bearer <token>`. On app load, `AuthProvider` reads the token and calls `/api/user/me` to rehydrate the user.
 
@@ -129,19 +132,20 @@ Without a file, a plain JSON body is sent and no KYC document is created.
 
 ## Routes
 
-| Route               | Auth   | Description                                               |
-| ------------------- | ------ | --------------------------------------------------------- |
-| `/`                 | Public | Landing page                                              |
-| `/land`             | Public | Interactive map with parcel search and property panel     |
-| `/pricing`          | Public | Subscription plan comparison                              |
-| `/login`            | Guest  | User login                                                |
-| `/register`         | Guest  | User registration                                         |
-| `/forgot-password`  | Guest  | Password reset request                                    |
-| `/terms`            | Public | Terms of Service (CMS-driven)                             |
-| `/privacy`          | Public | Privacy Policy (CMS-driven)                               |
-| `/rentals`          | Public | Rental listings                                           |
-| `/dashboard`        | Auth   | User dashboard — listings, payments, analytics            |
-| `/dashboard/upload` | Auth   | New property listing form with optional title deed upload |
+| Route               | Auth                             | Description                                                              |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------ |
+| `/`                 | Public                           | Landing page                                                             |
+| `/land`             | Public                           | Interactive map with parcel search and property panel                    |
+| `/pricing`          | Public                           | Subscription plan comparison                                             |
+| `/login`            | Guest                            | User login                                                               |
+| `/register`         | Guest                            | User registration                                                        |
+| `/forgot-password`  | Guest                            | Password reset request                                                   |
+| `/terms`            | Public                           | Terms of Service (CMS-driven)                                            |
+| `/privacy`          | Public                           | Privacy Policy (CMS-driven)                                              |
+| `/rentals`          | Public                           | Rental listings                                                          |
+| `/dashboard`        | Auth                             | User dashboard — listings, payments, analytics                           |
+| `/dashboard/upload` | Auth                             | New property listing form with optional title deed upload                |
+| `/manager`          | Auth (account_manager role only) | Account manager portal — assigned clients list, search, and profile edit |
 
 ---
 
@@ -156,6 +160,8 @@ Without a file, a plain JSON body is sent and no KYC document is created.
 Defined in `src/lib/plans.ts`. Plan IDs: `free`, `basic`, `pro`, `enterprise`.
 
 `setPlan` in `AuthProvider` is currently local-only (updates in-memory state). Real payment integration is not yet wired.
+
+Plan features (photo limit, bulk upload, custom reports export, dedicated manager) are backend-enforced, not just marketing copy — the dashboard reads the active plan's real limits from `GET /api/user/subscription` and gates the corresponding UI (upload photo count, bulk upload button, export button, manager contact card) accordingly.
 
 ---
 
