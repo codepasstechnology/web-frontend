@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PlanCard } from "@/components/PlanCard";
-import { plans, addOns, type PlanId } from "@/lib/plans";
+import { usePlans, addOns } from "@/lib/plans";
 import { useAuth } from "@/lib/auth";
 import { Zap, Star } from "lucide-react";
 
@@ -25,9 +25,10 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
   const { user, setPlan } = useAuth();
+  const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
 
-  const choose = (id: PlanId) => {
+  const choose = (id: string) => {
     if (!user) {
       navigate({ to: "/register" });
       return;

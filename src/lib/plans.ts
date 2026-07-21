@@ -1,76 +1,55 @@
-export type PlanId = "free" | "basic" | "pro";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "./api";
 
 export interface Plan {
-  id: PlanId;
+  id: string;
   name: string;
   price: number; // KES / month
-  listings: number; // Infinity for pro
+  listings: number; // Infinity for unlimited
   photos: number;
   cta: string;
   badge?: { label: string; color: "accent" | "primary" };
   features: string[];
 }
 
-export const plans: Plan[] = [
-  {
-    id: "free",
-    name: "Free",
-    price: 0,
-    listings: 1,
-    photos: 3,
-    cta: "Get Started",
-    features: [
-      "1 active listing",
-      "3 photos per listing",
-      "Standard map visibility",
-      "Basic property details",
-      "Email support",
-    ],
-  },
-  {
-    id: "basic",
-    name: "Basic",
-    price: 700,
-    listings: 5,
-    photos: 10,
-    cta: "Start Basic",
-    badge: { label: "Most Popular", color: "accent" },
-    features: [
-      "5 active listings",
-      "10 photos per listing",
-      "Standard map visibility",
-      "WhatsApp contact button",
-      "Listing performance stats",
-      "Priority email support",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 4500,
-    listings: Infinity,
-    photos: 20,
-    cta: "Go Pro",
-    badge: { label: "Pro", color: "primary" },
-    features: [
-      "Unlimited active listings",
-      "20 photos per listing",
-      "Featured map placement",
-      "Verified Seller badge",
-      "Advanced analytics dashboard",
-      "Boosted in search results",
-      "WhatsApp + phone contact",
-      "Dedicated support",
-    ],
-  },
-];
+interface ApiPlan {
+  id: string;
+  name: string;
+  slug: string;
+  price_monthly: number;
+  price_yearly: number | null;
+  currency: string;
+  max_listings: number;
+  max_photos: number;
+  badge_label: string | null;
+  features: string[];
+}
+
+function mapApiPlan(p: ApiPlan): Plan {
+  return {
+    id: p.slug,
+    name: p.name,
+    price: p.price_monthly,
+    listings: p.max_listings === -1 ? Infinity : p.max_listings,
+    photos: p.max_photos,
+    cta: `Choose ${p.name}`,
+    badge: p.badge_label ? { label: p.badge_label, color: "accent" } : undefined,
+    features: p.features,
+  };
+}
+
+export function usePlans() {
+  return useQuery({
+    queryKey: ["plans"],
+    queryFn: async () => (await api.get<ApiPlan[]>("/plans")).map(mapApiPlan),
+    staleTime: 5 * 60_000,
+  });
+}
 
 export const addOns = [
   { id: "boost", name: "Boost Listing to Top", price: 300, period: "7 days" },
   { id: "featured", name: "Featured Badge", price: 500, period: "30 days" },
 ];
-
-export const planById = (id: PlanId) => plans.find((p) => p.id === id)!;
 
 export const kenyaCounties = [
   "Mombasa",

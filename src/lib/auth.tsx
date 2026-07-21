@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import type { PlanId } from "./plans";
 import { api, getToken, setToken, clearToken } from "./api";
 
-export type UserRole = "individual" | "agent" | "developer";
+export type UserRole = "individual" | "agent" | "developer" | "account_manager";
 
 export interface UserListing {
   id: string;
@@ -21,7 +20,12 @@ export interface AppUser {
   email: string;
   phone: string;
   role: UserRole;
-  plan: PlanId;
+  plan: string;
+  maxListings: number; // Infinity = unlimited
+  analyticsAccess: boolean;
+  bulkUpload: boolean;
+  customReports: boolean;
+  manager: { name: string; email: string } | null;
   listings: UserListing[];
   payments: { date: string; amount: number; plan: string; status: "Paid" | "Pending" }[];
   county?: string;
@@ -77,6 +81,11 @@ interface ApiSubscription {
   plan: string;
   plan_name: string;
   status: string | null;
+  max_listings?: number;
+  analytics_access?: boolean;
+  bulk_upload?: boolean;
+  custom_reports?: boolean;
+  dedicated_manager?: { name: string; email: string } | null;
 }
 
 interface ApiPayment {
@@ -105,7 +114,13 @@ function mapApiUser(
     email: u.email,
     phone: u.phone ?? "",
     role: u.role as UserRole,
-    plan: (sub.plan as PlanId) ?? "free",
+    plan: sub.plan ?? "free",
+    maxListings:
+      sub.max_listings === -1 || sub.max_listings === undefined ? Infinity : sub.max_listings,
+    analyticsAccess: sub.analytics_access ?? false,
+    bulkUpload: sub.bulk_upload ?? false,
+    customReports: sub.custom_reports ?? false,
+    manager: sub.dedicated_manager ?? null,
     isAdmin: u.is_admin ?? false,
     county: u.county ?? undefined,
     bio: u.bio ?? undefined,
@@ -155,6 +170,7 @@ export interface NewListingInput {
   listingType?: "sale" | "lease";
   landType?: "residential" | "commercial" | "agricultural" | "mixed_use" | "industrial";
   titleDeedFile?: File;
+  photoFiles?: File[];
 }
 
 interface AuthCtx {
@@ -169,8 +185,9 @@ interface AuthCtx {
     role: UserRole;
   }) => Promise<AppUser>;
   logout: () => Promise<void>;
-  setPlan: (plan: PlanId) => void;
+  setPlan: (plan: string) => void;
   addListing: (l: NewListingInput) => Promise<void>;
+  bulkAddListings: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
   removeListing: (id: string) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -251,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Local-only: real payment integration wires here later
-  const setPlan = useCallback((plan: PlanId) => {
+  const setPlan = useCallback((plan: string) => {
     setUser((prev) => (prev ? { ...prev, plan } : prev));
   }, []);
 
@@ -277,7 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addListing: AuthCtx["addListing"] = useCallback(async (l) => {
     let body: FormData | Record<string, unknown>;
-    if (l.titleDeedFile) {
+    if (l.titleDeedFile || l.photoFiles?.length) {
       const fd = new FormData();
       fd.append("title", l.title);
       fd.append("county", l.county);
@@ -290,7 +307,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (l.description) fd.append("description", l.description);
       if (l.latitude != null) fd.append("latitude", String(l.latitude));
       if (l.longitude != null) fd.append("longitude", String(l.longitude));
-      fd.append("title_deed", l.titleDeedFile);
+      if (l.titleDeedFile) fd.append("title_deed", l.titleDeedFile);
+      l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
     } else {
       body = {
@@ -319,6 +337,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       createdAt: created.created_at,
     };
     setUser((prev) => (prev ? { ...prev, listings: [newL, ...prev.listings] } : prev));
+  }, []);
+
+  const bulkAddListings: AuthCtx["bulkAddListings"] = useCallback(async (rows) => {
+    const created = await api.post<ApiListing[]>("/user/listings/bulk", { listings: rows });
+    const newListings: UserListing[] = created.map((l) => ({
+      id: l.id,
+      title: l.title,
+      parcelNumber: l.parcel_number,
+      county: l.county,
+      price: l.price,
+      status: "pending",
+      views: 0,
+      createdAt: l.created_at,
+    }));
+    setUser((prev) => (prev ? { ...prev, listings: [...newListings, ...prev.listings] } : prev));
   }, []);
 
   const removeListing = useCallback(async (id: string) => {
@@ -369,6 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         setPlan,
         addListing,
+        bulkAddListings,
         removeListing,
         updateUser,
         deleteAccount,

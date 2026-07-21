@@ -131,7 +131,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const NO_NAVBAR_PREFIXES = ["/dashboard", "/login", "/register", "/forgot-password"];
+const NO_NAVBAR_PREFIXES = ["/dashboard", "/manager", "/login", "/register", "/forgot-password"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();

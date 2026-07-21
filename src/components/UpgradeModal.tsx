@@ -1,16 +1,17 @@
 import { X } from "lucide-react";
-import { plans, type PlanId } from "@/lib/plans";
+import { usePlans } from "@/lib/plans";
 import { PlanCard } from "./PlanCard";
 
 interface Props {
   open: boolean;
-  currentPlan: PlanId;
+  currentPlan: string;
   onClose: () => void;
-  onSelect: (id: PlanId) => void;
+  onSelect: (id: string) => void;
   reason?: string;
 }
 
 export function UpgradeModal({ open, currentPlan, onClose, onSelect, reason }: Props) {
+  const { data: plans = [] } = usePlans();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-4">
