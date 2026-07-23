@@ -41,6 +41,7 @@ export interface AppUser {
   twoFactor?: boolean;
   language?: "en" | "sw";
   isAdmin?: boolean;
+  emailVerified: boolean;
 }
 
 // ── API shapes ────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ interface ApiUser {
   company: string | null;
   language: string | null;
   two_factor_enabled: boolean;
+  email_verified_at: string | null;
   notifications: {
     email_inquiries: boolean;
     sms_alerts: boolean;
@@ -122,6 +124,7 @@ function mapApiUser(
     customReports: sub.custom_reports ?? false,
     manager: sub.dedicated_manager ?? null,
     isAdmin: u.is_admin ?? false,
+    emailVerified: u.email_verified_at !== null,
     county: u.county ?? undefined,
     bio: u.bio ?? undefined,
     company: u.company ?? undefined,
@@ -192,6 +195,8 @@ interface AuthCtx {
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshListings: () => Promise<void>;
+  verifyEmail: (code: string) => Promise<void>;
+  resendVerificationCode: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -392,6 +397,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const verifyEmail = useCallback(async (code: string) => {
+    const apiUser = await api.post<ApiUser>("/auth/email/verify", { code });
+    const u = await loadUser(apiUser);
+    setUser(u);
+  }, []);
+
+  const resendVerificationCode = useCallback(async () => {
+    await api.post("/auth/email/resend");
+  }, []);
+
   return (
     <Ctx.Provider
       value={{
@@ -407,6 +422,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUser,
         deleteAccount,
         refreshListings,
+        verifyEmail,
+        resendVerificationCode,
       }}
     >
       {children}
