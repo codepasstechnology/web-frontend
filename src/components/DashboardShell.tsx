@@ -161,7 +161,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
               <MapPinned className="h-4 w-4" />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold text-foreground">LandVerify</div>
+              <div className="text-sm font-semibold text-foreground">Geo Properties</div>
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 Dashboard
               </div>

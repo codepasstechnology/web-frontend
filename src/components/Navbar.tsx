@@ -83,7 +83,7 @@ export function Navbar({
             <span
               className={`text-sm font-semibold tracking-tight ${transparent ? "text-white" : "text-foreground"}`}
             >
-              LandVerify
+              Geo Properties
             </span>
             <span
               className={`text-[10px] font-medium uppercase tracking-widest ${transparent ? "text-white/50" : "text-muted-foreground"}`}

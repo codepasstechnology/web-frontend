@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/help")({
-  head: () => ({ meta: [{ title: "Help Centre — LandVerify Kenya" }] }),
+  head: () => ({ meta: [{ title: "Help Centre — Geo Properties Kenya" }] }),
   component: HelpPage,
 });
 

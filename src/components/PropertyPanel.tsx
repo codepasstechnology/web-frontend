@@ -231,7 +231,7 @@ export function RentalPanel({ rental, onClose }: { rental: Rental; onClose: () =
           </p>
         </Section>
         <p className="text-sm text-muted-foreground">
-          Verified rental listing within the LandVerify network. Schedule a viewing or request a
+          Verified rental listing within the Geo Properties network. Schedule a viewing or request a
           tenancy report.
         </p>
       </div>

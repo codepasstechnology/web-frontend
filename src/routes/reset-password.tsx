@@ -4,7 +4,7 @@ import { MapPinned, Lock, Eye, EyeOff, ArrowLeft, Check } from "lucide-react";
 import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/reset-password")({
-  head: () => ({ meta: [{ title: "Reset Password — LandConnect Kenya" }] }),
+  head: () => ({ meta: [{ title: "Reset Password — Geo Properties Kenya" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     token: typeof s.token === "string" ? s.token : undefined,
     email: typeof s.email === "string" ? s.email : undefined,
@@ -77,7 +77,7 @@ function ResetPasswordPage() {
             <MapPinned className="h-5 w-5 text-white" />
           </div>
           <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            LandConnect
+            Geo Properties
           </span>
         </Link>
       </div>

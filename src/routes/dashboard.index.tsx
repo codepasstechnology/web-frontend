@@ -102,7 +102,7 @@ function KycPinDropper({
 }
 
 export const Route = createFileRoute("/dashboard/")({
-  head: () => ({ meta: [{ title: "Dashboard — LandVerify Kenya" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Geo Properties Kenya" }] }),
   validateSearch: (s: Record<string, unknown>) => {
     const allowed: DashTab[] = [
       "overview",
@@ -1538,7 +1538,7 @@ function OverviewTab({
           </div>
           <ul className="mt-3 divide-y divide-border">
             {[
-              { t: "Just now", text: "Welcome to LandVerify" },
+              { t: "Just now", text: "Welcome to Geo Properties" },
               { t: "2h ago", text: "Map updated with 14 new parcels" },
               { t: "1d ago", text: "Verification team reviewed your area" },
               { t: "3d ago", text: "Account created" },

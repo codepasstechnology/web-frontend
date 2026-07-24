@@ -4,7 +4,7 @@ import { MapPinned, Eye, EyeOff, ArrowRight, ArrowLeft, Check } from "lucide-rea
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign In — LandConnect Kenya" }] }),
+  head: () => ({ meta: [{ title: "Sign In — Geo Properties Kenya" }] }),
   component: LoginPage,
 });
 
@@ -99,7 +99,7 @@ export function LoginPage() {
             <MapPinned className="h-5 w-5 text-white" />
           </div>
           <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            LandConnect
+            Geo Properties
           </span>
         </Link>
       </div>

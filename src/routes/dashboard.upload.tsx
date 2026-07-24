@@ -16,7 +16,7 @@ import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 
 export const Route = createFileRoute("/dashboard/upload")({
-  head: () => ({ meta: [{ title: "Upload Land — LandVerify Kenya" }] }),
+  head: () => ({ meta: [{ title: "Upload Land — Geo Properties Kenya" }] }),
   component: UploadPage,
 });
 

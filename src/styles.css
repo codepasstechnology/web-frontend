@@ -64,7 +64,7 @@
 
 :root {
   --radius: 0.625rem;
-  /* LandVerify Kenya — enterprise GIS palette (no gradients, solid colors only) */
+  /* Geo Properties Kenya — enterprise GIS palette (no gradients, solid colors only) */
   --background: oklch(0.984 0.003 247.858); /* #F8FAFC */
   --foreground: oklch(0.198 0.04 265.6); /* #0F172A */
   --card: oklch(1 0 0); /* #FFFFFF */

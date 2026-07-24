@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
 const testimonials = [
   {
     quote:
-      "We verified three parcels in Kajiado before committing. LandVerify flagged a boundary dispute the seller never disclosed. Saved us millions.",
+      "We verified three parcels in Kajiado before committing. Geo Properties flagged a boundary dispute the seller never disclosed. Saved us millions.",
     name: "James Mwangi",
     role: "Property Investor · Nairobi",
     initials: "JM",
@@ -31,7 +31,7 @@ const testimonials = [
   },
   {
     quote:
-      "The development score alone is worth it. We cross-reference every site acquisition with LandVerify before presenting to our board.",
+      "The development score alone is worth it. We cross-reference every site acquisition with Geo Properties before presenting to our board.",
     name: "Aisha Odhiambo",
     role: "Real Estate Analyst · Mombasa",
     initials: "AO",
@@ -523,7 +523,7 @@ function Index() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2563EB]">
                   <MapPinned className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-bold text-white">LandVerify Kenya</span>
+                <span className="text-sm font-bold text-white">Geo Properties Kenya</span>
               </div>
               <p className="mt-4 max-w-xs text-xs leading-relaxed text-white/40">
                 GIS-powered land intelligence for buyers, sellers, and investors across Kenya.
@@ -598,7 +598,7 @@ function Index() {
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
             <p className="text-[11px] text-white/25">
-              © {new Date().getFullYear()} LandVerify Kenya Ltd. All rights reserved.
+              © {new Date().getFullYear()} Geo Properties Kenya Ltd. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5 text-[11px] text-white/25">

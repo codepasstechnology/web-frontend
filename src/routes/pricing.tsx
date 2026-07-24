@@ -7,13 +7,13 @@ import { Zap, Star } from "lucide-react";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing — LandVerify Kenya" },
+      { title: "Pricing — Geo Properties Kenya" },
       {
         name: "description",
         content:
           "Simple, transparent pricing for land sellers, agents and developers across Kenya.",
       },
-      { property: "og:title", content: "Pricing — LandVerify Kenya" },
+      { property: "og:title", content: "Pricing — Geo Properties Kenya" },
       {
         property: "og:description",
         content: "Free, Basic and Pro plans for listing verified land in Kenya.",

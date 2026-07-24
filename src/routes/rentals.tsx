@@ -10,7 +10,7 @@ export const Route = createFileRoute("/rentals")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Rentals Map — LandVerify Kenya" },
+      { title: "Rentals Map — Geo Properties Kenya" },
       {
         name: "description",
         content: "Browse verified rental properties across Kenya on an interactive map.",

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { MapPinned, ShieldCheck, Users, Target, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
-  head: () => ({ meta: [{ title: "About — LandVerify Kenya" }] }),
+  head: () => ({ meta: [{ title: "About — Geo Properties Kenya" }] }),
   component: AboutPage,
 });
 
@@ -48,9 +48,9 @@ function AboutPage() {
             <span className="text-primary">safe and transparent</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground">
-            LandVerify was founded in Nairobi in 2023 with a single mission: eliminate land fraud in
-            Kenya by putting verified, government-sourced data in the hands of every buyer, seller,
-            and professional.
+            Geo Properties was founded in Nairobi in 2023 with a single mission: eliminate land
+            fraud in Kenya by putting verified, government-sourced data in the hands of every buyer,
+            seller, and professional.
           </p>
         </div>
       </section>
@@ -78,8 +78,8 @@ function AboutPage() {
           <h2 className="text-2xl font-bold text-foreground">Our story</h2>
           <div className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p>
-              The idea for LandVerify came from a painful experience. Our co-founder Brian watched
-              his family lose a plot in Kiambu to a double-allocation — a fraud that went
+              The idea for Geo Properties came from a painful experience. Our co-founder Brian
+              watched his family lose a plot in Kiambu to a double-allocation — a fraud that went
               undiscovered until after the title deed was transferred. The process to rectify it
               took four years and cost more than the land itself.
             </p>
@@ -94,7 +94,7 @@ function AboutPage() {
               critical verification signals in one place — in minutes, not weeks.
             </p>
             <p>
-              Today LandVerify serves individual buyers, real estate agents, lawyers, and SACCO
+              Today Geo Properties serves individual buyers, real estate agents, lawyers, and SACCO
               mortgage departments. We are proud to be a Nairobi-built product solving a uniquely
               Kenyan problem.
             </p>

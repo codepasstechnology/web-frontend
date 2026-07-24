@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookOpen, ArrowRight, Calendar, User } from "lucide-react";
 
 export const Route = createFileRoute("/blog")({
-  head: () => ({ meta: [{ title: "Blog — LandVerify Kenya" }] }),
+  head: () => ({ meta: [{ title: "Blog — Geo Properties Kenya" }] }),
   component: BlogPage,
 });
 
@@ -12,8 +12,8 @@ const posts = [
     category: "Guides",
     title: "How to Verify a Land Title Deed in Kenya (2025 Guide)",
     excerpt:
-      "A step-by-step walkthrough of the official process — and how LandVerify speeds it up from weeks to minutes.",
-    author: "LandVerify Team",
+      "A step-by-step walkthrough of the official process — and how Geo Properties speeds it up from weeks to minutes.",
+    author: "Geo Properties Team",
     date: "June 12, 2025",
     readTime: "6 min read",
   },
@@ -23,7 +23,7 @@ const posts = [
     title: "5 Common Land Scams in Kenya and How to Spot Them",
     excerpt:
       "Double allocation, fake title deeds, boundary manipulation — we break down the red flags buyers must know.",
-    author: "LandVerify Team",
+    author: "Geo Properties Team",
     date: "May 28, 2025",
     readTime: "8 min read",
   },
@@ -33,7 +33,7 @@ const posts = [
     title: "Understanding Land Tenure Systems in Kenya",
     excerpt:
       "Freehold, leasehold, community land — what each type means for buyers, sellers, and developers.",
-    author: "LandVerify Team",
+    author: "Geo Properties Team",
     date: "May 10, 2025",
     readTime: "5 min read",
   },
@@ -43,7 +43,7 @@ const posts = [
     title: "Kenya's Digital Land Registry: Where We Are in 2025",
     excerpt:
       "Kenya's land registry is going digital. Here's what it means for property transactions in 2025.",
-    author: "LandVerify Team",
+    author: "Geo Properties Team",
     date: "April 22, 2025",
     readTime: "4 min read",
   },
@@ -53,7 +53,7 @@ const posts = [
     title: "The Complete Due Diligence Checklist Before Buying Land",
     excerpt:
       "Everything from search certificates to survey maps — download our checklist and never miss a step.",
-    author: "LandVerify Team",
+    author: "Geo Properties Team",
     date: "April 5, 2025",
     readTime: "7 min read",
   },
@@ -63,7 +63,7 @@ const posts = [
     title: "Stamp Duty on Land in Kenya: What You'll Pay and When",
     excerpt:
       "Rates, exemptions, and the exact process for paying stamp duty through the eCitizen portal.",
-    author: "LandVerify Team",
+    author: "Geo Properties Team",
     date: "March 18, 2025",
     readTime: "5 min read",
   },
@@ -79,7 +79,7 @@ function BlogPage() {
         <div className="mx-auto max-w-4xl px-4 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
             <BookOpen className="h-3.5 w-3.5" />
-            LandVerify Blog
+            Geo Properties Blog
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">
             Land buying, demystified
