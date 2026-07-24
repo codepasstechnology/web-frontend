@@ -15,7 +15,7 @@ import {
 import { useAuth, type UserRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/register")({
-  head: () => ({ meta: [{ title: "Create Account — LandConnect Kenya" }] }),
+  head: () => ({ meta: [{ title: "Create Account — Geo Properties Kenya" }] }),
   component: RegisterPage,
 });
 
@@ -132,7 +132,7 @@ function RegisterPage() {
             <MapPinned className="h-5 w-5 text-white" />
           </div>
           <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            LandConnect
+            Geo Properties
           </span>
         </Link>
       </div>
@@ -159,7 +159,7 @@ function RegisterPage() {
               </div>
               <h2 className="mt-5 text-2xl font-bold text-white">You're all set!</h2>
               <p className="mt-2 text-sm text-white/70">
-                Welcome to LandConnect,{" "}
+                Welcome to Geo Properties,{" "}
                 <span className="font-semibold text-white">{form.fullName.split(" ")[0]}</span>!
               </p>
               <p className="mt-1 text-sm text-white/50">
@@ -348,7 +348,7 @@ function RegisterPage() {
                     className="mt-0.5 h-3.5 w-3.5 rounded accent-[#2563EB]"
                   />
                   <span>
-                    I agree to LandConnect's{" "}
+                    I agree to Geo Properties'{" "}
                     <span className="font-bold text-blue-300 hover:underline">
                       Terms of Service
                     </span>{" "}

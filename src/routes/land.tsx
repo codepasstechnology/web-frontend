@@ -13,7 +13,7 @@ export const Route = createFileRoute("/land")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Land Parcels Map — LandVerify Kenya" },
+      { title: "Land Parcels Map — Geo Properties Kenya" },
       {
         name: "description",
         content: "Interactive GIS map of plotted, verified land parcels across Kenya.",

@@ -81,13 +81,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LandVerify Kenya — Verified Land & Property Intelligence" },
+      { title: "Geo Properties Kenya — Verified Land & Property Intelligence" },
       {
         name: "description",
         content:
           "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
       },
-      { property: "og:title", content: "LandVerify Kenya — Verified Land & Property Intelligence" },
+      {
+        property: "og:title",
+        content: "Geo Properties Kenya — Verified Land & Property Intelligence",
+      },
       {
         property: "og:description",
         content:
