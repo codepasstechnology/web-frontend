@@ -14,6 +14,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { VerifyAccountModal } from "@/components/VerifyAccountModal";
 
 export type DashTab =
   "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
@@ -232,6 +233,8 @@ export function DashboardShell({ active, onChange, children }: Props) {
           );
         })}
       </nav>
+
+      {user && !user.emailVerified && <VerifyAccountModal />}
     </div>
   );
 }
