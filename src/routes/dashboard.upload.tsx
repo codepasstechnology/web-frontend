@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type { DrawEvents } from "leaflet";
 import {
@@ -21,6 +20,7 @@ import { kenyaCounties, usePlans } from "@/lib/plans";
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({ meta: [{ title: "Upload Land — Geo Properties Kenya" }] }),
   component: UploadPage,
+  ssr: false,
 });
 
 const pinIcon = L.divIcon({
@@ -601,17 +601,30 @@ function PolygonDrawTrigger({
   onTracingChange: (tracing: boolean) => void;
 }) {
   const map = useMap();
+  const [ready, setReady] = useState(false);
+
+  // leaflet-draw touches `window` at import time, so it must never load during SSR.
+  useEffect(() => {
+    let cancelled = false;
+    import("leaflet-draw").then(() => {
+      if (!cancelled) setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    if (trigger === 0) return;
+    if (!ready || trigger === 0) return;
     new L.Draw.Polygon(map as L.DrawMap, {
       allowIntersection: false,
       showArea: true,
       shapeOptions: { color: "#2563EB", weight: 2 },
     }).enable();
-  }, [trigger, map]);
+  }, [ready, trigger, map]);
 
   useEffect(() => {
+    if (!ready) return;
     const onDrawStart = () => onTracingChange(true);
     const onDrawStop = () => onTracingChange(false);
     const onCreatedEvt = (e: L.LeafletEvent) => {
@@ -628,7 +641,7 @@ function PolygonDrawTrigger({
       map.off(L.Draw.Event.DRAWSTOP, onDrawStop);
       map.off(L.Draw.Event.CREATED, onCreatedEvt);
     };
-  }, [map, onCreated, onTracingChange]);
+  }, [ready, map, onCreated, onTracingChange]);
 
   return null;
 }
