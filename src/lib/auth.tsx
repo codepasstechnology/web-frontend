@@ -170,6 +170,8 @@ export interface NewListingInput {
   description?: string;
   latitude?: number;
   longitude?: number;
+  boundary?: { lat: number; lng: number }[];
+  boundarySource?: "traced" | "approximate";
   listingType?: "sale" | "lease";
   landType?: "residential" | "commercial" | "agricultural" | "mixed_use" | "industrial";
   titleDeedFile?: File;
@@ -312,6 +314,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (l.description) fd.append("description", l.description);
       if (l.latitude != null) fd.append("latitude", String(l.latitude));
       if (l.longitude != null) fd.append("longitude", String(l.longitude));
+      l.boundary?.forEach((p, i) => {
+        fd.append(`boundary[${i}][lat]`, String(p.lat));
+        fd.append(`boundary[${i}][lng]`, String(p.lng));
+      });
+      if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
       if (l.titleDeedFile) fd.append("title_deed", l.titleDeedFile);
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
@@ -326,6 +333,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: l.description || undefined,
         latitude: l.latitude ?? undefined,
         longitude: l.longitude ?? undefined,
+        boundary: l.boundary ?? undefined,
+        boundary_source: l.boundarySource ?? undefined,
         listing_type: l.listingType ?? "sale",
         land_type: l.landType ?? "residential",
       };

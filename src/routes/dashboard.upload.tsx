@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, FeatureGroup, useMapEvents } from "react-leaflet";
+import { EditControl } from "react-leaflet-draw";
 import L from "leaflet";
+import "leaflet-draw/dist/leaflet.draw.css";
+import type { DrawEvents } from "leaflet";
 import {
   MapSearchBar,
   FlyToLocation,
@@ -40,7 +43,7 @@ function UploadPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isSatellite, setIsSatellite] = useState(false);
+  const [isSatellite, setIsSatellite] = useState(true);
 
   const [form, setForm] = useState({
     title: "",
@@ -53,6 +56,7 @@ function UploadPage() {
     listingType: "sale" as "sale" | "lease",
     landType: "residential" as NewListingInput["landType"],
     pin: null as [number, number] | null,
+    boundary: null as { lat: number; lng: number }[] | null,
     photos: [] as { name: string; url: string; file: File }[],
     deedFile: null as File | null,
   });
@@ -85,7 +89,7 @@ function UploadPage() {
     step === 0
       ? !!(form.title && form.parcelNumber && form.county && form.size && form.price)
       : step === 1
-        ? !!form.pin
+        ? !!form.pin || !!form.boundary
         : true;
 
   const submit = async () => {
@@ -106,6 +110,8 @@ function UploadPage() {
         description: form.description || undefined,
         latitude: form.pin?.[0],
         longitude: form.pin?.[1],
+        boundary: form.boundary ?? undefined,
+        boundarySource: form.boundary ? "traced" : form.pin ? "approximate" : undefined,
         listingType: form.listingType,
         landType: form.landType,
         titleDeedFile: form.deedFile ?? undefined,
@@ -184,6 +190,7 @@ function UploadPage() {
                     listingType: "sale",
                     landType: "residential",
                     pin: null,
+                    boundary: null,
                     photos: [],
                     deedFile: null,
                   });
@@ -286,7 +293,8 @@ function UploadPage() {
             {step === 1 && (
               <div>
                 <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" /> Click on the map to mark your land location.
+                  <MapPin className="h-3.5 w-3.5" /> Trace your land's boundary on the satellite
+                  map, or drop a pin if you're not sure of the exact shape.
                 </p>
                 <div className="relative h-80 rounded-md border border-border">
                   <div className="h-full overflow-hidden rounded-md">
@@ -302,6 +310,33 @@ function UploadPage() {
                           isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"
                         }
                       />
+                      <FeatureGroup>
+                        <EditControl
+                          position="topright"
+                          draw={{
+                            polygon: { allowIntersection: false, showArea: true },
+                            polyline: false,
+                            rectangle: false,
+                            circle: false,
+                            marker: false,
+                            circlemarker: false,
+                          }}
+                          onCreated={(e: DrawEvents.Created) => {
+                            if (!(e.layer instanceof L.Polygon)) return;
+                            const [ring] = e.layer.getLatLngs() as L.LatLng[][];
+                            const boundary = ring.map((p) => ({ lat: p.lat, lng: p.lng }));
+                            set("boundary", boundary);
+                            const centroid = boundary.reduce<[number, number]>(
+                              (acc, p) => [
+                                acc[0] + p.lat / boundary.length,
+                                acc[1] + p.lng / boundary.length,
+                              ],
+                              [0, 0],
+                            );
+                            set("pin", centroid);
+                          }}
+                        />
+                      </FeatureGroup>
                       <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} />
                       {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}
                     </MapContainer>
@@ -312,7 +347,12 @@ function UploadPage() {
                     onToggle={() => setIsSatellite((s) => !s)}
                   />
                 </div>
-                {form.pin && (
+                {form.boundary && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Traced boundary: {form.boundary.length} points
+                  </p>
+                )}
+                {!form.boundary && form.pin && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Pin: {form.pin[0].toFixed(5)}, {form.pin[1].toFixed(5)}
                   </p>
@@ -415,9 +455,13 @@ function UploadPage() {
                   }
                 />
                 <Summary
-                  label="Pin"
+                  label="Location"
                   value={
-                    form.pin ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}` : "Not set"
+                    form.boundary
+                      ? `Traced (${form.boundary.length} points)`
+                      : form.pin
+                        ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
+                        : "Not set"
                   }
                 />
                 <Summary label="Photos" value={`${form.photos.length} attached`} />

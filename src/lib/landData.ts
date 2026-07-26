@@ -24,7 +24,9 @@ export interface LandParcel {
     utilities: string[];
     developmentScore: number;
   };
-  polygon: [number, number][];
+  polygon?: [number, number][];
+  latitude?: number;
+  longitude?: number;
 }
 
 const parcel = (

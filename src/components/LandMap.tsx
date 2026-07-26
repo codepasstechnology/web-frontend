@@ -64,14 +64,25 @@ function MapController({
   const map = useMap();
   useEffect(() => {
     if (mode !== "land" || parcels.length === 0) return;
-    const all = parcels.flatMap((p) => p.polygon);
+    const all = parcels.flatMap(
+      (p) =>
+        p.polygon ??
+        (p.latitude != null && p.longitude != null
+          ? [[p.latitude, p.longitude] as [number, number]]
+          : []),
+    );
     if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, mode]);
   useEffect(() => {
     if (!selectedId) return;
     const p = parcels.find((x) => x.id === selectedId);
-    if (p) map.fitBounds(p.polygon as L.LatLngBoundsLiteral, { padding: [80, 80], maxZoom: 17 });
+    if (!p) return;
+    if (p.polygon) {
+      map.fitBounds(p.polygon as L.LatLngBoundsLiteral, { padding: [80, 80], maxZoom: 17 });
+    } else if (p.latitude != null && p.longitude != null) {
+      map.flyTo([p.latitude, p.longitude], 17, { duration: 1 });
+    }
   }, [map, selectedId, parcels]);
   return null;
 }
@@ -117,6 +128,7 @@ export function LandMap({
 
         {mode === "land" &&
           parcelList.map((p) => {
+            if (!p.polygon) return null;
             const meta = statusMeta[p.status];
             const isSelected = selectedId === p.id;
             return (
@@ -145,16 +157,24 @@ export function LandMap({
           })}
 
         {mode === "land" &&
-          parcelList.map((p) => (
-            <Marker
-              key={`label-${p.id}`}
-              position={centroid(p.polygon)}
-              icon={labelIcon(p.parcelNumber, p.size)}
-              interactive
-              keyboard={false}
-              eventHandlers={{ click: () => onSelectParcel?.(p) }}
-            />
-          ))}
+          parcelList.map((p) => {
+            const position = p.polygon
+              ? centroid(p.polygon)
+              : p.latitude != null && p.longitude != null
+                ? ([p.latitude, p.longitude] as [number, number])
+                : null;
+            if (!position) return null;
+            return (
+              <Marker
+                key={`label-${p.id}`}
+                position={position}
+                icon={p.polygon ? labelIcon(p.parcelNumber, p.size) : icon}
+                interactive
+                keyboard={false}
+                eventHandlers={{ click: () => onSelectParcel?.(p) }}
+              />
+            );
+          })}
 
         {mode === "rentals" &&
           rentalList.map((r) => (

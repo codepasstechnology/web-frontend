@@ -41,24 +41,11 @@ interface ApiParcel {
   status: string;
   latitude: number;
   longitude: number;
+  boundary: { lat: number; lng: number }[] | null;
+  boundary_source: string | null;
   seller_name: string;
   seller_phone: string;
   seller_agency: string;
-}
-
-// Generate a 4-point polygon around a lat/lng point, same formula as landData.ts
-function makePolygon(lat: number, lng: number): [number, number][] {
-  const dLat = 0.0035,
-    dLng = 0.0045,
-    skew = 0.18;
-  const sx = dLng * skew,
-    sy = dLat * skew;
-  return [
-    [lat - dLat + sy * 0.4, lng - dLng - sx * 0.2],
-    [lat - dLat - sy * 0.6, lng + dLng + sx * 0.3],
-    [lat + dLat - sy * 0.2, lng + dLng - sx * 0.5],
-    [lat + dLat + sy * 0.5, lng - dLng + sx * 0.4],
-  ];
 }
 
 function mapApiParcel(p: ApiParcel): LandParcel {
@@ -88,7 +75,12 @@ function mapApiParcel(p: ApiParcel): LandParcel {
       utilities: [],
       developmentScore: 0,
     },
-    polygon: makePolygon(p.latitude, p.longitude),
+    polygon:
+      p.boundary && p.boundary.length >= 3
+        ? p.boundary.map((v): [number, number] => [v.lat, v.lng])
+        : undefined,
+    latitude: p.latitude,
+    longitude: p.longitude,
   };
 }
 
