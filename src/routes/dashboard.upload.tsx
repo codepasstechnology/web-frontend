@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-draw/dist/leaflet.draw.css";
@@ -45,6 +45,7 @@ function UploadPage() {
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isSatellite, setIsSatellite] = useState(true);
   const [drawTrigger, setDrawTrigger] = useState(0);
+  const [cancelTrigger, setCancelTrigger] = useState(0);
   const [tracing, setTracing] = useState(false);
 
   const [form, setForm] = useState({
@@ -324,6 +325,7 @@ function UploadPage() {
                       />
                       <PolygonDrawTrigger
                         trigger={drawTrigger}
+                        cancelTrigger={cancelTrigger}
                         onCreated={handleBoundaryCreated}
                         onTracingChange={(t) => {
                           setTracing(t);
@@ -345,18 +347,41 @@ function UploadPage() {
                     satellite={isSatellite}
                     onToggle={() => setIsSatellite((s) => !s)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setDrawTrigger((n) => n + 1)}
-                    disabled={tracing}
-                    className="absolute bottom-2.5 right-2.5 z-[800] rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted disabled:opacity-60"
-                  >
-                    {tracing
-                      ? "Click points on the map…"
-                      : form.boundary
-                        ? "Retrace boundary"
-                        : "Trace boundary"}
-                  </button>
+                  <div className="absolute bottom-2.5 right-2.5 z-[800] flex items-center gap-1.5">
+                    {tracing ? (
+                      <>
+                        <span className="rounded-md bg-background/95 px-2 py-1.5 text-xs text-muted-foreground shadow-sm">
+                          Click points on the map…
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCancelTrigger((n) => n + 1)}
+                          className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {form.boundary && (
+                          <button
+                            type="button"
+                            onClick={() => set("boundary", null)}
+                            className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-destructive shadow-sm hover:bg-muted"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDrawTrigger((n) => n + 1)}
+                          className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
+                        >
+                          {form.boundary ? "Retrace boundary" : "Trace boundary"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 {form.boundary && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -602,15 +627,18 @@ function PinDropper({
 
 function PolygonDrawTrigger({
   trigger,
+  cancelTrigger,
   onCreated,
   onTracingChange,
 }: {
   trigger: number;
+  cancelTrigger: number;
   onCreated: (boundary: { lat: number; lng: number }[]) => void;
   onTracingChange: (tracing: boolean) => void;
 }) {
   const map = useMap();
   const [ready, setReady] = useState(false);
+  const handlerRef = useRef<L.Draw.Polygon | null>(null);
 
   // leaflet-draw touches `window` at import time, so it must never load during SSR.
   useEffect(() => {
@@ -625,11 +653,18 @@ function PolygonDrawTrigger({
 
   useEffect(() => {
     if (!ready || trigger === 0) return;
-    new L.Draw.Polygon(map as L.DrawMap, {
+    const handler = new L.Draw.Polygon(map as L.DrawMap, {
       showArea: true,
       shapeOptions: { color: "#2563EB", weight: 2 },
-    }).enable();
+    });
+    handlerRef.current = handler;
+    handler.enable();
   }, [ready, trigger, map]);
+
+  useEffect(() => {
+    if (!ready || cancelTrigger === 0) return;
+    handlerRef.current?.disable();
+  }, [ready, cancelTrigger]);
 
   useEffect(() => {
     if (!ready) return;
