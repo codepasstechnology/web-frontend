@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, FeatureGroup, useMapEvents } from "react-leaflet";
-import { EditControl } from "react-leaflet-draw";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type { DrawEvents } from "leaflet";
 import {
@@ -44,6 +44,8 @@ function UploadPage() {
 
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isSatellite, setIsSatellite] = useState(true);
+  const [drawTrigger, setDrawTrigger] = useState(0);
+  const [tracing, setTracing] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -75,6 +77,15 @@ function UploadPage() {
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const handleBoundaryCreated = (boundary: { lat: number; lng: number }[]) => {
+    set("boundary", boundary);
+    const centroid = boundary.reduce<[number, number]>(
+      (acc, p) => [acc[0] + p.lat / boundary.length, acc[1] + p.lng / boundary.length],
+      [0, 0],
+    );
+    set("pin", centroid);
+  };
 
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
@@ -293,8 +304,9 @@ function UploadPage() {
             {step === 1 && (
               <div>
                 <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" /> Trace your land's boundary on the satellite
-                  map, or drop a pin if you're not sure of the exact shape.
+                  <MapPin className="h-3.5 w-3.5" /> Tap "Trace boundary", then click points around
+                  your land's edge on the satellite map — click the first point again to close the
+                  shape. Not sure of the exact shape? Just drop a pin instead.
                 </p>
                 <div className="relative h-80 rounded-md border border-border">
                   <div className="h-full overflow-hidden rounded-md">
@@ -310,34 +322,12 @@ function UploadPage() {
                           isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"
                         }
                       />
-                      <FeatureGroup>
-                        <EditControl
-                          position="topright"
-                          draw={{
-                            polygon: { allowIntersection: false, showArea: true },
-                            polyline: false,
-                            rectangle: false,
-                            circle: false,
-                            marker: false,
-                            circlemarker: false,
-                          }}
-                          onCreated={(e: DrawEvents.Created) => {
-                            if (!(e.layer instanceof L.Polygon)) return;
-                            const [ring] = e.layer.getLatLngs() as L.LatLng[][];
-                            const boundary = ring.map((p) => ({ lat: p.lat, lng: p.lng }));
-                            set("boundary", boundary);
-                            const centroid = boundary.reduce<[number, number]>(
-                              (acc, p) => [
-                                acc[0] + p.lat / boundary.length,
-                                acc[1] + p.lng / boundary.length,
-                              ],
-                              [0, 0],
-                            );
-                            set("pin", centroid);
-                          }}
-                        />
-                      </FeatureGroup>
-                      <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} />
+                      <PolygonDrawTrigger
+                        trigger={drawTrigger}
+                        onCreated={handleBoundaryCreated}
+                        onTracingChange={setTracing}
+                      />
+                      <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} disabled={tracing} />
                       {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}
                     </MapContainer>
                   </div>
@@ -346,6 +336,18 @@ function UploadPage() {
                     satellite={isSatellite}
                     onToggle={() => setIsSatellite((s) => !s)}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setDrawTrigger((n) => n + 1)}
+                    disabled={tracing}
+                    className="absolute bottom-2.5 right-2.5 z-[800] rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted disabled:opacity-60"
+                  >
+                    {tracing
+                      ? "Click points on the map…"
+                      : form.boundary
+                        ? "Retrace boundary"
+                        : "Trace boundary"}
+                  </button>
                 </div>
                 {form.boundary && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -573,15 +575,60 @@ function Summary({ label, value }: { label: string; value: string }) {
 function PinDropper({
   pin,
   onPin,
+  disabled,
 }: {
   pin: [number, number] | null;
   onPin: (p: [number, number]) => void;
+  disabled?: boolean;
 }) {
   useMapEvents({
     click(e) {
+      if (disabled) return;
       onPin([e.latlng.lat, e.latlng.lng]);
     },
   });
   if (!pin) return null;
   return <Marker position={pin} icon={pinIcon} />;
+}
+
+function PolygonDrawTrigger({
+  trigger,
+  onCreated,
+  onTracingChange,
+}: {
+  trigger: number;
+  onCreated: (boundary: { lat: number; lng: number }[]) => void;
+  onTracingChange: (tracing: boolean) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (trigger === 0) return;
+    new L.Draw.Polygon(map as L.DrawMap, {
+      allowIntersection: false,
+      showArea: true,
+      shapeOptions: { color: "#2563EB", weight: 2 },
+    }).enable();
+  }, [trigger, map]);
+
+  useEffect(() => {
+    const onDrawStart = () => onTracingChange(true);
+    const onDrawStop = () => onTracingChange(false);
+    const onCreatedEvt = (e: L.LeafletEvent) => {
+      const de = e as unknown as DrawEvents.Created;
+      if (de.layerType !== "polygon" || !(de.layer instanceof L.Polygon)) return;
+      const [ring] = de.layer.getLatLngs() as L.LatLng[][];
+      onCreated(ring.map((p) => ({ lat: p.lat, lng: p.lng })));
+    };
+    map.on(L.Draw.Event.DRAWSTART, onDrawStart);
+    map.on(L.Draw.Event.DRAWSTOP, onDrawStop);
+    map.on(L.Draw.Event.CREATED, onCreatedEvt);
+    return () => {
+      map.off(L.Draw.Event.DRAWSTART, onDrawStart);
+      map.off(L.Draw.Event.DRAWSTOP, onDrawStop);
+      map.off(L.Draw.Event.CREATED, onCreatedEvt);
+    };
+  }, [map, onCreated, onTracingChange]);
+
+  return null;
 }
