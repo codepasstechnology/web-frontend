@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polygon, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type { DrawEvents } from "leaflet";
@@ -325,8 +325,17 @@ function UploadPage() {
                       <PolygonDrawTrigger
                         trigger={drawTrigger}
                         onCreated={handleBoundaryCreated}
-                        onTracingChange={setTracing}
+                        onTracingChange={(t) => {
+                          setTracing(t);
+                          if (t) set("boundary", null);
+                        }}
                       />
+                      {form.boundary && (
+                        <Polygon
+                          positions={form.boundary.map((p): [number, number] => [p.lat, p.lng])}
+                          pathOptions={{ color: "#2563EB", weight: 2, fillOpacity: 0.15 }}
+                        />
+                      )}
                       <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} disabled={tracing} />
                       {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}
                     </MapContainer>
