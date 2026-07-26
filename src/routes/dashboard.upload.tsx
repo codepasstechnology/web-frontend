@@ -617,7 +617,6 @@ function PolygonDrawTrigger({
   useEffect(() => {
     if (!ready || trigger === 0) return;
     new L.Draw.Polygon(map as L.DrawMap, {
-      allowIntersection: false,
       showArea: true,
       shapeOptions: { color: "#2563EB", weight: 2 },
     }).enable();
