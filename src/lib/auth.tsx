@@ -166,6 +166,7 @@ export interface NewListingInput {
   county: string;
   area?: string;
   size?: string;
+  areaAcres?: number;
   price: number;
   description?: string;
   latitude?: number;
@@ -174,6 +175,7 @@ export interface NewListingInput {
   boundarySource?: "traced" | "approximate";
   listingType?: "sale" | "lease";
   landType?: "residential" | "commercial" | "agricultural" | "mixed_use" | "industrial";
+  utilities?: string[];
   titleDeedFile?: File;
   photoFiles?: File[];
 }
@@ -311,6 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (l.parcelNumber) fd.append("parcel_number", l.parcelNumber);
       if (l.area) fd.append("area", l.area);
       if (l.size) fd.append("size", l.size);
+      if (l.areaAcres != null) fd.append("area_acres", String(l.areaAcres));
       if (l.description) fd.append("description", l.description);
       if (l.latitude != null) fd.append("latitude", String(l.latitude));
       if (l.longitude != null) fd.append("longitude", String(l.longitude));
@@ -319,6 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fd.append(`boundary[${i}][lng]`, String(p.lng));
       });
       if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
+      l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
       if (l.titleDeedFile) fd.append("title_deed", l.titleDeedFile);
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
@@ -329,6 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         county: l.county,
         area: l.area || undefined,
         size: l.size || undefined,
+        area_acres: l.areaAcres ?? undefined,
         price: l.price,
         description: l.description || undefined,
         latitude: l.latitude ?? undefined,
@@ -337,6 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         boundary_source: l.boundarySource ?? undefined,
         listing_type: l.listingType ?? "sale",
         land_type: l.landType ?? "residential",
+        utilities: l.utilities ?? undefined,
       };
     }
     const created = await api.post<ApiListing>("/user/listings", body);

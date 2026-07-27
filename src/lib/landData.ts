@@ -27,6 +27,7 @@ export interface LandParcel {
   polygon?: [number, number][];
   latitude?: number;
   longitude?: number;
+  photos?: string[];
 }
 
 const parcel = (

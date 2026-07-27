@@ -18,7 +18,7 @@ export function MapSatelliteToggle({
       title={satellite ? "Switch to street map" : "Switch to satellite view"}
       style={{
         position: "absolute",
-        bottom: 10,
+        top: 90,
         left: 10,
         zIndex: 800,
         height: 30,
@@ -68,7 +68,13 @@ export function FlyToLocation({ lat, lng }: { lat: number | null; lng: number | 
 
 // Search bar + near-me button rendered as a normal React div (outside MapContainer)
 // Place it inside a `position: relative` wrapper alongside the MapContainer.
-export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => void }) {
+export function MapSearchBar({
+  onFly,
+  onNearMe,
+}: {
+  onFly: (lat: number, lng: number) => void;
+  onNearMe?: (lat: number, lng: number) => void;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
@@ -107,7 +113,10 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
   const handleNearMe = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => onFly(coords.latitude, coords.longitude),
+      ({ coords }) => {
+        onFly(coords.latitude, coords.longitude);
+        onNearMe?.(coords.latitude, coords.longitude);
+      },
       () => {},
     );
   };
@@ -217,7 +226,7 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
         </div>
         <button
           onClick={handleNearMe}
-          title="My location"
+          title={onNearMe ? "Drop pin at my location" : "My location"}
           style={{
             height: 34,
             width: 34,

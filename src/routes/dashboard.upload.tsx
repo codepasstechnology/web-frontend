@@ -1,19 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Polygon, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet-draw/dist/leaflet.draw.css";
-import type { DrawEvents } from "leaflet";
-import {
-  MapSearchBar,
-  FlyToLocation,
-  MapSatelliteToggle,
-  OSM_TILES,
-  SATELLITE_TILES,
-} from "@/components/MapSearchBar";
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, MapPin, UploadCloud, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Lock, UploadCloud, X } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 
@@ -23,43 +13,151 @@ export const Route = createFileRoute("/dashboard/upload")({
   ssr: false,
 });
 
-const pinIcon = L.divIcon({
-  className: "lv-marker",
-  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#2563EB;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
-
 const steps = ["Basic Details", "Location on Map", "Photos & Documents", "Review & Submit"];
+
+type SizeUnit = "acres" | "hectares" | "feet";
+
+const DRAFT_KEY = "lv_upload_draft_v1";
+
+interface UploadDraft {
+  step: number;
+  title: string;
+  parcelNumber: string;
+  county: string;
+  area: string;
+  sizeUnit: SizeUnit;
+  sizeAcres: string;
+  sizeHectares: string;
+  sizeWidthFt: string;
+  sizeLengthFt: string;
+  price: string;
+  description: string;
+  listingType: "sale" | "lease";
+  landType: NewListingInput["landType"];
+  utilities: string[];
+  pin: [number, number] | null;
+  boundary: { lat: number; lng: number }[] | null;
+}
+
+function loadDraft(): UploadDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as UploadDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft(): void {
+  if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
+}
+
+function sizeToAcres(
+  unit: SizeUnit,
+  acres: string,
+  hectares: string,
+  widthFt: string,
+  lengthFt: string,
+): number | null {
+  if (unit === "acres") {
+    const v = Number(acres);
+    return acres && v > 0 ? v : null;
+  }
+  if (unit === "hectares") {
+    const v = Number(hectares);
+    return hectares && v > 0 ? v * 2.4710538 : null;
+  }
+  const w = Number(widthFt);
+  const l = Number(lengthFt);
+  return widthFt && lengthFt && w > 0 && l > 0 ? (w * l) / 43560 : null;
+}
+
+function sizeToDisplay(
+  unit: SizeUnit,
+  acres: string,
+  hectares: string,
+  widthFt: string,
+  lengthFt: string,
+): string {
+  if (unit === "acres") return acres ? `${acres} ${Number(acres) === 1 ? "acre" : "acres"}` : "";
+  if (unit === "hectares") return hectares ? `${hectares} ha` : "";
+  return widthFt && lengthFt ? `${widthFt} x ${lengthFt} ft` : "";
+}
+
+type LatLng = { lat: number; lng: number };
+
+function segmentsIntersect(p1: LatLng, p2: LatLng, p3: LatLng, p4: LatLng): boolean {
+  const d = (a: LatLng, b: LatLng, c: LatLng) =>
+    (c.lng - a.lng) * (b.lat - a.lat) - (b.lng - a.lng) * (c.lat - a.lat);
+  const d1 = d(p3, p4, p1);
+  const d2 = d(p3, p4, p2);
+  const d3 = d(p1, p2, p3);
+  const d4 = d(p1, p2, p4);
+  return (d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)
+    ? (d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)
+    : false;
+}
+
+function hasSelfIntersection(points: LatLng[]): boolean {
+  const n = points.length;
+  if (n < 4) return false;
+  for (let i = 0; i < n; i++) {
+    const a1 = points[i];
+    const a2 = points[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      if (j === i || (j + 1) % n === i || (i + 1) % n === j) continue;
+      if (segmentsIntersect(a1, a2, points[j], points[(j + 1) % n])) return true;
+    }
+  }
+  return false;
+}
+
+function polygonAreaAcres(points: { lat: number; lng: number }[]): number {
+  const R = 6378137;
+  const lat0 = (points.reduce((s, p) => s + p.lat, 0) / points.length) * (Math.PI / 180);
+  const xy = points.map((p): [number, number] => [
+    R * (p.lng * (Math.PI / 180)) * Math.cos(lat0),
+    R * (p.lat * (Math.PI / 180)),
+  ]);
+  let area = 0;
+  for (let i = 0; i < xy.length; i++) {
+    const [x1, y1] = xy[i];
+    const [x2, y2] = xy[(i + 1) % xy.length];
+    area += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area) / 2 / 4046.8564224;
+}
 
 function UploadPage() {
   const { user, ready, addListing } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
+  const draft = useRef(loadDraft()).current;
+  const [step, setStep] = useState(draft?.step ?? 0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-
-  const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isSatellite, setIsSatellite] = useState(true);
-  const [drawTrigger, setDrawTrigger] = useState(0);
-  const [cancelTrigger, setCancelTrigger] = useState(0);
-  const [tracing, setTracing] = useState(false);
+  const [showDraftNotice, setShowDraftNotice] = useState(!!draft);
 
   const [form, setForm] = useState({
-    title: "",
-    parcelNumber: "",
-    county: "",
-    area: "",
-    size: "",
-    price: "",
-    description: "",
-    listingType: "sale" as "sale" | "lease",
-    landType: "residential" as NewListingInput["landType"],
-    pin: null as [number, number] | null,
-    boundary: null as { lat: number; lng: number }[] | null,
+    title: draft?.title ?? "",
+    parcelNumber: draft?.parcelNumber ?? "",
+    county: draft?.county ?? "",
+    area: draft?.area ?? "",
+    sizeUnit: draft?.sizeUnit ?? ("acres" as SizeUnit),
+    sizeAcres: draft?.sizeAcres ?? "",
+    sizeHectares: draft?.sizeHectares ?? "",
+    sizeWidthFt: draft?.sizeWidthFt ?? "",
+    sizeLengthFt: draft?.sizeLengthFt ?? "",
+    price: draft?.price ?? "",
+    description: draft?.description ?? "",
+    listingType: draft?.listingType ?? ("sale" as "sale" | "lease"),
+    landType: draft?.landType ?? ("residential" as NewListingInput["landType"]),
+    utilities: draft?.utilities ?? ([] as string[]),
+    pin: draft?.pin ?? (null as [number, number] | null),
+    boundary: draft?.boundary ?? (null as { lat: number; lng: number }[] | null),
     photos: [] as { name: string; url: string; file: File }[],
     deedFile: null as File | null,
   });
@@ -68,6 +166,15 @@ function UploadPage() {
     if (ready && !user) navigate({ to: "/login" });
     else if (ready && user?.role === "account_manager") navigate({ to: "/manager" });
   }, [ready, user, navigate]);
+
+  // Autosave the wizard so an accidental refresh or nav-away doesn't lose
+  // progress. Photo/deed files aren't serializable, so they're excluded —
+  // the seller re-attaches those if a draft is restored.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const { photos: _photos, deedFile: _deedFile, ...draftFields } = form;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, ...draftFields }));
+  }, [step, form]);
 
   if (!user || user.role === "account_manager") return null;
   const plan = plans.find((p) => p.id === user.plan);
@@ -79,15 +186,6 @@ function UploadPage() {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const handleBoundaryCreated = (boundary: { lat: number; lng: number }[]) => {
-    set("boundary", boundary);
-    const centroid = boundary.reduce<[number, number]>(
-      (acc, p) => [acc[0] + p.lat / boundary.length, acc[1] + p.lng / boundary.length],
-      [0, 0],
-    );
-    set("pin", centroid);
-  };
-
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files);
@@ -97,11 +195,28 @@ function UploadPage() {
     set("photos", [...form.photos, ...mapped]);
   };
 
+  const sizeAcres = sizeToAcres(
+    form.sizeUnit,
+    form.sizeAcres,
+    form.sizeHectares,
+    form.sizeWidthFt,
+    form.sizeLengthFt,
+  );
+  const sizeDisplay = sizeToDisplay(
+    form.sizeUnit,
+    form.sizeAcres,
+    form.sizeHectares,
+    form.sizeWidthFt,
+    form.sizeLengthFt,
+  );
+  const tracedAreaAcres = form.boundary ? polygonAreaAcres(form.boundary) : null;
+  const boundarySelfIntersects = form.boundary ? hasSelfIntersection(form.boundary) : false;
+
   const canNext =
     step === 0
-      ? !!(form.title && form.parcelNumber && form.county && form.size && form.price)
+      ? !!(form.title && form.parcelNumber && form.county && sizeAcres != null && form.price)
       : step === 1
-        ? !!form.pin || !!form.boundary
+        ? (!!form.pin || !!form.boundary) && !boundarySelfIntersects
         : true;
 
   const submit = async () => {
@@ -117,7 +232,8 @@ function UploadPage() {
         parcelNumber: form.parcelNumber,
         county: form.county,
         area: form.area || undefined,
-        size: form.size || undefined,
+        size: sizeDisplay || undefined,
+        areaAcres: sizeAcres ?? undefined,
         price: Number(form.price) || 0,
         description: form.description || undefined,
         latitude: form.pin?.[0],
@@ -126,9 +242,11 @@ function UploadPage() {
         boundarySource: form.boundary ? "traced" : form.pin ? "approximate" : undefined,
         listingType: form.listingType,
         landType: form.landType,
+        utilities: form.utilities.length ? form.utilities : undefined,
         titleDeedFile: form.deedFile ?? undefined,
         photoFiles: form.photos.map((p) => p.file),
       });
+      clearDraft();
       setSubmitted(true);
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -140,7 +258,7 @@ function UploadPage() {
 
   return (
     <DashboardShell active="upload" onChange={() => {}}>
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl">
         <button
           onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })}
           className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -173,6 +291,18 @@ function UploadPage() {
           ))}
         </div>
 
+        {showDraftNotice && !submitted && (
+          <div className="mt-4 flex items-center justify-between rounded-md border border-[#2563EB]/30 bg-[#2563EB]/5 px-3 py-2 text-xs text-foreground">
+            <span>Restored your unsaved draft from earlier.</span>
+            <button
+              onClick={() => setShowDraftNotice(false)}
+              className="font-medium text-[#2563EB] hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {submitted ? (
           <div className="mt-8 rounded-lg border border-border bg-card p-8 text-center shadow-sm">
             <CheckCircle2 className="mx-auto h-10 w-10 text-[#16A34A]" />
@@ -196,11 +326,16 @@ function UploadPage() {
                     parcelNumber: "",
                     county: "",
                     area: "",
-                    size: "",
+                    sizeUnit: "acres",
+                    sizeAcres: "",
+                    sizeHectares: "",
+                    sizeWidthFt: "",
+                    sizeLengthFt: "",
                     price: "",
                     description: "",
                     listingType: "sale",
                     landType: "residential",
+                    utilities: [],
                     pin: null,
                     boundary: null,
                     photos: [],
@@ -252,13 +387,77 @@ function UploadPage() {
                     onChange={(e) => set("area", e.target.value)}
                   />
                 </Field>
-                <Field label="Land size">
-                  <input
-                    className="lv-input"
-                    placeholder="50x100, 1 acre"
-                    value={form.size}
-                    onChange={(e) => set("size", e.target.value)}
-                  />
+                <Field label="Land size" full>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="w-40">
+                      <select
+                        className="lv-input"
+                        value={form.sizeUnit}
+                        onChange={(e) => set("sizeUnit", e.target.value as SizeUnit)}
+                      >
+                        <option value="acres">Acres</option>
+                        <option value="hectares">Hectares</option>
+                        <option value="feet">Feet (W x L)</option>
+                      </select>
+                    </div>
+                    {form.sizeUnit === "acres" && (
+                      <div className="w-28">
+                        <input
+                          className="lv-input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="e.g. 1.5"
+                          value={form.sizeAcres}
+                          onChange={(e) => set("sizeAcres", e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {form.sizeUnit === "hectares" && (
+                      <div className="w-28">
+                        <input
+                          className="lv-input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="e.g. 0.5"
+                          value={form.sizeHectares}
+                          onChange={(e) => set("sizeHectares", e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {form.sizeUnit === "feet" && (
+                      <>
+                        <div className="w-24">
+                          <input
+                            className="lv-input"
+                            type="number"
+                            min="0"
+                            placeholder="Width"
+                            value={form.sizeWidthFt}
+                            onChange={(e) => set("sizeWidthFt", e.target.value)}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground">x</span>
+                        <div className="w-24">
+                          <input
+                            className="lv-input"
+                            type="number"
+                            min="0"
+                            placeholder="Length"
+                            value={form.sizeLengthFt}
+                            onChange={(e) => set("sizeLengthFt", e.target.value)}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground">ft</span>
+                      </>
+                    )}
+                  </div>
+                  {sizeAcres != null && form.sizeUnit !== "acres" && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      ≈ {sizeAcres.toFixed(2)} acres
+                    </p>
+                  )}
                 </Field>
                 <Field label="Asking price (Ksh)">
                   <input
@@ -291,6 +490,38 @@ function UploadPage() {
                     <option value="industrial">Industrial</option>
                   </select>
                 </Field>
+                <Field label="Utilities available" full>
+                  <div className="flex flex-wrap gap-2">
+                    {["Water", "Electricity", "Fibre", "Sewer", "3-Phase"].map((u) => {
+                      const checked = form.utilities.includes(u);
+                      return (
+                        <label
+                          key={u}
+                          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium ${
+                            checked
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-background text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={checked}
+                            onChange={() =>
+                              set(
+                                "utilities",
+                                checked
+                                  ? form.utilities.filter((x) => x !== u)
+                                  : [...form.utilities, u],
+                              )
+                            }
+                          />
+                          {u}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Field>
                 <Field label="Description" full>
                   <textarea
                     className="lv-input"
@@ -304,88 +535,33 @@ function UploadPage() {
 
             {step === 1 && (
               <div>
-                <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5" /> Tap "Trace boundary", then click points around
-                  your land's edge on the satellite map — click the first point again to close the
-                  shape. Not sure of the exact shape? Just drop a pin instead.
-                </p>
-                <div className="relative h-80 rounded-md border border-border">
-                  <div className="h-full overflow-hidden rounded-md">
-                    <MapContainer
-                      center={[-1.286389, 36.817223]}
-                      zoom={11}
-                      className="h-full w-full"
+                <LandBoundaryMap
+                  pin={form.pin}
+                  boundary={form.boundary}
+                  onPinChange={(p) => set("pin", p)}
+                  onBoundaryChange={(b) => set("boundary", b)}
+                  county={form.county}
+                />
+                {boundarySelfIntersects && (
+                  <p className="mt-2 text-xs font-medium text-destructive">
+                    This boundary crosses itself — tap &quot;Retrace boundary&quot; to redraw it
+                    before continuing.
+                  </p>
+                )}
+                {form.boundary && tracedAreaAcres != null && (
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    Traced boundary: {form.boundary.length} points · ≈ {tracedAreaAcres.toFixed(2)}{" "}
+                    acres
+                    <button
+                      type="button"
+                      onClick={() => {
+                        set("sizeUnit", "acres");
+                        set("sizeAcres", tracedAreaAcres.toFixed(2));
+                      }}
+                      className="font-medium text-[#2563EB] hover:underline"
                     >
-                      <TileLayer
-                        key={isSatellite ? "sat" : "osm"}
-                        url={isSatellite ? SATELLITE_TILES : OSM_TILES}
-                        attribution={
-                          isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"
-                        }
-                      />
-                      <PolygonDrawTrigger
-                        trigger={drawTrigger}
-                        cancelTrigger={cancelTrigger}
-                        onCreated={handleBoundaryCreated}
-                        onTracingChange={(t) => {
-                          setTracing(t);
-                          if (t) set("boundary", null);
-                        }}
-                      />
-                      {form.boundary && (
-                        <Polygon
-                          positions={form.boundary.map((p): [number, number] => [p.lat, p.lng])}
-                          pathOptions={{ color: "#2563EB", weight: 2, fillOpacity: 0.15 }}
-                        />
-                      )}
-                      <PinDropper pin={form.pin} onPin={(p) => set("pin", p)} disabled={tracing} />
-                      {flyCoords && <FlyToLocation lat={flyCoords.lat} lng={flyCoords.lng} />}
-                    </MapContainer>
-                  </div>
-                  <MapSearchBar onFly={(lat, lng) => setFlyCoords({ lat, lng })} />
-                  <MapSatelliteToggle
-                    satellite={isSatellite}
-                    onToggle={() => setIsSatellite((s) => !s)}
-                  />
-                  <div className="absolute bottom-2.5 right-2.5 z-[800] flex items-center gap-1.5">
-                    {tracing ? (
-                      <>
-                        <span className="rounded-md bg-background/95 px-2 py-1.5 text-xs text-muted-foreground shadow-sm">
-                          Click points on the map…
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCancelTrigger((n) => n + 1)}
-                          className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {form.boundary && (
-                          <button
-                            type="button"
-                            onClick={() => set("boundary", null)}
-                            className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-destructive shadow-sm hover:bg-muted"
-                          >
-                            Delete
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setDrawTrigger((n) => n + 1)}
-                          className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
-                        >
-                          {form.boundary ? "Retrace boundary" : "Trace boundary"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {form.boundary && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Traced boundary: {form.boundary.length} points
+                      Use this as land size
+                    </button>
                   </p>
                 )}
                 {!form.boundary && form.pin && (
@@ -469,7 +645,7 @@ function UploadPage() {
                   label="County"
                   value={`${form.county}${form.area ? " · " + form.area : ""}`}
                 />
-                <Summary label="Size" value={form.size || "—"} />
+                <Summary label="Size" value={sizeDisplay || "—"} />
                 <Summary
                   label="Price"
                   value={form.price ? `Ksh ${Number(form.price).toLocaleString()}` : "—"}
@@ -604,87 +780,4 @@ function Summary({ label, value }: { label: string; value: string }) {
       <span className="text-right text-sm font-medium text-foreground">{value || "—"}</span>
     </div>
   );
-}
-
-function PinDropper({
-  pin,
-  onPin,
-  disabled,
-}: {
-  pin: [number, number] | null;
-  onPin: (p: [number, number]) => void;
-  disabled?: boolean;
-}) {
-  useMapEvents({
-    click(e) {
-      if (disabled) return;
-      onPin([e.latlng.lat, e.latlng.lng]);
-    },
-  });
-  if (!pin) return null;
-  return <Marker position={pin} icon={pinIcon} />;
-}
-
-function PolygonDrawTrigger({
-  trigger,
-  cancelTrigger,
-  onCreated,
-  onTracingChange,
-}: {
-  trigger: number;
-  cancelTrigger: number;
-  onCreated: (boundary: { lat: number; lng: number }[]) => void;
-  onTracingChange: (tracing: boolean) => void;
-}) {
-  const map = useMap();
-  const [ready, setReady] = useState(false);
-  const handlerRef = useRef<L.Draw.Polygon | null>(null);
-
-  // leaflet-draw touches `window` at import time, so it must never load during SSR.
-  useEffect(() => {
-    let cancelled = false;
-    import("leaflet-draw").then(() => {
-      if (!cancelled) setReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!ready || trigger === 0) return;
-    const handler = new L.Draw.Polygon(map as L.DrawMap, {
-      showArea: true,
-      shapeOptions: { color: "#2563EB", weight: 2 },
-    });
-    handlerRef.current = handler;
-    handler.enable();
-  }, [ready, trigger, map]);
-
-  useEffect(() => {
-    if (!ready || cancelTrigger === 0) return;
-    handlerRef.current?.disable();
-  }, [ready, cancelTrigger]);
-
-  useEffect(() => {
-    if (!ready) return;
-    const onDrawStart = () => onTracingChange(true);
-    const onDrawStop = () => onTracingChange(false);
-    const onCreatedEvt = (e: L.LeafletEvent) => {
-      const de = e as unknown as DrawEvents.Created;
-      if (de.layerType !== "polygon" || !(de.layer instanceof L.Polygon)) return;
-      const [ring] = de.layer.getLatLngs() as L.LatLng[][];
-      onCreated(ring.map((p) => ({ lat: p.lat, lng: p.lng })));
-    };
-    map.on(L.Draw.Event.DRAWSTART, onDrawStart);
-    map.on(L.Draw.Event.DRAWSTOP, onDrawStop);
-    map.on(L.Draw.Event.CREATED, onCreatedEvt);
-    return () => {
-      map.off(L.Draw.Event.DRAWSTART, onDrawStart);
-      map.off(L.Draw.Event.DRAWSTOP, onDrawStop);
-      map.off(L.Draw.Event.CREATED, onCreatedEvt);
-    };
-  }, [ready, map, onCreated, onTracingChange]);
-
-  return null;
 }
