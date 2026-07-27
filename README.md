@@ -43,12 +43,13 @@ src/
     auth.tsx      # AuthProvider, useAuth(), NewListingInput type
     plans.ts      # Plan definitions and PlanId type
   components/
-    DashboardShell.tsx   # Authenticated layout wrapper
-    LandMap.tsx          # Leaflet map with parcel markers
+    DashboardShell.tsx   # Authenticated layout wrapper — fills viewport width on large screens
+    LandMap.tsx          # Leaflet map with parcel markers (marketplace map)
+    LandBoundaryMap.tsx  # Shared tap-to-trace/retrace boundary map (upload + KYC location correction)
     MapSearchBar.tsx     # County/keyword search overlay on the map
     MapSidebar.tsx       # Parcel list panel alongside the map
     MapLegend.tsx        # Map legend for listing types
-    PropertyPanel.tsx    # Parcel detail slide-in panel
+    PropertyPanel.tsx    # Parcel detail slide-in panel — photos, size, development score
     Navbar.tsx           # Public site navbar
     PlanCard.tsx         # Subscription plan pricing card
     UpgradeModal.tsx     # Plan upgrade prompt
@@ -127,6 +128,28 @@ When `addListing` is called with a file:
 4. `has_title_deed` is set to `true` on the parcel.
 
 Without a file, a plain JSON body is sent and no KYC document is created.
+
+---
+
+## Land Boundary Tracing
+
+`LandBoundaryMap` (`src/components/LandBoundaryMap.tsx`) is a shared map component used in two places: the upload wizard (`dashboard.upload.tsx`, step "Location on Map") and the KYC location-correction card (`dashboard.index.tsx`). It lets a seller either drop a single pin or trace their land's actual shape by clicking points on satellite imagery (Esri World Imagery, no API key needed), using `leaflet-draw` dynamically imported inside a client-only `useEffect` (it isn't SSR-safe, unlike plain `leaflet`).
+
+- **Original boundary stays visible while retracing.** The existing traced shape renders in blue and is never cleared just because "Retrace boundary" was clicked — only once a _new_ shape is actually completed does it replace the old one. The shape currently being drawn (or just finished) renders in orange, so a seller can always see what they're replacing and cancel back to the original without losing it.
+- On the KYC location-correction card, the map is seeded with the parcel's original pin/boundary (`kyc.parcel.latitude/longitude/boundary`) so a seller correcting their location can see exactly where they placed it before, rather than starting from a blank map.
+- **Land size input** (`dashboard.upload.tsx`) accepts acres, hectares, or feet (`50 x 100`-style dimensions) and converts everything to a single `areaAcres` number client-side before submission (`sizeToAcres()`), so the backend always receives a clean, comparable number regardless of how the seller entered it. Once a boundary is traced, "Use this as land size" fills the field from the polygon's computed area (equirectangular projection + shoelace formula, see `polygonAreaAcres()`).
+
+---
+
+## The Marketplace Map (`/land`)
+
+`land.tsx` renders only real parcels fetched from `GET /api/parcels` — there is no hardcoded/demo data mixed in. `mapApiParcel()` maps the API response (including `boundary`, `amenities`, and `photos`) onto the `LandParcel` type used throughout the map/panel components.
+
+- **Status color is driven by the backend, not upload order.** A parcel shows blue (`available`) until an admin approves its KYC application, at which point it becomes green (`verified`) — see [KYC ↔ Listing status sync](../backend/README.md#kyc--listing-status-sync) in the backend README.
+- **Custom pin markers** (`LandMap.tsx`, `pinIconFor()`): a rounded-square badge-with-tail shape, not the teardrop everyone associates with Google Maps, colored by status with a small white glyph (checkmark/exclamation/X/clock/dot) indicating verified/disputed/sold/reserved/available. Positioned on the polygon's own rightmost vertex — a real point on the boundary line, not floating in padded space beside it, and never inside the parcel covering the land itself.
+- **`PropertyPanel.tsx`** (the click-through detail panel) shows:
+  - A photo gallery (`PhotoGallery`) at the top when `parcel.photos` is non-empty — swipeable with a "1 / N" counter, otherwise not rendered at all.
+  - A **Development Score** card (0–100, backend-computed — see the backend README's [Automatic location intelligence](../backend/README.md#automatic-location-intelligence-development-score) section) plus nearest school/hospital/shopping/road under "Location Intelligence". These read `null` as "—" until the backend's automatic lookup completes.
 
 ---
 

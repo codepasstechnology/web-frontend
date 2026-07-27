@@ -1,7 +1,6 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import {
-  Bell,
   Search,
   MapPinned,
   Menu,
@@ -11,8 +10,10 @@ import {
   Info,
   HelpCircle,
   Mail,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const moreLinks = [
   { to: "/blog", label: "Blog", icon: BookOpen, desc: "Guides & industry news" },
@@ -36,7 +37,13 @@ export function Navbar({
   const [moreOpen, setMoreOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate({ to: "/" });
+  };
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -197,24 +204,32 @@ export function Navbar({
               }`}
             />
           </div>
-          <button
-            className={`relative rounded-md p-2 ${transparent ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-          </button>
+          {user && <NotificationBell />}
           {user ? (
-            <Link
-              to="/dashboard"
-              search={{ tab: undefined }}
-              className={`hidden rounded-md px-3 py-1.5 text-xs font-medium sm:inline-flex ${
-                transparent
-                  ? "bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm"
-                  : "bg-primary text-primary-foreground hover:bg-secondary"
-              }`}
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link
+                to="/dashboard"
+                search={{ tab: undefined }}
+                className={`hidden rounded-md px-3 py-1.5 text-xs font-medium sm:inline-flex ${
+                  transparent
+                    ? "bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm"
+                    : "bg-primary text-primary-foreground hover:bg-secondary"
+                }`}
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className={`hidden rounded-md border p-2 sm:inline-flex ${
+                  transparent
+                    ? "border-white/20 text-white/80 hover:bg-white/10"
+                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </>
           ) : (
             <>
               <Link
@@ -299,14 +314,25 @@ export function Navbar({
               className={`mt-2 flex gap-2 border-t pt-2 ${transparent ? "border-white/10" : "border-border"}`}
             >
               {user ? (
-                <Link
-                  to="/dashboard"
-                  search={{ tab: undefined }}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium ${transparent ? "bg-white/15 text-white hover:bg-white/25" : "bg-primary text-primary-foreground hover:bg-secondary"}`}
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link
+                    to="/dashboard"
+                    search={{ tab: undefined }}
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium ${transparent ? "bg-white/15 text-white hover:bg-white/25" : "bg-primary text-primary-foreground hover:bg-secondary"}`}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-center text-xs font-medium ${transparent ? "border-white/20 text-white/80 hover:bg-white/10" : "border-border text-foreground hover:bg-muted"}`}
+                  >
+                    Log out
+                  </button>
+                </>
               ) : (
                 <>
                   <Link

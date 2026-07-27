@@ -1,16 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { LandMap, type FlyTarget } from "@/components/LandMap";
 import { MapSidebar, type Filters } from "@/components/MapSidebar";
 import { ParcelPanel } from "@/components/PropertyPanel";
 import { MapLegend } from "@/components/MapLegend";
 import { MapSearchBar } from "@/components/MapSearchBar";
-import { landParcels as staticParcels, type LandParcel, type LandStatus } from "@/lib/landData";
+import { type LandParcel, type LandStatus } from "@/lib/landData";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/land")({
   component: LandPage,
   ssr: false,
+  validateSearch: (s: Record<string, unknown>): { parcel?: string } => ({
+    parcel: typeof s.parcel === "string" ? s.parcel : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Land Parcels Map — Geo Properties Kenya" },
@@ -41,24 +45,21 @@ interface ApiParcel {
   status: string;
   latitude: number;
   longitude: number;
+  boundary: { lat: number; lng: number }[] | null;
+  boundary_source: string | null;
   seller_name: string;
   seller_phone: string;
   seller_agency: string;
-}
-
-// Generate a 4-point polygon around a lat/lng point, same formula as landData.ts
-function makePolygon(lat: number, lng: number): [number, number][] {
-  const dLat = 0.0035,
-    dLng = 0.0045,
-    skew = 0.18;
-  const sx = dLng * skew,
-    sy = dLat * skew;
-  return [
-    [lat - dLat + sy * 0.4, lng - dLng - sx * 0.2],
-    [lat - dLat - sy * 0.6, lng + dLng + sx * 0.3],
-    [lat + dLat - sy * 0.2, lng + dLng - sx * 0.5],
-    [lat + dLat + sy * 0.5, lng - dLng + sx * 0.4],
-  ];
+  photos: string[];
+  amenities: {
+    school: string | null;
+    hospital: string | null;
+    shopping: string | null;
+    main_road: string | null;
+    distance_to_tarmac: string | null;
+    utilities: string[];
+    development_score: number;
+  } | null;
 }
 
 function mapApiParcel(p: ApiParcel): LandParcel {
@@ -74,21 +75,27 @@ function mapApiParcel(p: ApiParcel): LandParcel {
     county: p.county,
     description: p.description || "",
     verified: p.verified,
+    photos: p.photos ?? [],
     seller: {
       name: p.seller_name || "—",
       phone: p.seller_phone || "—",
       agency: p.seller_agency || "",
     },
     amenities: {
-      school: "—",
-      hospital: "—",
-      shopping: "—",
-      mainRoad: "—",
-      distanceToTarmac: "—",
-      utilities: [],
-      developmentScore: 0,
+      school: p.amenities?.school ?? "—",
+      hospital: p.amenities?.hospital ?? "—",
+      shopping: p.amenities?.shopping ?? "—",
+      mainRoad: p.amenities?.main_road ?? "—",
+      distanceToTarmac: p.amenities?.distance_to_tarmac ?? "—",
+      utilities: p.amenities?.utilities ?? [],
+      developmentScore: p.amenities?.development_score ?? 0,
     },
-    polygon: makePolygon(p.latitude, p.longitude),
+    polygon:
+      p.boundary && p.boundary.length >= 3
+        ? p.boundary.map((v): [number, number] => [Number(v.lat), Number(v.lng)])
+        : undefined,
+    latitude: p.latitude != null ? Number(p.latitude) : undefined,
+    longitude: p.longitude != null ? Number(p.longitude) : undefined,
   };
 }
 
@@ -106,7 +113,12 @@ function classifyReferrer(ref: string): "direct" | "search" | "social" | "referr
 }
 
 function LandPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<Filters>({
+    query: "",
     county: "All",
     status: "all",
     listingType: "all",
@@ -118,37 +130,97 @@ function LandPage() {
   const [dbParcels, setDbParcels] = useState<LandParcel[]>([]);
   const [viewSource] = useState<string>(() => classifyReferrer(document.referrer));
   const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
+  const [openedFromLink, setOpenedFromLink] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  // Fetch real parcels from backend; static demo parcels fill the rest
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     api
       .get<ApiParcel[]>("/parcels")
-      .then((data) => setDbParcels(data.map(mapApiParcel)))
+      .then((data) => {
+        const mapped = data.map(mapApiParcel);
+        setDbParcels(mapped);
+        setSelected((prev) => (prev ? (mapped.find((p) => p.id === prev.id) ?? null) : prev));
+      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
+  }, [reloadToken]);
+
+  useEffect(() => {
+    if (!user) {
+      setSavedIds(new Set());
+      return;
+    }
+    api
+      .get<string[]>("/user/favorites")
+      .then((ids) => setSavedIds(new Set(ids)))
       .catch(() => {});
+  }, [user]);
+
+  const toggleSaved = (id: string) => {
+    api
+      .post<{ saved: boolean }>(`/parcels/${id}/favorite`)
+      .then(({ saved }) => {
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (saved) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      })
+      .catch(() => {});
+  };
+
+  // Keep the map reasonably fresh without the user having to manually
+  // refresh — a background poll plus an immediate refetch when the tab
+  // regains focus (e.g. after switching back from another window).
+  useEffect(() => {
+    const interval = setInterval(() => setReloadToken((n) => n + 1), 60000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setReloadToken((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
-  // Merge: real DB parcels first, then any static demo parcels whose ID isn't in the DB set
-  const allParcels = useMemo(() => {
-    const dbIds = new Set(dbParcels.map((p) => p.id));
-    return [...dbParcels, ...staticParcels.filter((p) => !dbIds.has(p.id))];
-  }, [dbParcels]);
+  // Open the parcel named in the URL once the list has loaded, so a shared
+  // /land?parcel=<id> link lands directly on that listing.
+  useEffect(() => {
+    if (!search.parcel || openedFromLink || dbParcels.length === 0) return;
+    setOpenedFromLink(true);
+    const p = dbParcels.find((x) => x.id === search.parcel);
+    if (!p) return;
+    setSelected(p);
+    if (p.latitude != null && p.longitude != null) {
+      setFlyTarget({ lat: p.latitude, lng: p.longitude, zoom: 16 });
+    }
+  }, [search.parcel, dbParcels, openedFromLink]);
 
-  const filtered = useMemo(
-    () =>
-      allParcels.filter(
-        (p) =>
-          (filters.county === "All" || p.county === filters.county) &&
-          (filters.status === "all" || p.status === filters.status) &&
-          (filters.listingType === "all" || p.listingType === filters.listingType) &&
-          (filters.postedBy === "all" || p.postedBy === filters.postedBy) &&
-          p.price >= filters.minPrice &&
-          p.price <= filters.maxPrice,
-      ),
-    [allParcels, filters],
-  );
+  const filtered = useMemo(() => {
+    const q = filters.query.trim().toLowerCase();
+    return dbParcels.filter(
+      (p) =>
+        (q === "" ||
+          p.title.toLowerCase().includes(q) ||
+          p.parcelNumber.toLowerCase().includes(q)) &&
+        (filters.county === "All" || p.county === filters.county) &&
+        (filters.status === "all" || p.status === filters.status) &&
+        (filters.listingType === "all" || p.listingType === filters.listingType) &&
+        (filters.postedBy === "all" || p.postedBy === filters.postedBy) &&
+        p.price >= filters.minPrice &&
+        p.price <= filters.maxPrice,
+    );
+  }, [dbParcels, filters]);
 
   const handleSelectParcel = (p: LandParcel | null) => {
     setSelected(p);
+    navigate({ to: "/land", search: { parcel: p?.id }, replace: true });
     // Fire a view event only for real DB parcels (UUID IDs), with the classified referrer source
     if (p && UUID_RE.test(p.id)) {
       api.post(`/parcels/${p.id}/view`, { source: viewSource }).catch(() => {});
@@ -173,7 +245,25 @@ function LandPage() {
               <MapLegend />
             </div>
           </div>
-          {selected && <ParcelPanel parcel={selected} onClose={() => setSelected(null)} />}
+          {!loading && loadError && (
+            <div className="absolute left-1/2 top-4 z-[1000] -translate-x-1/2 rounded-md border border-red-300 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-md">
+              Couldn't load listings.{" "}
+              <button
+                onClick={() => setReloadToken((n) => n + 1)}
+                className="font-medium underline hover:no-underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {selected && (
+            <ParcelPanel
+              parcel={selected}
+              onClose={() => handleSelectParcel(null)}
+              saved={savedIds.has(selected.id)}
+              onToggleSaved={() => toggleSaved(selected.id)}
+            />
+          )}
         </div>
       </div>
     </div>

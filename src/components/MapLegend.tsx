@@ -1,7 +1,11 @@
 import { statusMeta, type LandStatus } from "@/lib/landData";
 
+// Only "available" and "sold" ever occur on the public marketplace — every
+// listing goes live as available, with no separate verified/reserved/disputed stage.
+const visibleStatuses: LandStatus[] = ["available", "sold"];
+
 export function MapLegend() {
-  const items = Object.keys(statusMeta) as LandStatus[];
+  const items = visibleStatuses;
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">

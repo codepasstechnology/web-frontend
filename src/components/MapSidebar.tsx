@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Filter, ChevronLeft, ChevronRight, X } from "lucide-react";
-import {
-  counties,
-  statusMeta,
-  type LandStatus,
-  type ListingType,
-  type PostedBy,
-} from "@/lib/landData";
+import { Filter, ChevronLeft, ChevronRight, X, Search } from "lucide-react";
+import { statusMeta, type LandStatus, type ListingType, type PostedBy } from "@/lib/landData";
+import { kenyaCounties } from "@/lib/plans";
+
+const counties = ["All", ...kenyaCounties];
+
+// Only "available" and "sold" ever occur on the public marketplace — every
+// listing goes live as available, with no separate verified/reserved/disputed stage.
+const visibleStatuses: LandStatus[] = ["available", "sold"];
 
 export interface Filters {
+  query: string;
   county: string;
   status: LandStatus | "all";
   listingType: ListingType | "all";
@@ -69,7 +71,7 @@ export function MapSidebar({
         {!isMobile && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="absolute -right-3 top-4 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:text-foreground"
+            className="absolute right-2 top-4 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:text-foreground"
           >
             {open ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </button>
@@ -93,6 +95,19 @@ export function MapSidebar({
               </div>
 
               <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                <Group title="Search">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Title or parcel number…"
+                      value={filters.query}
+                      onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+                      className="w-full rounded-sm border border-border bg-background py-1.5 pl-7 pr-2 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </Group>
+
                 <Group title="Listing Type">
                   <Segmented
                     options={[
@@ -147,7 +162,7 @@ export function MapSidebar({
                       active={filters.status === "all"}
                       onClick={() => setFilters({ ...filters, status: "all" })}
                     />
-                    {(Object.keys(statusMeta) as LandStatus[]).map((s) => (
+                    {visibleStatuses.map((s) => (
                       <StatusOption
                         key={s}
                         label={statusMeta[s].label}
@@ -211,6 +226,7 @@ export function MapSidebar({
                 <button
                   onClick={() =>
                     setFilters({
+                      query: "",
                       county: "All",
                       status: "all",
                       listingType: "all",
