@@ -250,3 +250,15 @@ npm run build
 ```
 
 Upload the contents of `dist/` to the subdomain document root. Add an `.htaccess` rewrite rule to serve `index.html` for all routes (client-side routing).
+
+## Known errors
+
+### Production freeze on any input (cPanel builds)
+
+**Symptom:** after deploying a `build:cpanel` build, clicking into _any_ input box (including the login form) froze the page — no console errors, no failed network requests, just an unresponsive tab.
+
+**Cause:** `src/routes/__root.tsx` gates two things behind `import.meta.env.VITE_CPANEL`: whether TanStack Router dynamically manages `<link>` tags in `<head>`, and whether React renders its own `<html>/<head>/<body>` shell (`shellComponent`). Both must be skipped in cPanel/static-SPA mode because `index.cpanel.html` already has its own shell and stylesheet link. If the flag isn't set, TanStack Router removes and re-adds the stylesheet `<link>` on every re-render (re-parsing the entire stylesheet), and React's shell rendering conflicts with the existing static DOM — an infinite reconciliation loop on every state change.
+
+`vite.cpanel.config.ts` never actually set `VITE_CPANEL=true` itself — it only "worked" in CI because `.github/workflows/ci.yml` writes a throwaway `.env.cpanel` with that flag before building, just to verify the build compiles. That file is gitignored and never shipped, so every real `build:cpanel` run silently took the broken branch.
+
+**Fix:** `VITE_CPANEL` is hardcoded to `"true"` via `define` in `vite.cpanel.config.ts`, so it no longer depends on `.env.cpanel` contents. `VITE_API_URL` still needs to be set in `.env.cpanel` (it's environment-specific), but the freeze-causing flag can't be missed again.

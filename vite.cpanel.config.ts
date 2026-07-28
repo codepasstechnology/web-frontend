@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       __VITE_API_URL__: JSON.stringify(env.VITE_API_URL ?? ""),
+      "import.meta.env.VITE_CPANEL": JSON.stringify("true"),
     },
   };
 });
