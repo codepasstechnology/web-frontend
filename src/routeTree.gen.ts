@@ -26,6 +26,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as BlogSlugRouteImport } from './routes/blog_.$slug'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardUploadRouteImport } from './routes/dashboard.upload'
 
@@ -114,6 +115,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog_/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/dashboard/',
   path: '/dashboard/',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/upload': typeof DashboardUploadRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/upload': typeof DashboardUploadRoute
   '/dashboard': typeof DashboardIndexRoute
 }
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/blog_/$slug': typeof BlogSlugRoute
   '/dashboard/upload': typeof DashboardUploadRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/terms'
+    | '/blog/$slug'
     | '/dashboard/upload'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/terms'
+    | '/blog/$slug'
     | '/dashboard/upload'
     | '/dashboard'
   id:
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/terms'
+    | '/blog_/$slug'
     | '/dashboard/upload'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   RentalsRoute: typeof RentalsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   DashboardUploadRoute: typeof DashboardUploadRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog_/$slug': {
+      id: '/blog_/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/': {
       id: '/dashboard/'
       path: '/dashboard'
@@ -433,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentalsRoute: RentalsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
+  BlogSlugRoute: BlogSlugRoute,
   DashboardUploadRoute: DashboardUploadRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
