@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Polygon, useMap, useMapEvents } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polygon,
+  ZoomControl,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type { DrawEvents } from "leaflet";
 import { MapPin } from "lucide-react";
+import { toast } from "sonner";
 import {
   MapSearchBar,
   FlyToLocation,
@@ -114,6 +123,13 @@ interface LandBoundaryMapProps {
   hintText?: string;
   heightClassName?: string;
   county?: string;
+  /**
+   * When true, the map ignores taps/drags until the user deliberately taps
+   * once to "wake it up" — for maps embedded inline in a scrollable page,
+   * so a scroll gesture that starts on the map doesn't get mistaken for a
+   * pin drop or pan. Full-screen/dedicated map steps don't need this.
+   */
+  requireTapToActivate?: boolean;
 }
 
 export function LandBoundaryMap({
@@ -123,9 +139,11 @@ export function LandBoundaryMap({
   onBoundaryChange,
   initialCenter = [-1.286389, 36.817223],
   hintText = 'Tap "Trace boundary", then click points around your land\'s edge on the satellite map — click the first point again to close the shape. Not sure of the exact shape? Just drop a pin instead.',
-  heightClassName = "h-80 lg:h-[28rem]",
+  heightClassName = "h-[65vh] sm:h-80 lg:h-[28rem]",
   county,
+  requireTapToActivate = false,
 }: LandBoundaryMapProps) {
+  const [activated, setActivated] = useState(!requireTapToActivate);
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Center on the chosen county before the seller has placed anything —
@@ -214,8 +232,10 @@ export function LandBoundaryMap({
           <MapContainer
             center={startCenter}
             zoom={pin || boundary?.length ? 15 : 11}
+            zoomControl={false}
             className="h-full w-full"
           >
+            <ZoomControl position="bottomleft" />
             <TileLayer
               key={isSatellite ? "sat" : "osm"}
               url={isSatellite ? SATELLITE_TILES : OSM_TILES}
@@ -245,16 +265,16 @@ export function LandBoundaryMap({
           }}
         />
         <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
-        <div className="absolute bottom-2.5 right-2.5 z-[800] flex items-center gap-1.5">
+        <div className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5">
           {tracing ? (
             <>
-              <span className="rounded-md bg-background/95 px-2 py-1.5 text-xs text-muted-foreground shadow-sm">
+              <span className="rounded-md bg-background/95 px-2.5 py-2 text-xs text-muted-foreground shadow-sm sm:px-2 sm:py-1.5">
                 Click points on the map…
               </span>
               <button
                 type="button"
                 onClick={() => setCancelTrigger((n) => n + 1)}
-                className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
+                className="rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted sm:px-2.5 sm:py-1.5 sm:text-xs"
               >
                 Cancel
               </button>
@@ -268,7 +288,7 @@ export function LandBoundaryMap({
                     onBoundaryChange(null);
                     setColorMode("fresh");
                   }}
-                  className="rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-destructive shadow-sm hover:bg-muted"
+                  className="rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-destructive shadow-sm hover:bg-muted sm:px-2.5 sm:py-1.5 sm:text-xs"
                 >
                   Delete
                 </button>
@@ -278,11 +298,15 @@ export function LandBoundaryMap({
                 onClick={() => {
                   setColorMode(boundary ? "retrace" : "fresh");
                   setDrawTrigger((n) => n + 1);
+                  toast("Trace your land's boundary", {
+                    description:
+                      "Tap points around the edge of your land on the map. Tap the first point again to close the shape.",
+                  });
                 }}
                 className={
                   boundary
-                    ? "rounded-md border border-[#F97316]/40 bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-[#C2410C] shadow-sm hover:bg-[#FFF7ED]"
-                    : "rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
+                    ? "rounded-md border border-[#F97316]/40 bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-[#C2410C] shadow-sm hover:bg-[#FFF7ED] sm:px-2.5 sm:py-1.5 sm:text-xs"
+                    : "rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted sm:px-2.5 sm:py-1.5 sm:text-xs"
                 }
               >
                 {boundary ? "Retrace boundary" : "Trace boundary"}
@@ -290,6 +314,19 @@ export function LandBoundaryMap({
             </>
           )}
         </div>
+        {requireTapToActivate && !activated && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setActivated(true)}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setActivated(true)}
+            className="absolute inset-0 z-[950] flex items-center justify-center rounded-md bg-black/10"
+          >
+            <span className="rounded-full bg-background/95 px-3 py-1.5 text-xs font-medium text-foreground shadow-md">
+              Tap to edit location
+            </span>
+          </div>
+        )}
       </div>
       {countyMismatch && (
         <p className="mt-2 text-xs font-medium text-[#D97706]">
@@ -297,6 +334,7 @@ export function LandBoundaryMap({
           Double-check the pin before continuing.
         </p>
       )}
+      <style>{`.leaflet-draw-tooltip{display:none!important}`}</style>
     </div>
   );
 }
