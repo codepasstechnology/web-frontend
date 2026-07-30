@@ -87,6 +87,33 @@ export interface Faq {
   category: string;
 }
 
+export interface BlogPostAuthor {
+  name: string;
+  avatar: string | null;
+  avatar_color: string | null;
+}
+
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  cover_url: string | null;
+  read_minutes: number;
+  published_at: string | null;
+  author: BlogPostAuthor | null;
+  /** Only returned by the single-post endpoint. */
+  content?: string;
+}
+
+export interface Paginated<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
