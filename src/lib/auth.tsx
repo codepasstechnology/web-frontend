@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import type { PlanId } from "./plans";
 import { api, getToken, setToken, clearToken } from "./api";
 
-export type UserRole = "individual" | "agent" | "developer";
+export type UserRole = "individual" | "agent" | "developer" | "account_manager";
 
 export interface UserListing {
   id: string;
@@ -13,6 +12,7 @@ export interface UserListing {
   status: "pending" | "active" | "sold";
   views: number;
   createdAt: string;
+  coverPhotoUrl: string | null;
 }
 
 export interface AppUser {
@@ -21,7 +21,12 @@ export interface AppUser {
   email: string;
   phone: string;
   role: UserRole;
-  plan: PlanId;
+  plan: string;
+  maxListings: number; // Infinity = unlimited
+  analyticsAccess: boolean;
+  bulkUpload: boolean;
+  customReports: boolean;
+  manager: { name: string; email: string } | null;
   listings: UserListing[];
   payments: { date: string; amount: number; plan: string; status: "Paid" | "Pending" }[];
   county?: string;
@@ -37,6 +42,7 @@ export interface AppUser {
   twoFactor?: boolean;
   language?: "en" | "sw";
   isAdmin?: boolean;
+  emailVerified: boolean;
 }
 
 // ── API shapes ────────────────────────────────────────────────────────────────
@@ -54,6 +60,7 @@ interface ApiUser {
   company: string | null;
   language: string | null;
   two_factor_enabled: boolean;
+  email_verified_at: string | null;
   notifications: {
     email_inquiries: boolean;
     sms_alerts: boolean;
@@ -71,12 +78,18 @@ interface ApiListing {
   status: string;
   views: number;
   created_at: string;
+  cover_photo_url: string | null;
 }
 
 interface ApiSubscription {
   plan: string;
   plan_name: string;
   status: string | null;
+  max_listings?: number;
+  analytics_access?: boolean;
+  bulk_upload?: boolean;
+  custom_reports?: boolean;
+  dedicated_manager?: { name: string; email: string } | null;
 }
 
 interface ApiPayment {
@@ -105,8 +118,15 @@ function mapApiUser(
     email: u.email,
     phone: u.phone ?? "",
     role: u.role as UserRole,
-    plan: (sub.plan as PlanId) ?? "free",
+    plan: sub.plan ?? "free",
+    maxListings:
+      sub.max_listings === -1 || sub.max_listings === undefined ? Infinity : sub.max_listings,
+    analyticsAccess: sub.analytics_access ?? false,
+    bulkUpload: sub.bulk_upload ?? false,
+    customReports: sub.custom_reports ?? false,
+    manager: sub.dedicated_manager ?? null,
     isAdmin: u.is_admin ?? false,
+    emailVerified: u.email_verified_at !== null,
     county: u.county ?? undefined,
     bio: u.bio ?? undefined,
     company: u.company ?? undefined,
@@ -130,6 +150,7 @@ function mapApiUser(
       status: (l.status as UserListing["status"]) ?? "pending",
       views: l.views,
       createdAt: l.created_at,
+      coverPhotoUrl: l.cover_photo_url,
     })),
     payments: payments.map((p) => ({
       date: p.date,
@@ -148,13 +169,18 @@ export interface NewListingInput {
   county: string;
   area?: string;
   size?: string;
+  areaAcres?: number;
   price: number;
   description?: string;
   latitude?: number;
   longitude?: number;
+  boundary?: { lat: number; lng: number }[];
+  boundarySource?: "traced" | "approximate";
   listingType?: "sale" | "lease";
   landType?: "residential" | "commercial" | "agricultural" | "mixed_use" | "industrial";
+  utilities?: string[];
   titleDeedFile?: File;
+  photoFiles?: File[];
 }
 
 interface AuthCtx {
@@ -169,12 +195,15 @@ interface AuthCtx {
     role: UserRole;
   }) => Promise<AppUser>;
   logout: () => Promise<void>;
-  setPlan: (plan: PlanId) => void;
+  setPlan: (plan: string) => void;
   addListing: (l: NewListingInput) => Promise<void>;
+  bulkAddListings: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
   removeListing: (id: string) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshListings: () => Promise<void>;
+  verifyEmail: (code: string) => Promise<void>;
+  resendVerificationCode: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -209,7 +238,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(setUser)
       .catch(() => clearToken())
       .finally(() => setReady(true));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string, remember = true): Promise<AppUser> => {
@@ -252,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Local-only: real payment integration wires here later
-  const setPlan = useCallback((plan: PlanId) => {
+  const setPlan = useCallback((plan: string) => {
     setUser((prev) => (prev ? { ...prev, plan } : prev));
   }, []);
 
@@ -271,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           status: (l.status as UserListing["status"]) ?? "pending",
           views: l.views,
           createdAt: l.created_at,
+          coverPhotoUrl: l.cover_photo_url,
         })),
       };
     });
@@ -278,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addListing: AuthCtx["addListing"] = useCallback(async (l) => {
     let body: FormData | Record<string, unknown>;
-    if (l.titleDeedFile) {
+    if (l.titleDeedFile || l.photoFiles?.length) {
       const fd = new FormData();
       fd.append("title", l.title);
       fd.append("county", l.county);
@@ -288,10 +317,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (l.parcelNumber) fd.append("parcel_number", l.parcelNumber);
       if (l.area) fd.append("area", l.area);
       if (l.size) fd.append("size", l.size);
+      if (l.areaAcres != null) fd.append("area_acres", String(l.areaAcres));
       if (l.description) fd.append("description", l.description);
       if (l.latitude != null) fd.append("latitude", String(l.latitude));
       if (l.longitude != null) fd.append("longitude", String(l.longitude));
-      fd.append("title_deed", l.titleDeedFile);
+      l.boundary?.forEach((p, i) => {
+        fd.append(`boundary[${i}][lat]`, String(p.lat));
+        fd.append(`boundary[${i}][lng]`, String(p.lng));
+      });
+      if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
+      l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
+      if (l.titleDeedFile) fd.append("title_deed", l.titleDeedFile);
+      l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
     } else {
       body = {
@@ -300,12 +337,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         county: l.county,
         area: l.area || undefined,
         size: l.size || undefined,
+        area_acres: l.areaAcres ?? undefined,
         price: l.price,
         description: l.description || undefined,
         latitude: l.latitude ?? undefined,
         longitude: l.longitude ?? undefined,
+        boundary: l.boundary ?? undefined,
+        boundary_source: l.boundarySource ?? undefined,
         listing_type: l.listingType ?? "sale",
         land_type: l.landType ?? "residential",
+        utilities: l.utilities ?? undefined,
       };
     }
     const created = await api.post<ApiListing>("/user/listings", body);
@@ -318,8 +359,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: "pending",
       views: 0,
       createdAt: created.created_at,
+      coverPhotoUrl: null,
     };
     setUser((prev) => (prev ? { ...prev, listings: [newL, ...prev.listings] } : prev));
+  }, []);
+
+  const bulkAddListings: AuthCtx["bulkAddListings"] = useCallback(async (rows) => {
+    const created = await api.post<ApiListing[]>("/user/listings/bulk", { listings: rows });
+    const newListings: UserListing[] = created.map((l) => ({
+      id: l.id,
+      title: l.title,
+      parcelNumber: l.parcel_number,
+      county: l.county,
+      price: l.price,
+      status: "pending",
+      views: 0,
+      createdAt: l.created_at,
+      coverPhotoUrl: null,
+    }));
+    setUser((prev) => (prev ? { ...prev, listings: [...newListings, ...prev.listings] } : prev));
   }, []);
 
   const removeListing = useCallback(async (id: string) => {
@@ -360,6 +418,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const verifyEmail = useCallback(async (code: string) => {
+    const apiUser = await api.post<ApiUser>("/auth/email/verify", { code });
+    const u = await loadUser(apiUser);
+    setUser(u);
+  }, []);
+
+  const resendVerificationCode = useCallback(async () => {
+    await api.post("/auth/email/resend");
+  }, []);
+
   return (
     <Ctx.Provider
       value={{
@@ -370,10 +438,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         setPlan,
         addListing,
+        bulkAddListings,
         removeListing,
         updateUser,
         deleteAccount,
         refreshListings,
+        verifyEmail,
+        resendVerificationCode,
       }}
     >
       {children}

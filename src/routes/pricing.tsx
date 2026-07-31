@@ -1,20 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Navbar } from "@/components/Navbar";
 import { PlanCard } from "@/components/PlanCard";
-import { plans, addOns, type PlanId } from "@/lib/plans";
+import { usePlans, addOns } from "@/lib/plans";
 import { useAuth } from "@/lib/auth";
 import { Zap, Star } from "lucide-react";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing — LandVerify Kenya" },
+      { title: "Pricing — Geo Properties Kenya" },
       {
         name: "description",
         content:
           "Simple, transparent pricing for land sellers, agents and developers across Kenya.",
       },
-      { property: "og:title", content: "Pricing — LandVerify Kenya" },
+      { property: "og:title", content: "Pricing — Geo Properties Kenya" },
       {
         property: "og:description",
         content: "Free, Basic and Pro plans for listing verified land in Kenya.",
@@ -26,9 +25,10 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
   const { user, setPlan } = useAuth();
+  const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
 
-  const choose = (id: PlanId) => {
+  const choose = (id: string) => {
     if (!user) {
       navigate({ to: "/register" });
       return;
@@ -39,7 +39,6 @@ function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <section className="mx-auto max-w-7xl px-4 py-12 md:py-16">
         <div className="mx-auto max-w-2xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

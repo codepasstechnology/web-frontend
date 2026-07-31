@@ -1,21 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { MapPinned, Mail, ArrowLeft } from "lucide-react";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Reset Password — LandConnect Kenya" }] }),
+  head: () => ({ meta: [{ title: "Reset Password — Geo Properties Kenya" }] }),
   component: ForgotPasswordPage,
 });
 
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    // TODO: call POST /auth/forgot-password
-    setSubmitted(true);
+    setErr("");
+    setLoading(true);
+    try {
+      await api.post("/auth/forgot-password", { email });
+      setSubmitted(true);
+    } catch (error: unknown) {
+      const e = error as { errors?: Record<string, string[]>; message?: string };
+      setErr(e?.errors?.email?.[0] ?? e?.message ?? "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,7 +52,7 @@ function ForgotPasswordPage() {
             <MapPinned className="h-5 w-5 text-white" />
           </div>
           <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            LandConnect
+            Geo Properties
           </span>
         </Link>
       </div>
@@ -55,11 +67,6 @@ function ForgotPasswordPage() {
           Home
         </Link>
       </div>
-
-      {/* Photo credit */}
-      <p className="absolute bottom-4 left-6 z-20 text-[10px] text-white/30">
-        David Clode / Unsplash — Samburu, Kenya
-      </p>
 
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[400px] mx-4">
@@ -81,6 +88,15 @@ function ForgotPasswordPage() {
                 </p>
               </div>
 
+              {err && (
+                <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/40 bg-red-500/20 px-4 py-3 text-sm font-medium text-red-200">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500/40 text-xs font-bold text-red-200 ring-1 ring-red-400/50">
+                    !
+                  </span>
+                  {err}
+                </div>
+              )}
+
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-white">Email address</label>
@@ -99,9 +115,14 @@ function ForgotPasswordPage() {
 
                 <button
                   type="submit"
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98]"
+                  disabled={loading}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98] disabled:opacity-60"
                 >
-                  Send reset link
+                  {loading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  ) : (
+                    "Send reset link"
+                  )}
                 </button>
               </form>
             </>

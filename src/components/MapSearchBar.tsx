@@ -1,6 +1,56 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 
+export const OSM_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const SATELLITE_TILES =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+export function MapSatelliteToggle({
+  satellite,
+  onToggle,
+}: {
+  satellite: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      title={satellite ? "Switch to street map" : "Switch to satellite view"}
+      style={{
+        position: "absolute",
+        top: 90,
+        left: 10,
+        zIndex: 800,
+        height: 30,
+        padding: "0 10px",
+        borderRadius: 6,
+        border: "1px solid #e2e8f0",
+        background: satellite ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.97)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        fontSize: 11,
+        fontWeight: 600,
+        color: satellite ? "#f1f5f9" : "#334155",
+        letterSpacing: "0.02em",
+        pointerEvents: "auto",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = satellite ? "rgba(30,41,59,0.95)" : "#f1f5f9";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = satellite
+          ? "rgba(15,23,42,0.85)"
+          : "rgba(255,255,255,0.97)";
+      }}
+    >
+      {satellite ? "🗺 Map" : "🛰 Satellite"}
+    </button>
+  );
+}
+
 interface NominatimResult {
   display_name: string;
   lat: string;
@@ -18,7 +68,13 @@ export function FlyToLocation({ lat, lng }: { lat: number | null; lng: number | 
 
 // Search bar + near-me button rendered as a normal React div (outside MapContainer)
 // Place it inside a `position: relative` wrapper alongside the MapContainer.
-export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => void }) {
+export function MapSearchBar({
+  onFly,
+  onNearMe,
+}: {
+  onFly: (lat: number, lng: number) => void;
+  onNearMe?: (lat: number, lng: number) => void;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
@@ -57,7 +113,10 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
   const handleNearMe = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => onFly(coords.latitude, coords.longitude),
+      ({ coords }) => {
+        onFly(coords.latitude, coords.longitude);
+        onNearMe?.(coords.latitude, coords.longitude);
+      },
       () => {},
     );
   };
@@ -65,16 +124,7 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
   return (
     <div
       ref={wrapRef}
-      style={{
-        position: "absolute",
-        top: 10,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 800,
-        width: 300,
-        maxWidth: "calc(100% - 70px)",
-        pointerEvents: "auto",
-      }}
+      className="pointer-events-auto absolute left-28 right-3 top-3 z-[800] md:left-1/2 md:right-auto md:top-2.5 md:w-[300px] md:max-w-[calc(100%-70px)] md:-translate-x-1/2"
     >
       <div style={{ display: "flex", gap: 6 }}>
         <div style={{ position: "relative", flex: 1 }}>
@@ -167,7 +217,7 @@ export function MapSearchBar({ onFly }: { onFly: (lat: number, lng: number) => v
         </div>
         <button
           onClick={handleNearMe}
-          title="My location"
+          title={onNearMe ? "Drop pin at my location" : "My location"}
           style={{
             height: 34,
             width: 34,

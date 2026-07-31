@@ -5,12 +5,13 @@ import {
   Polygon,
   Marker,
   Tooltip,
-  LayersControl,
   Popup,
   useMap,
+  ZoomControl,
 } from "react-leaflet";
 import L from "leaflet";
 import { rentals, statusMeta, type LandParcel, type Rental } from "@/lib/landData";
+import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/MapSearchBar";
 
 // Fix default marker icons in bundlers
 const icon = L.divIcon({
@@ -20,19 +21,41 @@ const icon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-// Stable label anchored at the polygon centroid (does not flicker on zoom).
-const labelIcon = (parcelNumber: string, size: string) =>
-  L.divIcon({
-    className: "lv-parcel-label-icon",
-    html: `<div class="lv-parcel-chip"><div class="lv-parcel-chip-num">${parcelNumber}</div><div class="lv-parcel-chip-size">${size}</div></div>`,
-    iconSize: [110, 28],
-    iconAnchor: [55, 14],
-  });
-
-const centroid = (poly: [number, number][]): [number, number] => {
-  const [sLat, sLng] = poly.reduce(([a, b], [la, ln]) => [a + la, b + ln], [0, 0]);
-  return [sLat / poly.length, sLng / poly.length];
+// Small white glyph per status, drawn inside the pin's head.
+const statusGlyphs: Record<string, string> = {
+  verified:
+    '<path d="M8 12.2l2.6 2.6L16.2 9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  disputed:
+    '<rect x="11.15" y="6.8" width="1.7" height="6" rx="0.85" fill="#fff"/><circle cx="12" cy="16" r="1.1" fill="#fff"/>',
+  sold: '<path d="M9 9l6 6M15 9l-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
+  reserved:
+    '<circle cx="12" cy="12" r="5" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M12 9.2v3l2.2 1.4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  available: '<circle cx="12" cy="12" r="3.5" fill="#fff"/>',
 };
+
+// Rounded-square badge with a small callout tail — a shape of our own, not the
+// generic teardrop everyone associates with Google Maps. Anchored at the tail tip.
+// Selected parcels pop slightly larger with a glow.
+const pinIconFor = (color: string, status: string, selected: boolean) => {
+  const glyph = statusGlyphs[status] ?? statusGlyphs.available;
+  const scale = selected ? 1.2 : 1;
+  const w = Math.round(24 * scale);
+  const h = Math.round(30 * scale);
+  return L.divIcon({
+    className: `lv-pin-icon${selected ? " lv-pin-icon-selected" : ""}`,
+    html: `<svg width="${w}" height="${h}" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 2H16A6 6 0 0 1 22 8V16A6 6 0 0 1 16 22H15L12 29L9 22H8A6 6 0 0 1 2 16V8A6 6 0 0 1 8 2Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      ${glyph}
+    </svg>`,
+    iconSize: [w, h],
+    iconAnchor: [w / 2, Math.round(29 * scale)],
+  });
+};
+
+// Anchored to the polygon's own rightmost vertex — a real point on the
+// boundary line, not floating outside it, and never inside the land itself.
+const polygonAnchorPoint = (poly: [number, number][]): [number, number] =>
+  poly.reduce((best, p) => (p[1] > best[1] ? p : best), poly[0]);
 
 export interface FlyTarget {
   lat: number;
@@ -72,14 +95,44 @@ function MapController({
   const map = useMap();
   useEffect(() => {
     if (mode !== "land" || parcels.length === 0) return;
-    const all = parcels.flatMap((p) => p.polygon);
+    const all = parcels.flatMap(
+      (p) =>
+        p.polygon ??
+        (p.latitude != null && p.longitude != null
+          ? [[p.latitude, p.longitude] as [number, number]]
+          : []),
+    );
     if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, mode]);
   useEffect(() => {
     if (!selectedId) return;
     const p = parcels.find((x) => x.id === selectedId);
-    if (p) map.fitBounds(p.polygon as L.LatLngBoundsLiteral, { padding: [80, 80], maxZoom: 17 });
+    if (!p) return;
+    const bounds =
+      p.polygon ??
+      (p.latitude != null && p.longitude != null
+        ? ([
+            [p.latitude, p.longitude],
+            [p.latitude, p.longitude],
+          ] as [number, number][])
+        : null);
+    if (!bounds) return;
+
+    // The listing panel covers the right side of the map on desktop and the
+    // bottom ~60% on mobile — pad the fly-to so the parcel lands in the
+    // slice of map that's actually still visible, not hidden behind it.
+    const isMobile = window.innerWidth < 768;
+    const paddingBottomRight: [number, number] = isMobile
+      ? [20, window.innerHeight * 0.58]
+      : [400, 20];
+
+    map.flyToBounds(bounds as L.LatLngBoundsLiteral, {
+      paddingTopLeft: [20, 20],
+      paddingBottomRight,
+      maxZoom: 17,
+      duration: 1,
+    });
   }, [map, selectedId, parcels]);
   return null;
 }
@@ -96,6 +149,7 @@ export function LandMap({
   const parcelList = parcels;
   const rentalList = rentalItems ?? rentals;
   const [mounted, setMounted] = useState(false);
+  const [isSatellite, setIsSatellite] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) {
     return (
@@ -106,90 +160,103 @@ export function LandMap({
   }
 
   return (
-    <MapContainer
-      center={[-1.286389, 36.817223]}
-      zoom={11}
-      scrollWheelZoom
-      className="h-full w-full"
-      style={{ background: "#e8eef5" }}
-    >
-      <MapController mode={mode} selectedId={selectedId} parcels={parcelList} />
-      <FlyToTarget target={flyTarget ?? null} />
-      <LayersControl position="topright">
-        <LayersControl.BaseLayer checked name="Road">
-          <TileLayer
-            attribution="&copy; OpenStreetMap"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Satellite">
-          <TileLayer
-            attribution="Tiles &copy; Esri"
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          />
-        </LayersControl.BaseLayer>
-      </LayersControl>
+    <div className="relative h-full w-full">
+      <MapContainer
+        center={[-1.286389, 36.817223]}
+        zoom={11}
+        scrollWheelZoom
+        zoomControl={false}
+        className="h-full w-full"
+        style={{ background: "#e8eef5" }}
+      >
+        <ZoomControl position="topright" />
+        <MapController mode={mode} selectedId={selectedId} parcels={parcelList} />
+        <FlyToTarget target={flyTarget ?? null} />
+        <TileLayer
+          key={isSatellite ? "sat" : "osm"}
+          url={isSatellite ? SATELLITE_TILES : OSM_TILES}
+          attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
+        />
 
-      {mode === "land" &&
-        parcelList.map((p) => {
-          const meta = statusMeta[p.status];
-          const isSelected = selectedId === p.id;
-          return (
-            <Polygon
-              key={p.id}
-              positions={p.polygon}
-              pathOptions={{
-                color: meta.color,
-                weight: isSelected ? 3.5 : 2,
-                fillColor: meta.fill,
-                fillOpacity: isSelected ? 0.6 : 0.42,
-                dashArray: p.status === "disputed" ? "6 4" : undefined,
-              }}
-              eventHandlers={{ click: () => onSelectParcel?.(p) }}
+        {mode === "land" &&
+          parcelList.map((p) => {
+            if (!p.polygon) return null;
+            const meta = statusMeta[p.status];
+            const isSelected = selectedId === p.id;
+            return (
+              <Polygon
+                key={p.id}
+                positions={p.polygon}
+                pathOptions={{
+                  color: meta.color,
+                  weight: isSelected ? 3.5 : 2,
+                  fillColor: meta.fill,
+                  fillOpacity: isSelected ? 0.6 : 0.42,
+                  dashArray: p.status === "disputed" ? "6 4" : undefined,
+                }}
+                eventHandlers={{ click: () => onSelectParcel?.(p) }}
+              >
+                <Tooltip direction="top" sticky offset={[0, -4]}>
+                  <div className="text-xs">
+                    <div className="font-semibold text-foreground">{p.title}</div>
+                    <div className="text-muted-foreground">
+                      {p.parcelNumber} · {meta.label} · KES {p.price.toLocaleString()}
+                    </div>
+                  </div>
+                </Tooltip>
+              </Polygon>
+            );
+          })}
+
+        {mode === "land" &&
+          parcelList.map((p) => {
+            const position = p.polygon
+              ? polygonAnchorPoint(p.polygon)
+              : p.latitude != null && p.longitude != null
+                ? ([p.latitude, p.longitude] as [number, number])
+                : null;
+            if (!position) return null;
+            const meta = statusMeta[p.status];
+            const isSelected = selectedId === p.id;
+            return (
+              <Marker
+                key={`label-${p.id}`}
+                position={position}
+                icon={pinIconFor(meta.color, p.status, isSelected)}
+                keyboard={false}
+                eventHandlers={{ click: () => onSelectParcel?.(p) }}
+              >
+                <Tooltip direction="right" offset={[2, -16]}>
+                  <div className="text-xs">
+                    <div className="font-semibold text-foreground">{p.parcelNumber}</div>
+                    <div className="text-muted-foreground">{p.size}</div>
+                  </div>
+                </Tooltip>
+              </Marker>
+            );
+          })}
+
+        {mode === "rentals" &&
+          rentalList.map((r) => (
+            <Marker
+              key={r.id}
+              position={r.position}
+              icon={icon}
+              eventHandlers={{ click: () => onSelectRental?.(r) }}
             >
-              <Tooltip direction="top" sticky offset={[0, -4]}>
+              <Popup>
                 <div className="text-xs">
-                  <div className="font-semibold text-foreground">{p.title}</div>
+                  <div className="font-semibold">{r.title}</div>
+                  <div>KES {r.price.toLocaleString()} / mo</div>
                   <div className="text-muted-foreground">
-                    {p.parcelNumber} · {meta.label} · KES {p.price.toLocaleString()}
+                    {r.area}, {r.county}
                   </div>
                 </div>
-              </Tooltip>
-            </Polygon>
-          );
-        })}
-
-      {mode === "land" &&
-        parcelList.map((p) => (
-          <Marker
-            key={`label-${p.id}`}
-            position={centroid(p.polygon)}
-            icon={labelIcon(p.parcelNumber, p.size)}
-            interactive
-            keyboard={false}
-            eventHandlers={{ click: () => onSelectParcel?.(p) }}
-          />
-        ))}
-
-      {mode === "rentals" &&
-        rentalList.map((r) => (
-          <Marker
-            key={r.id}
-            position={r.position}
-            icon={icon}
-            eventHandlers={{ click: () => onSelectRental?.(r) }}
-          >
-            <Popup>
-              <div className="text-xs">
-                <div className="font-semibold">{r.title}</div>
-                <div>KES {r.price.toLocaleString()} / mo</div>
-                <div className="text-muted-foreground">
-                  {r.area}, {r.county}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-    </MapContainer>
+              </Popup>
+            </Marker>
+          ))}
+      </MapContainer>
+      <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
+    </div>
   );
 }

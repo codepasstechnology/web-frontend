@@ -23,6 +23,7 @@ dist-cpanel
 
 # TanStack Router generated files
 .tanstack/**
+src/routeTree.gen.ts
 
 # Environment variables — never commit secrets
 .env

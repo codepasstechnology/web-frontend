@@ -64,7 +64,7 @@
 
 :root {
   --radius: 0.625rem;
-  /* LandVerify Kenya — enterprise GIS palette (no gradients, solid colors only) */
+  /* Geo Properties Kenya — enterprise GIS palette (no gradients, solid colors only) */
   --background: oklch(0.984 0.003 247.858); /* #F8FAFC */
   --foreground: oklch(0.198 0.04 265.6); /* #0F172A */
   --card: oklch(1 0 0); /* #FFFFFF */
@@ -179,31 +179,29 @@
   display: none;
 }
 
-/* Stable parcel label chip anchored at polygon centroid (no flicker on zoom) */
-.lv-parcel-label-icon {
+/* Parcel pin marker — offset beside the polygon, not on top of it */
+.lv-pin-icon {
   background: transparent;
   border: 0;
-}
-.lv-parcel-chip {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-  white-space: nowrap;
   cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35));
+  transition: transform 0.15s ease;
 }
-.lv-parcel-chip-num {
-  font-size: 11px;
-  font-weight: 600;
-  color: #0f172a;
-  line-height: 1.1;
+.lv-pin-icon:hover {
+  transform: translateY(-2px) scale(1.08);
 }
-.lv-parcel-chip-size {
-  font-size: 10px;
-  color: #64748b;
-  line-height: 1.1;
+.lv-pin-icon-selected {
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.45)) drop-shadow(0 0 6px rgba(37, 99, 235, 0.9));
+  animation: lv-pin-pop 0.25s ease;
+}
+@keyframes lv-pin-pop {
+  0% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }

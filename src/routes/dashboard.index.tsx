@@ -67,10 +67,12 @@ import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { planById, plans, addOns, type PlanId } from "@/lib/plans";
+import { usePlans, addOns, type Plan } from "@/lib/plans";
+import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 
 export const Route = createFileRoute("/dashboard/")({
-  head: () => ({ meta: [{ title: "Dashboard — LandVerify Kenya" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Geo Properties Kenya" }] }),
+  ssr: false,
   validateSearch: (s: Record<string, unknown>) => {
     const allowed: DashTab[] = [
       "overview",
@@ -91,11 +93,40 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function DashboardPage() {
-  const { user, ready, removeListing, setPlan, updateUser, deleteAccount, logout } = useAuth();
+  const {
+    user,
+    ready,
+    removeListing,
+    bulkAddListings,
+    setPlan,
+    updateUser,
+    deleteAccount,
+    logout,
+  } = useAuth();
+  const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const exportListings = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob("/user/listings/export");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `listings_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — export button stays available to retry
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     if (search.tab && search.tab !== tab) setTab(search.tab);
@@ -104,12 +135,11 @@ function DashboardPage() {
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/login" });
+    else if (ready && user?.role === "account_manager") navigate({ to: "/manager" });
   }, [ready, user, navigate]);
 
-  if (!user) return null;
-  const plan = planById(user.plan);
+  if (!user || user.role === "account_manager") return null;
   const used = user.listings.length;
-  const limitText = plan.listings === Infinity ? "∞" : plan.listings;
 
   return (
     <DashboardShell active={tab} onChange={setTab}>
@@ -125,12 +155,31 @@ function DashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-foreground">My Listings</h1>
-            <button
-              onClick={() => navigate({ to: "/dashboard/upload" })}
-              className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
-            >
-              <Plus className="h-3.5 w-3.5" /> New
-            </button>
+            <div className="flex items-center gap-2">
+              {user.customReports && (
+                <button
+                  onClick={exportListings}
+                  disabled={exporting}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                >
+                  <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
+                </button>
+              )}
+              {user.bulkUpload && (
+                <button
+                  onClick={() => setBulkOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Bulk upload
+                </button>
+              )}
+              <button
+                onClick={() => navigate({ to: "/dashboard/upload" })}
+                className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+              >
+                <Plus className="h-3.5 w-3.5" /> New
+              </button>
+            </div>
           </div>
           {user.listings.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
@@ -146,79 +195,134 @@ function DashboardPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3">Listing</th>
-                    <th className="px-4 py-3 hidden md:table-cell">Parcel</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 hidden md:table-cell">Views</th>
-                    <th className="px-4 py-3 hidden md:table-cell">Date</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {user.listings.map((l) => (
-                    <tr key={l.id}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-12 shrink-0 rounded bg-muted" />
-                          <div>
-                            <div className="font-medium text-foreground">{l.title}</div>
+            <>
+              <div className="space-y-2 md:hidden">
+                {user.listings.map((l) => (
+                  <div key={l.id} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                    <div className="flex gap-3">
+                      {l.coverPhotoUrl ? (
+                        <img
+                          src={l.coverPhotoUrl}
+                          alt=""
+                          className="h-12 w-16 shrink-0 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-16 shrink-0 rounded bg-muted" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-foreground">{l.title}</div>
                             <div className="text-xs text-muted-foreground">
                               {l.county} · KES {l.price.toLocaleString()}
                             </div>
                           </div>
+                          <StatusBadge status={l.status} />
                         </div>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                        {l.parcelNumber}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={l.status} />
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">{l.views}</td>
-                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                        {l.createdAt}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                            title="Edit"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => removeListing(l.id).catch(() => {})}
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            {l.views} views · {l.createdAt}
+                          </span>
+                          <div className="flex gap-1">
+                            <button
+                              className="rounded-md p-2 text-muted-foreground hover:bg-muted"
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => removeListing(l.id).catch(() => {})}
+                              className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </td>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-sm md:block">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3">Listing</th>
+                      <th className="px-4 py-3">Parcel</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Views</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {user.listings.map((l) => (
+                      <tr key={l.id}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {l.coverPhotoUrl ? (
+                              <img
+                                src={l.coverPhotoUrl}
+                                alt=""
+                                className="h-9 w-12 shrink-0 rounded object-cover"
+                              />
+                            ) : (
+                              <div className="h-9 w-12 shrink-0 rounded bg-muted" />
+                            )}
+                            <div>
+                              <div className="font-medium text-foreground">{l.title}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {l.county} · KES {l.price.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{l.parcelNumber}</td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={l.status} />
+                        </td>
+                        <td className="px-4 py-3">{l.views}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{l.createdAt}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => removeListing(l.id).catch(() => {})}
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {tab === "analytics" && (
-        <AnalyticsTab plan={user.plan} onUpgrade={() => setUpgradeOpen(true)} />
-      )}
+      {tab === "analytics" && <AnalyticsTab onUpgrade={() => setUpgradeOpen(true)} />}
 
       {tab === "billing" && (
         <BillingTab
           plan={user.plan}
+          plans={plans}
+          maxListings={user.maxListings}
           usedListings={used}
           onUpgrade={() => setUpgradeOpen(true)}
           payments={user.payments}
           onSelectPlan={(p) => setPlan(p)}
+          manager={user.manager}
         />
       )}
 
@@ -245,20 +349,101 @@ function DashboardPage() {
         onClose={() => setUpgradeOpen(false)}
         onSelect={(p) => setPlan(p)}
       />
+
+      <BulkUploadModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onSubmit={bulkAddListings}
+      />
     </DashboardShell>
+  );
+}
+
+function BulkUploadModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!open) return null;
+
+  const rows = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [title, county, price] = line.split(",").map((v) => v.trim());
+      return { title: title ?? "", county: county ?? "", price: Number(price) || 0 };
+    });
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      await onSubmit(rows);
+      setText("");
+      onClose();
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setError(e?.message ?? "Bulk upload failed. Please check the format and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-lg">
+        <h2 className="text-base font-semibold text-foreground">Bulk upload listings</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          One listing per line: <code>title, county, price</code>
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={8}
+          placeholder={"5 Acre Parcel, Nakuru, 800000\n1/8 Acre Plot, Kiambu, 1200000"}
+          className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-[#2563EB]"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">{rows.length} listing(s) detected</p>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={submitting || rows.length === 0}
+            className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+          >
+            {submitting ? "Uploading…" : "Upload"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-foreground">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
           {icon}
         </div>
-        {label}
+        <span className="leading-tight">{label}</span>
       </div>
-      <div className="mt-3 text-2xl font-semibold text-foreground">{value}</div>
+      <div className="mt-3 text-xl font-semibold text-foreground sm:text-2xl">{value}</div>
     </div>
   );
 }
@@ -287,9 +472,9 @@ interface ApiAnalytics {
   traffic_sources: { name: string; value: number; color: string }[];
 }
 
-function AnalyticsTab({ plan, onUpgrade }: { plan: string; onUpgrade: () => void }) {
+function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
   const { user } = useAuth();
-  const locked = plan !== "pro";
+  const locked = !user?.analyticsAccess;
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
   const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -806,22 +991,32 @@ function SmallStat({ label, value, sub }: { label: string; value: string; sub: s
 
 function BillingTab({
   plan,
+  plans,
+  maxListings,
   usedListings,
   onUpgrade: _onUpgrade,
   payments,
   onSelectPlan,
+  manager,
 }: {
   plan: string;
+  plans: Plan[];
+  maxListings: number;
   usedListings: number;
   onUpgrade: () => void;
   payments: { date: string; amount: number; plan: string; status: string }[];
-  onSelectPlan: (p: PlanId) => void;
+  onSelectPlan: (p: string) => void;
+  manager: { name: string; email: string } | null;
 }) {
-  const p = planById(plan as PlanId);
-  const limitNum = p.listings === Infinity ? Infinity : p.listings;
+  const p = plans.find((pl) => pl.id === plan);
+  const limitNum = maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
   const pct =
     limitNum === Infinity ? 8 : Math.min(100, Math.round((usedListings / limitNum) * 100));
+
+  if (!p) {
+    return <div className="text-sm text-muted-foreground">Loading plan details…</div>;
+  }
   const nextBillDate = new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -913,6 +1108,16 @@ function BillingTab({
           </div>
         </div>
       </div>
+
+      {manager && (
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Your dedicated account manager
+          </div>
+          <div className="mt-2 text-sm font-medium text-foreground">{manager.name}</div>
+          <div className="text-xs text-muted-foreground">{manager.email}</div>
+        </div>
+      )}
 
       {/* Plan picker */}
       <div>
@@ -1047,49 +1252,86 @@ function BillingTab({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-3">Invoice</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Plan</th>
-                  <th className="px-5 py-3">Amount</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {payments.map((pay, i) => (
-                  <tr key={i} className="hover:bg-muted/30">
-                    <td className="px-5 py-3 font-mono text-xs text-foreground">
+          <>
+            <div className="divide-y divide-border md:hidden">
+              {payments.map((pay, i) => (
+                <div key={i} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0">
+                    <div className="font-mono text-xs text-foreground">
                       INV-{String(payments.length - i).padStart(4, "0")}
-                    </td>
-                    <td className="px-5 py-3 text-muted-foreground">{pay.date}</td>
-                    <td className="px-5 py-3">{pay.plan}</td>
-                    <td className="px-5 py-3 font-medium text-foreground">
-                      Ksh {pay.amount.toLocaleString()}
-                    </td>
-                    <td className="px-5 py-3">
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {pay.plan} · {pay.date}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-foreground">
+                        Ksh {pay.amount.toLocaleString()}
+                      </div>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
+                        className={`mt-0.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${pay.status === "Paid" ? "bg-[#16A34A]" : "bg-[#D97706]"}`}
                         />
                         {pay.status}
                       </span>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline">
-                        <Download className="h-3 w-3" /> PDF
-                      </button>
-                    </td>
+                    </div>
+                    <button
+                      className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      title="Download PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-5 py-3">Invoice</th>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Plan</th>
+                    <th className="px-5 py-3">Amount</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {payments.map((pay, i) => (
+                    <tr key={i} className="hover:bg-muted/30">
+                      <td className="px-5 py-3 font-mono text-xs text-foreground">
+                        INV-{String(payments.length - i).padStart(4, "0")}
+                      </td>
+                      <td className="px-5 py-3 text-muted-foreground">{pay.date}</td>
+                      <td className="px-5 py-3">{pay.plan}</td>
+                      <td className="px-5 py-3 font-medium text-foreground">
+                        Ksh {pay.amount.toLocaleString()}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${pay.status === "Paid" ? "bg-[#16A34A]" : "bg-[#D97706]"}`}
+                          />
+                          {pay.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline">
+                          <Download className="h-3 w-3" /> PDF
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -1107,9 +1349,10 @@ function OverviewTab({
   onGoTab: (t: DashTab) => void;
 }) {
   const navigate = useNavigate();
-  const plan = planById(user.plan);
+  const { data: plans = [] } = usePlans();
+  const plan = plans.find((p) => p.id === user.plan);
   const used = user.listings.length;
-  const limitNum = plan.listings === Infinity ? Infinity : plan.listings;
+  const limitNum = user.maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
   const pct = limitNum === Infinity ? 12 : Math.min(100, Math.round((used / limitNum) * 100));
   const totalViews = user.listings.reduce((a, b) => a + b.views, 0);
@@ -1169,7 +1412,7 @@ function OverviewTab({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
             {greeting}, {user.fullName.split(" ")[0]}
@@ -1181,13 +1424,13 @@ function OverviewTab({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onGoTab("analytics")}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted sm:flex-none sm:py-1.5"
           >
             <BarChart3 className="h-3.5 w-3.5" /> View analytics
           </button>
           <button
             onClick={() => navigate({ to: "/dashboard/upload" })}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-2 text-xs font-medium text-white hover:bg-[#1d4ed8] sm:flex-none sm:py-1.5"
           >
             <Plus className="h-3.5 w-3.5" /> New listing
           </button>
@@ -1195,7 +1438,7 @@ function OverviewTab({
       </div>
 
       {/* KPI grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat
           icon={<ListChecks className="h-4 w-4" />}
           label="Active listings"
@@ -1226,7 +1469,9 @@ function OverviewTab({
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <Crown className="h-3.5 w-3.5 text-[#2563EB]" /> Current plan
               </div>
-              <div className="mt-1 text-xl font-semibold text-foreground">{plan.name}</div>
+              <div className="mt-1 text-xl font-semibold text-foreground">
+                {plan?.name ?? user.plan}
+              </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {used} of {limitText} listings used
               </div>
@@ -1330,7 +1575,15 @@ function OverviewTab({
             <ul className="divide-y divide-border">
               {recent.map((l) => (
                 <li key={l.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="h-10 w-12 shrink-0 rounded bg-muted" />
+                  {l.coverPhotoUrl ? (
+                    <img
+                      src={l.coverPhotoUrl}
+                      alt=""
+                      className="h-10 w-12 shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-12 shrink-0 rounded bg-muted" />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-foreground">{l.title}</div>
                     <div className="text-[11px] text-muted-foreground">
@@ -1354,7 +1607,7 @@ function OverviewTab({
           </div>
           <ul className="mt-3 divide-y divide-border">
             {[
-              { t: "Just now", text: "Welcome to LandVerify" },
+              { t: "Just now", text: "Welcome to Geo Properties" },
               { t: "2h ago", text: "Map updated with 14 new parcels" },
               { t: "1d ago", text: "Verification team reviewed your area" },
               { t: "3d ago", text: "Account created" },
@@ -1390,7 +1643,7 @@ function OverviewTab({
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
           Next billing:{" "}
           <span className="font-medium">
-            {plan.price === 0
+            {(plan?.price ?? 0) === 0
               ? "—"
               : new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
                   day: "2-digit",
@@ -2020,6 +2273,7 @@ interface KycApplication {
   reviewer_notes: string | null;
   rejection_reason: string | null;
   info_request_message: string | null;
+  correction_note: string | null;
   user_reply: string | null;
   user_replied_at: string | null;
   user_reply_document_path: string | null;
@@ -2029,7 +2283,15 @@ interface KycApplication {
   submitted_at: string | null;
   reviewed_at: string | null;
   created_at: string;
-  parcel: { id: string; title: string; parcel_number: string | null } | null;
+  parcel: {
+    id: string;
+    title: string;
+    parcel_number: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    boundary: { lat: number; lng: number }[] | null;
+    boundary_source: string | null;
+  } | null;
   documents: KycDocument[];
 }
 
@@ -2077,6 +2339,14 @@ const kycStatusConfig: Record<
     icon: <AlertTriangle className="h-3.5 w-3.5" />,
     step: 3,
   },
+  location_correction_requested: {
+    label: "Fix Location",
+    bg: "#FFF7ED",
+    fg: "#C2410C",
+    border: "#F97316",
+    icon: <MapPin className="h-3.5 w-3.5" />,
+    step: 2,
+  },
 };
 
 const STEPS = ["Submitted", "In Review", "Decision"];
@@ -2091,6 +2361,7 @@ function KycCard({
   submitted,
   fileInputRefs,
   handleReply,
+  handleUpdateLocation,
   fmtDate,
 }: {
   kyc: KycApplication;
@@ -2102,6 +2373,11 @@ function KycCard({
   submitted: string[];
   fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
   handleReply: (kyc: KycApplication) => void;
+  handleUpdateLocation: (
+    kyc: KycApplication,
+    pin: [number, number] | null,
+    boundary: { lat: number; lng: number }[] | null,
+  ) => void;
   fmtDate: (s: string) => string;
 }) {
   const cfg = kycStatusConfig[kyc.status] ?? {
@@ -2117,10 +2393,22 @@ function KycCard({
   const isInfo = kyc.status === "info_requested";
   const isApproved = kyc.status === "approved";
   const isRejected = kyc.status === "rejected";
+  const isLocationCorrection = kyc.status === "location_correction_requested";
+  const locationCorrected = submitted.includes(`loc:${kyc.id}`);
   const acknowledged = !!kyc.admin_acknowledgment;
-  // Auto-expand: unanswered info requests and cards with a new acknowledgment
-  const [expanded, setExpanded] = useState((isInfo && !alreadyReplied) || acknowledged);
+  // Auto-expand: unanswered info requests, location corrections, and acknowledged cards
+  const [expanded, setExpanded] = useState(
+    (isInfo && !alreadyReplied) || (isLocationCorrection && !locationCorrected) || acknowledged,
+  );
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
+  const [locPin, setLocPin] = useState<[number, number] | null>(
+    kyc.parcel?.latitude != null && kyc.parcel?.longitude != null
+      ? [kyc.parcel.latitude, kyc.parcel.longitude]
+      : null,
+  );
+  const [locBoundary, setLocBoundary] = useState<{ lat: number; lng: number }[] | null>(
+    kyc.parcel?.boundary && kyc.parcel.boundary.length >= 3 ? kyc.parcel.boundary : null,
+  );
 
   async function handleViewDoc(docId: string) {
     setViewingDoc(docId);
@@ -2152,6 +2440,16 @@ function KycCard({
               {isInfo && !alreadyReplied && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10px] font-semibold text-[#D97706]">
                   Action required
+                </span>
+              )}
+              {isLocationCorrection && !locationCorrected && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7ED] px-2 py-0.5 text-[10px] font-semibold text-[#C2410C]">
+                  Fix location required
+                </span>
+              )}
+              {isLocationCorrection && locationCorrected && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#15803D]">
+                  <Check className="h-2.5 w-2.5" /> Location updated
                 </span>
               )}
               {isInfo && alreadyReplied && acknowledged && (
@@ -2436,6 +2734,70 @@ function KycCard({
             </div>
           )}
 
+          {/* Location correction */}
+          {isLocationCorrection && (
+            <div className="rounded-lg border border-[#F97316]/40 bg-[#FFF7ED]">
+              <div className="flex items-center gap-2 border-b border-[#F97316]/30 px-4 py-3">
+                <MapPin className="h-4 w-4 text-[#C2410C]" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#C2410C]">
+                  Location correction requested
+                </p>
+              </div>
+              {kyc.correction_note && (
+                <div className="px-4 py-3">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">
+                    {kyc.correction_note}
+                  </p>
+                </div>
+              )}
+              <div className="border-t border-[#F97316]/30 px-4 py-4">
+                {locationCorrected ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-[#F0FDF4] p-3">
+                    <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
+                    <p className="text-sm font-medium text-[#15803D]">
+                      Updated location submitted — under review.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <LandBoundaryMap
+                      pin={locPin}
+                      boundary={locBoundary}
+                      onPinChange={setLocPin}
+                      onBoundaryChange={setLocBoundary}
+                      heightClassName="h-64"
+                      hintText='This shows where you originally placed your land. Drop a new pin to correct it, or tap "Trace boundary" / "Retrace boundary" to redraw the shape.'
+                      requireTapToActivate
+                    />
+                    {locBoundary ? (
+                      <p className="text-xs text-muted-foreground">
+                        Traced boundary: {locBoundary.length} points
+                      </p>
+                    ) : locPin ? (
+                      <p className="text-xs text-muted-foreground">
+                        Pin: {locPin[0].toFixed(6)}, {locPin[1].toFixed(6)}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/60">No pin placed yet.</p>
+                    )}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleUpdateLocation(kyc, locPin, locBoundary)}
+                        disabled={!locPin || submitting === `loc:${kyc.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#C2410C] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        {submitting === `loc:${kyc.id}`
+                          ? "Submitting…"
+                          : "Submit corrected location"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Submitted documents */}
           {kyc.documents && kyc.documents.length > 0 && (
             <div className="rounded-lg border border-border p-4">
@@ -2500,6 +2862,7 @@ const DOC_TYPES = [
 function KycTab() {
   const [applications, setApplications] = useState<KycApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replyFile, setReplyFile] = useState<Record<string, File | null>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -2520,10 +2883,54 @@ function KycTab() {
   useEffect(() => {
     api
       .get<KycApplication[]>("/user/kyc")
-      .then(setApplications)
-      .catch(() => {})
+      .then((data) => {
+        setApplications(data);
+        setFetchError(false);
+      })
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleUpdateLocation = async (
+    kyc: KycApplication,
+    pin: [number, number] | null,
+    boundary: { lat: number; lng: number }[] | null,
+  ) => {
+    if (!pin || submitting) return;
+    const [lat, lng] = pin;
+    setSubmitting(`loc:${kyc.id}`);
+    try {
+      await api.patch(`/user/kyc/${kyc.id}/update-location`, {
+        latitude: lat,
+        longitude: lng,
+        boundary: boundary ?? undefined,
+      });
+      setSubmitted((prev) => [...prev, `loc:${kyc.id}`]);
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === kyc.id
+            ? {
+                ...a,
+                status: "pending",
+                parcel: a.parcel
+                  ? {
+                      ...a.parcel,
+                      latitude: lat,
+                      longitude: lng,
+                      boundary: boundary ?? null,
+                      boundary_source: boundary ? "traced" : "approximate",
+                    }
+                  : a.parcel,
+              }
+            : a,
+        ),
+      );
+    } catch {
+      // silent
+    } finally {
+      setSubmitting(null);
+    }
+  };
 
   const handleReply = async (kyc: KycApplication) => {
     const text = replyText[kyc.id]?.trim();
@@ -2612,10 +3019,11 @@ function KycTab() {
 
   const needsAction = applications.filter(
     (a) =>
-      a.status === "info_requested" &&
-      !a.user_reply &&
-      !a.user_reply_document_path &&
-      !submitted.includes(a.id),
+      (a.status === "info_requested" &&
+        !a.user_reply &&
+        !a.user_reply_document_path &&
+        !submitted.includes(a.id)) ||
+      (a.status === "location_correction_requested" && !submitted.includes(`loc:${a.id}`)),
   );
   const rest = applications.filter((a) => !needsAction.includes(a));
 
@@ -2637,6 +3045,7 @@ function KycTab() {
     submitted,
     fileInputRefs,
     handleReply,
+    handleUpdateLocation,
     fmtDate,
   };
 
@@ -2798,7 +3207,17 @@ function KycTab() {
         </button>
       </div>
 
-      {applications.length === 0 ? (
+      {fetchError ? (
+        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
+          <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h3 className="mt-4 text-base font-semibold text-foreground">
+            Unable to load applications
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Something went wrong. Please refresh the page or try again later.
+          </p>
+        </div>
+      ) : applications.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
           <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 text-base font-semibold text-foreground">No KYC applications yet</h3>

@@ -4,7 +4,7 @@ import { MapPinned, Eye, EyeOff, ArrowRight, ArrowLeft, Check } from "lucide-rea
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign In — LandConnect Kenya" }] }),
+  head: () => ({ meta: [{ title: "Sign In — Geo Properties Kenya" }] }),
   component: LoginPage,
 });
 
@@ -31,7 +31,7 @@ function GoogleIcon() {
   );
 }
 
-function LoginPage() {
+export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -55,9 +55,15 @@ function LoginPage() {
     }
     setLoading(true);
     try {
-      await login(email, password, rememberMe);
+      const u = await login(email, password, rememberMe);
       setSuccess(true);
-      setTimeout(() => navigate({ to: "/dashboard", search: { tab: undefined } }), 1500);
+      setTimeout(() => {
+        if (u.role === "account_manager") {
+          navigate({ to: "/manager" });
+        } else {
+          navigate({ to: "/dashboard", search: { tab: undefined } });
+        }
+      }, 1500);
     } catch (err: unknown) {
       const e = err as { errors?: Record<string, string[]>; message?: string };
       setErr(
@@ -93,7 +99,7 @@ function LoginPage() {
             <MapPinned className="h-5 w-5 text-white" />
           </div>
           <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            LandConnect
+            Geo Properties
           </span>
         </Link>
       </div>
@@ -108,11 +114,6 @@ function LoginPage() {
           Home
         </Link>
       </div>
-
-      {/* Photo credit — bottom left */}
-      <p className="absolute bottom-4 left-6 z-20 text-[10px] text-white/30">
-        David Clode / Unsplash — Samburu, Kenya
-      </p>
 
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[400px] mx-4">

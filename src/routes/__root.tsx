@@ -4,10 +4,13 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { Navbar } from "@/components/Navbar";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -79,13 +82,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LandVerify Kenya — Verified Land & Property Intelligence" },
+      { title: "Geo Properties Kenya — Verified Land & Property Intelligence" },
       {
         name: "description",
         content:
           "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
       },
-      { property: "og:title", content: "LandVerify Kenya — Verified Land & Property Intelligence" },
+      {
+        property: "og:title",
+        content: "Geo Properties Kenya — Verified Land & Property Intelligence",
+      },
       {
         property: "og:description",
         content:
@@ -129,8 +135,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+const NO_NAVBAR_PREFIXES = ["/dashboard", "/manager", "/login", "/register", "/forgot-password"];
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { pathname } = useLocation();
+  const showNavbar = !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {
@@ -141,7 +151,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {showNavbar && <Navbar scrollAware />}
         <Outlet />
+        <Toaster position="top-right" richColors />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   LayoutGrid,
   List,
@@ -6,14 +6,13 @@ import {
   BarChart3,
   Wallet,
   Settings,
-  LogOut,
-  MapPinned,
   ShieldCheck,
-  Bell,
+  MoreHorizontal,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { VerifyAccountModal } from "@/components/VerifyAccountModal";
+import { Navbar } from "@/components/Navbar";
 
 export type DashTab =
   "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
@@ -28,100 +27,11 @@ const items: { id: DashTab; label: string; icon: ReactNode }[] = [
   { id: "settings", label: "Account Settings", icon: <Settings className="h-4 w-4" /> },
 ];
 
-interface Notification {
-  id: string;
-  data: { type: string; message?: string; reference?: string };
-  read_at: string | null;
-  created_at: string;
-}
-
-function NotificationBell() {
-  const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    api
-      .get<Notification[]>("/user/notifications")
-      .then(setNotifications)
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const unread = notifications.filter((n) => !n.read_at).length;
-
-  const handleOpen = () => {
-    setOpen((v) => !v);
-    if (unread > 0) {
-      api.post("/user/notifications/read-all").catch(() => {});
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })),
-      );
-    }
-  };
-
-  const fmtDate = (s: string) =>
-    new Date(s).toLocaleDateString("en-KE", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={handleOpen}
-        className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        <Bell className="h-4 w-4" />
-        {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#2563EB] text-[9px] font-bold text-white">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-10 z-50 w-80 rounded-lg border border-border bg-card shadow-lg">
-          <div className="border-b border-border px-4 py-2.5">
-            <h3 className="text-xs font-semibold text-foreground">Notifications</h3>
-          </div>
-          {notifications.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-              No notifications yet
-            </p>
-          ) : (
-            <ul className="max-h-72 divide-y divide-border overflow-y-auto">
-              {notifications.map((n) => (
-                <li key={n.id} className="px-4 py-3">
-                  <p className="text-xs font-medium text-foreground">
-                    {n.data.type === "kyc_info_requested"
-                      ? "KYC — Additional information requested"
-                      : n.data.type}
-                  </p>
-                  {n.data.message && (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
-                      {n.data.message}
-                    </p>
-                  )}
-                  <p className="mt-1 text-[10px] text-muted-foreground">{fmtDate(n.created_at)}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+// The mobile bottom nav only has room for a handful of comfortable tap
+// targets — the rest live behind "More" so none of them end up as an
+// unreadable, hard-to-tap sliver.
+const mobilePrimaryItems = items.slice(0, 4);
+const mobileOverflowItems = items.slice(4);
 
 interface Props {
   active: DashTab;
@@ -130,10 +40,13 @@ interface Props {
 }
 
 export function DashboardShell({ active, onChange, children }: Props) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   const handleSelect = (t: DashTab) => {
+    setMoreOpen(false);
     if (t === "upload") {
       navigate({ to: "/dashboard/upload" });
       return;
@@ -142,46 +55,21 @@ export function DashboardShell({ active, onChange, children }: Props) {
     navigate({ to: "/dashboard", search: { tab: t } });
   };
 
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card">
-        <div className="flex h-14 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <MapPinned className="h-4 w-4" />
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-foreground">LandVerify</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Dashboard
-              </div>
-            </div>
-          </Link>
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <div className="hidden text-right md:block">
-              <div className="text-xs font-medium text-foreground">{user?.fullName ?? "Guest"}</div>
-              <div className="text-[11px] capitalize text-muted-foreground">
-                {user?.plan ?? "free"} plan
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                logout();
-                navigate({ to: "/" });
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-            >
-              <LogOut className="h-3.5 w-3.5" /> Logout
-            </button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
-      <div className="mx-auto flex max-w-7xl">
+      <div className="flex">
         {/* Sidebar (desktop) */}
-        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-border bg-card md:block">
+        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-border bg-card sm:top-16 sm:h-[calc(100vh-4rem)] md:block">
           <nav className="p-3">
             {items.map((it) => {
               const isActive = it.id === "upload" ? false : it.id === active;
@@ -207,14 +95,14 @@ export function DashboardShell({ active, onChange, children }: Props) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-7 border-t border-border bg-card md:hidden">
-        {items.map((it) => {
+      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t border-border bg-card md:hidden">
+        {mobilePrimaryItems.map((it) => {
           const isActive = it.id === active;
           return (
             <button
               key={it.id}
               onClick={() => handleSelect(it.id)}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium ${
+              className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium ${
                 isActive ? "text-[#2563EB]" : "text-muted-foreground"
               }`}
             >
@@ -223,7 +111,41 @@ export function DashboardShell({ active, onChange, children }: Props) {
             </button>
           );
         })}
+        <div ref={moreRef} className="relative">
+          <button
+            onClick={() => setMoreOpen((v) => !v)}
+            className={`flex w-full flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium ${
+              mobileOverflowItems.some((it) => it.id === active) || moreOpen
+                ? "text-[#2563EB]"
+                : "text-muted-foreground"
+            }`}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="truncate px-1">More</span>
+          </button>
+          {moreOpen && (
+            <div className="absolute bottom-full right-0 z-30 mb-2 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+              {mobileOverflowItems.map((it) => {
+                const isActive = it.id === active;
+                return (
+                  <button
+                    key={it.id}
+                    onClick={() => handleSelect(it.id)}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                      isActive ? "bg-[#2563EB]/10 text-[#2563EB]" : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {it.icon}
+                    {it.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
+
+      {user && !user.emailVerified && <VerifyAccountModal />}
     </div>
   );
 }

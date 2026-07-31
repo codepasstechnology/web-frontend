@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Navbar } from "@/components/Navbar";
 import { api } from "@/lib/api";
 import { FileText, AlertCircle, Calendar, Tag } from "lucide-react";
 
@@ -12,7 +11,7 @@ interface LegalDoc {
 }
 
 interface Props {
-  type: "terms" | "privacy";
+  type: "terms" | "privacy" | "data-usage" | "cookie-policy";
 }
 
 export function LegalDocPage({ type }: Props) {
@@ -34,8 +33,6 @@ export function LegalDocPage({ type }: Props) {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-
       <div className="mx-auto max-w-3xl px-4 py-10 md:py-16">
         {/* Loading skeleton */}
         {loading && (
