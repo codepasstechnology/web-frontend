@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   X,
@@ -19,11 +19,62 @@ import {
 import { statusMeta, type LandParcel, type Rental } from "@/lib/landData";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-// Mobile: bottom sheet (max 60vh, leaves more of the map visible). Desktop: right side panel.
+// Mobile: draggable bottom sheet (peek/default/full snap points, leaves the map visible
+// underneath). Desktop: right side panel, unaffected by the drag state.
 const panelClass =
-  "fixed inset-x-0 bottom-0 z-[1150] flex max-h-[60vh] w-full flex-col rounded-t-xl border border-border bg-card shadow-2xl " +
+  "fixed inset-x-0 bottom-0 z-[1150] flex w-full flex-col rounded-t-xl border border-border bg-card shadow-2xl " +
   "md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-0 md:h-full md:max-h-none md:w-full md:max-w-sm md:rounded-none md:border-0 md:border-l";
+
+const SHEET_PEEK_VH = 24;
+const SHEET_DEFAULT_VH = 55;
+const SHEET_FULL_VH = 88;
+
+function useDraggableSheetHeight() {
+  const [heightVh, setHeightVh] = useState(SHEET_DEFAULT_VH);
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { startY: e.clientY, startHeight: heightVh };
+  };
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    const deltaVh = ((dragRef.current.startY - e.clientY) / window.innerHeight) * 100;
+    setHeightVh(
+      Math.min(SHEET_FULL_VH, Math.max(SHEET_PEEK_VH, dragRef.current.startHeight + deltaVh)),
+    );
+  };
+  const onPointerUp = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setHeightVh((h) => (h > (SHEET_PEEK_VH + SHEET_FULL_VH) / 2 ? SHEET_FULL_VH : SHEET_PEEK_VH));
+  };
+
+  return { heightVh, onPointerDown, onPointerMove, onPointerUp };
+}
+
+function DragHandle({
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: {
+  onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onPointerUp: () => void;
+}) {
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      className="flex shrink-0 touch-none justify-center py-2.5 md:hidden"
+    >
+      <div className="h-1 w-10 rounded-full bg-border" />
+    </div>
+  );
+}
 
 function PostedByBadge({ postedBy }: { postedBy: "owner" | "broker" }) {
   const isOwner = postedBy === "owner";
@@ -194,8 +245,15 @@ export function ParcelPanel({
 }) {
   const meta = statusMeta[parcel.status];
   const priceLabel = parcel.listingType === "lease" ? "Lease / year" : "Price";
+  const isMobile = useIsMobile();
+  const { heightVh, onPointerDown, onPointerMove, onPointerUp } = useDraggableSheetHeight();
   return (
-    <aside className={panelClass}>
+    <aside className={panelClass} style={isMobile ? { maxHeight: `${heightVh}vh` } : undefined}>
+      <DragHandle
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      />
       <div className="flex items-start justify-between border-b border-border p-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -326,8 +384,15 @@ export function ParcelPanel({
 }
 
 export function RentalPanel({ rental, onClose }: { rental: Rental; onClose: () => void }) {
+  const isMobile = useIsMobile();
+  const { heightVh, onPointerDown, onPointerMove, onPointerUp } = useDraggableSheetHeight();
   return (
-    <aside className={panelClass}>
+    <aside className={panelClass} style={isMobile ? { maxHeight: `${heightVh}vh` } : undefined}>
+      <DragHandle
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      />
       <div className="flex items-start justify-between border-b border-border p-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">

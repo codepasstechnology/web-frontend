@@ -12,6 +12,7 @@ export interface UserListing {
   status: "pending" | "active" | "sold";
   views: number;
   createdAt: string;
+  coverPhotoUrl: string | null;
 }
 
 export interface AppUser {
@@ -77,6 +78,7 @@ interface ApiListing {
   status: string;
   views: number;
   created_at: string;
+  cover_photo_url: string | null;
 }
 
 interface ApiSubscription {
@@ -148,6 +150,7 @@ function mapApiUser(
       status: (l.status as UserListing["status"]) ?? "pending",
       views: l.views,
       createdAt: l.created_at,
+      coverPhotoUrl: l.cover_photo_url,
     })),
     payments: payments.map((p) => ({
       date: p.date,
@@ -296,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           status: (l.status as UserListing["status"]) ?? "pending",
           views: l.views,
           createdAt: l.created_at,
+          coverPhotoUrl: l.cover_photo_url,
         })),
       };
     });
@@ -355,6 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: "pending",
       views: 0,
       createdAt: created.created_at,
+      coverPhotoUrl: null,
     };
     setUser((prev) => (prev ? { ...prev, listings: [newL, ...prev.listings] } : prev));
   }, []);
@@ -370,6 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: "pending",
       views: 0,
       createdAt: l.created_at,
+      coverPhotoUrl: null,
     }));
     setUser((prev) => (prev ? { ...prev, listings: [...newListings, ...prev.listings] } : prev));
   }, []);

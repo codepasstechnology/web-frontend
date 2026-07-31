@@ -6,6 +6,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({ meta: [{ title: "Upload Land — Geo Properties Kenya" }] }),
@@ -133,6 +134,7 @@ function UploadPage() {
   const { user, ready, addListing } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const draft = useRef(loadDraft()).current;
   const [step, setStep] = useState(draft?.step ?? 0);
   const [submitted, setSubmitted] = useState(false);
@@ -258,6 +260,59 @@ function UploadPage() {
 
   return (
     <DashboardShell active="upload" onChange={() => {}}>
+      {step === 1 && isMobile && !submitted && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setStep(0)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back
+            </button>
+            <span className="mx-auto text-sm font-semibold text-foreground">
+              Pin or trace your land
+            </span>
+            <span className="w-12 shrink-0" aria-hidden="true" />
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden p-3">
+            <LandBoundaryMap
+              pin={form.pin}
+              boundary={form.boundary}
+              onPinChange={(p) => set("pin", p)}
+              onBoundaryChange={(b) => set("boundary", b)}
+              county={form.county}
+              hintText=""
+              heightClassName="h-[calc(100dvh-12rem)]"
+            />
+          </div>
+          <div className="shrink-0 border-t border-border p-3">
+            <p
+              className={`mb-2 truncate text-xs font-medium ${
+                boundarySelfIntersects ? "text-destructive" : "text-muted-foreground"
+              }`}
+            >
+              {boundarySelfIntersects
+                ? 'This boundary crosses itself — tap "Retrace boundary" to redraw it.'
+                : form.boundary
+                  ? `Boundary traced — ${form.boundary.length} points${
+                      tracedAreaAcres != null ? ` · ≈ ${tracedAreaAcres.toFixed(2)} acres` : ""
+                    }`
+                  : form.pin
+                    ? `Pin set — ${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
+                    : "Tap the map to drop a pin, or trace your land's exact edge."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              disabled={!canNext}
+              className="w-full rounded-md bg-[#2563EB] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+            >
+              Confirm location
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl">
         <button
           onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })}
@@ -533,7 +588,7 @@ function UploadPage() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 1 && !isMobile && (
               <div>
                 <LandBoundaryMap
                   pin={form.pin}

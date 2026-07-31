@@ -78,7 +78,7 @@ export function Navbar({
       }`}
     >
       <div
-        className={`mx-auto flex h-14 items-center gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6 ${compact ? "max-w-none" : "max-w-7xl"}`}
+        className={`mx-auto flex h-14 items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6 ${compact ? "max-w-none" : "max-w-7xl"}`}
       >
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <div

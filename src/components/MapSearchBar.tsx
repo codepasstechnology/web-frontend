@@ -124,16 +124,7 @@ export function MapSearchBar({
   return (
     <div
       ref={wrapRef}
-      style={{
-        position: "absolute",
-        top: 10,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 800,
-        width: 300,
-        maxWidth: "calc(100% - 70px)",
-        pointerEvents: "auto",
-      }}
+      className="pointer-events-auto absolute left-28 right-3 top-3 z-[800] md:left-1/2 md:right-auto md:top-2.5 md:w-[300px] md:max-w-[calc(100%-70px)] md:-translate-x-1/2"
     >
       <div style={{ display: "flex", gap: 6 }}>
         <div style={{ position: "relative", flex: 1 }}>
