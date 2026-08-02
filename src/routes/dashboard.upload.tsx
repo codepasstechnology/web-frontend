@@ -16,6 +16,9 @@ export const Route = createFileRoute("/dashboard/upload")({
 
 const steps = ["Basic Details", "Location on Map", "Photos & Documents", "Review & Submit"];
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_DEED_BYTES = 10 * 1024 * 1024;
+
 type SizeUnit = "acres" | "hectares" | "feet";
 
 const DRAFT_KEY = "lv_upload_draft_v1";
@@ -140,6 +143,8 @@ function UploadPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [fileError, setFileError] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [showDraftNotice, setShowDraftNotice] = useState(!!draft);
 
@@ -191,8 +196,15 @@ function UploadPage() {
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files);
+    const oversized = arr.filter((f) => f.size > MAX_PHOTO_BYTES);
+    const valid = arr.filter((f) => f.size <= MAX_PHOTO_BYTES);
+    setFileError(
+      oversized.length
+        ? `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 5MB limit per photo and ${oversized.length === 1 ? "wasn't" : "weren't"} added.`
+        : "",
+    );
     const allowed = photoLimit - form.photos.length;
-    const slice = arr.slice(0, Math.max(0, allowed));
+    const slice = valid.slice(0, Math.max(0, allowed));
     const mapped = slice.map((f) => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
     set("photos", [...form.photos, ...mapped]);
   };
@@ -228,26 +240,30 @@ function UploadPage() {
     }
     setSubmitting(true);
     setSubmitErr("");
+    setUploadProgress(form.deedFile || form.photos.length ? 0 : null);
     try {
-      await addListing({
-        title: form.title,
-        parcelNumber: form.parcelNumber,
-        county: form.county,
-        area: form.area || undefined,
-        size: sizeDisplay || undefined,
-        areaAcres: sizeAcres ?? undefined,
-        price: Number(form.price) || 0,
-        description: form.description || undefined,
-        latitude: form.pin?.[0],
-        longitude: form.pin?.[1],
-        boundary: form.boundary ?? undefined,
-        boundarySource: form.boundary ? "traced" : form.pin ? "approximate" : undefined,
-        listingType: form.listingType,
-        landType: form.landType,
-        utilities: form.utilities.length ? form.utilities : undefined,
-        titleDeedFile: form.deedFile ?? undefined,
-        photoFiles: form.photos.map((p) => p.file),
-      });
+      await addListing(
+        {
+          title: form.title,
+          parcelNumber: form.parcelNumber,
+          county: form.county,
+          area: form.area || undefined,
+          size: sizeDisplay || undefined,
+          areaAcres: sizeAcres ?? undefined,
+          price: Number(form.price) || 0,
+          description: form.description || undefined,
+          latitude: form.pin?.[0],
+          longitude: form.pin?.[1],
+          boundary: form.boundary ?? undefined,
+          boundarySource: form.boundary ? "traced" : form.pin ? "approximate" : undefined,
+          listingType: form.listingType,
+          landType: form.landType,
+          utilities: form.utilities.length ? form.utilities : undefined,
+          titleDeedFile: form.deedFile ?? undefined,
+          photoFiles: form.photos.map((p) => p.file),
+        },
+        setUploadProgress,
+      );
       clearDraft();
       setSubmitted(true);
     } catch (err: unknown) {
@@ -255,6 +271,7 @@ function UploadPage() {
       setSubmitErr(e?.message ?? "Failed to submit listing. Please try again.");
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -674,13 +691,27 @@ function UploadPage() {
                     ))}
                   </div>
                 )}
+                {fileError && (
+                  <p className="mt-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-700">
+                    {fileError}
+                  </p>
+                )}
                 <div className="mt-5">
                   <Field label="Title deed (PDF or image, optional)">
                     <input
                       type="file"
                       accept="application/pdf,image/*"
                       className="lv-input"
-                      onChange={(e) => set("deedFile", e.target.files?.[0] ?? null)}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] ?? null;
+                        if (f && f.size > MAX_DEED_BYTES) {
+                          setFileError(`${f.name} is over the 10MB limit for title deeds.`);
+                          e.target.value = "";
+                          return;
+                        }
+                        setFileError("");
+                        set("deedFile", f);
+                      }}
                     />
                   </Field>
                   {form.deedFile && (
@@ -740,6 +771,21 @@ function UploadPage() {
                     {user.maxListings === Infinity ? "∞" : user.maxListings} listings used
                   </div>
                 </div>
+                {submitting && uploadProgress != null && (
+                  <div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-[#2563EB] transition-all"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {uploadProgress < 100
+                        ? `Uploading… ${uploadProgress}%`
+                        : "Upload complete — finishing up…"}
+                    </p>
+                  </div>
+                )}
                 {submitErr && (
                   <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
                     {submitErr}

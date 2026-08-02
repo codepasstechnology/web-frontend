@@ -196,7 +196,7 @@ interface AuthCtx {
   }) => Promise<AppUser>;
   logout: () => Promise<void>;
   setPlan: (plan: string) => void;
-  addListing: (l: NewListingInput) => Promise<void>;
+  addListing: (l: NewListingInput, onProgress?: (pct: number) => void) => Promise<void>;
   bulkAddListings: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
   removeListing: (id: string) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
@@ -305,9 +305,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addListing: AuthCtx["addListing"] = useCallback(async (l) => {
+  const addListing: AuthCtx["addListing"] = useCallback(async (l, onProgress) => {
     let body: FormData | Record<string, unknown>;
-    if (l.titleDeedFile || l.photoFiles?.length) {
+    const isMultipart = !!(l.titleDeedFile || l.photoFiles?.length);
+    if (isMultipart) {
       const fd = new FormData();
       fd.append("title", l.title);
       fd.append("county", l.county);
@@ -349,7 +350,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         utilities: l.utilities ?? undefined,
       };
     }
-    const created = await api.post<ApiListing>("/user/listings", body);
+    const created = isMultipart
+      ? await api.postWithProgress<ApiListing>("/user/listings", body as FormData, onProgress)
+      : await api.post<ApiListing>("/user/listings", body);
     const newL: UserListing = {
       id: created.id,
       title: created.title,
