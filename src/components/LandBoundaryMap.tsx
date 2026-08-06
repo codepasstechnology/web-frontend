@@ -50,19 +50,40 @@ function PinDropper({
 function PolygonDrawTrigger({
   trigger,
   cancelTrigger,
+  undoTrigger,
+  finishTrigger,
   color,
   onCreated,
   onTracingChange,
+  onPointCountChange,
 }: {
   trigger: number;
   cancelTrigger: number;
+  undoTrigger: number;
+  finishTrigger: number;
   color: string;
   onCreated: (boundary: { lat: number; lng: number }[]) => void;
   onTracingChange: (tracing: boolean) => void;
+  onPointCountChange: (n: number) => void;
 }) {
   const map = useMap();
   const [ready, setReady] = useState(false);
   const handlerRef = useRef<L.Draw.Polygon | null>(null);
+
+  // `onCreated`/`onTracingChange`/`onPointCountChange` are inline callbacks
+  // from the parent and get a new identity on every render. Reading them via
+  // refs (instead of putting them in the effect below's deps) keeps that
+  // effect's map.on(...) listeners registered for the component's whole
+  // lifetime — otherwise a re-render right when `trigger` fires would tear
+  // down and re-register the listeners in the same commit as handler.enable()
+  // synchronously firing DRAWSTART, and the very first DRAWSTART would fire
+  // into a momentarily-unlistened map.
+  const onCreatedRef = useRef(onCreated);
+  onCreatedRef.current = onCreated;
+  const onTracingChangeRef = useRef(onTracingChange);
+  onTracingChangeRef.current = onTracingChange;
+  const onPointCountChangeRef = useRef(onPointCountChange);
+  onPointCountChangeRef.current = onPointCountChange;
 
   // leaflet-draw touches `window` at import time, so it must never load during SSR.
   useEffect(() => {
@@ -92,24 +113,47 @@ function PolygonDrawTrigger({
   }, [ready, cancelTrigger]);
 
   useEffect(() => {
+    if (!ready || undoTrigger === 0) return;
+    handlerRef.current?.deleteLastVertex();
+  }, [ready, undoTrigger]);
+
+  useEffect(() => {
+    if (!ready || finishTrigger === 0) return;
+    handlerRef.current?.completeShape();
+  }, [ready, finishTrigger]);
+
+  useEffect(() => {
     if (!ready) return;
-    const onDrawStart = () => onTracingChange(true);
-    const onDrawStop = () => onTracingChange(false);
+    const onDrawStart = () => {
+      map.doubleClickZoom.disable();
+      onPointCountChangeRef.current(0);
+      onTracingChangeRef.current(true);
+    };
+    const onDrawStop = () => {
+      map.doubleClickZoom.enable();
+      onTracingChangeRef.current(false);
+    };
     const onCreatedEvt = (e: L.LeafletEvent) => {
       const de = e as unknown as DrawEvents.Created;
       if (de.layerType !== "polygon" || !(de.layer instanceof L.Polygon)) return;
       const [ring] = de.layer.getLatLngs() as L.LatLng[][];
-      onCreated(ring.map((p) => ({ lat: p.lat, lng: p.lng })));
+      onCreatedRef.current(ring.map((p) => ({ lat: p.lat, lng: p.lng })));
+    };
+    const onDrawVertex = (e: L.LeafletEvent) => {
+      const de = e as unknown as DrawEvents.DrawVertex;
+      onPointCountChangeRef.current(de.layers.getLayers().length);
     };
     map.on(L.Draw.Event.DRAWSTART, onDrawStart);
     map.on(L.Draw.Event.DRAWSTOP, onDrawStop);
     map.on(L.Draw.Event.CREATED, onCreatedEvt);
+    map.on(L.Draw.Event.DRAWVERTEX, onDrawVertex);
     return () => {
       map.off(L.Draw.Event.DRAWSTART, onDrawStart);
       map.off(L.Draw.Event.DRAWSTOP, onDrawStop);
       map.off(L.Draw.Event.CREATED, onCreatedEvt);
+      map.off(L.Draw.Event.DRAWVERTEX, onDrawVertex);
     };
-  }, [ready, map, onCreated, onTracingChange]);
+  }, [ready, map]);
 
   return null;
 }
@@ -138,7 +182,7 @@ export function LandBoundaryMap({
   onPinChange,
   onBoundaryChange,
   initialCenter = [-1.286389, 36.817223],
-  hintText = 'Tap "Trace boundary", then click points around your land\'s edge on the satellite map — click the first point again to close the shape. Not sure of the exact shape? Just drop a pin instead.',
+  hintText = 'Tap "Trace boundary", then click points around your land\'s edge on the satellite map — tap "Confirm plot" once you\'ve placed at least 3 points. Not sure of the exact shape? Just drop a pin instead.',
   heightClassName = "h-[65vh] sm:h-80 lg:h-[28rem]",
   county,
   requireTapToActivate = false,
@@ -179,7 +223,11 @@ export function LandBoundaryMap({
       .then((r) => r.json())
       .then((data: { address?: Record<string, string> }) => {
         if (cancelled) return;
-        const detected = data.address?.county ?? data.address?.state;
+        // Nominatim's generic "county" address field maps to Kenya's
+        // sub-counties/constituencies (e.g. "Kikuyu"), not its 47 counties —
+        // "state" is the field that actually holds the Kenyan county (e.g.
+        // "Kiambu").
+        const detected = data.address?.state ?? data.address?.county;
         if (!detected) {
           setCountyMismatch(null);
           return;
@@ -201,9 +249,17 @@ export function LandBoundaryMap({
     };
   }, [pin, county]);
 
+  const controlsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (controlsRef.current) L.DomEvent.disableClickPropagation(controlsRef.current);
+  }, []);
+
   const [isSatellite, setIsSatellite] = useState(true);
   const [drawTrigger, setDrawTrigger] = useState(0);
   const [cancelTrigger, setCancelTrigger] = useState(0);
+  const [undoTrigger, setUndoTrigger] = useState(0);
+  const [finishTrigger, setFinishTrigger] = useState(0);
+  const [pointCount, setPointCount] = useState(0);
   const [tracing, setTracing] = useState(false);
   const [colorMode, setColorMode] = useState<"fresh" | "retrace">("fresh");
   const shapeColor = colorMode === "retrace" ? "#F97316" : "#2563EB";
@@ -244,9 +300,12 @@ export function LandBoundaryMap({
             <PolygonDrawTrigger
               trigger={drawTrigger}
               cancelTrigger={cancelTrigger}
+              undoTrigger={undoTrigger}
+              finishTrigger={finishTrigger}
               color={shapeColor}
               onCreated={handleBoundaryCreated}
               onTracingChange={setTracing}
+              onPointCountChange={setPointCount}
             />
             {boundary && (
               <Polygon
@@ -265,18 +324,39 @@ export function LandBoundaryMap({
           }}
         />
         <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
-        <div className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5">
+        <div
+          ref={controlsRef}
+          className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5"
+        >
           {tracing ? (
             <>
               <span className="rounded-md bg-background/95 px-2.5 py-2 text-xs text-muted-foreground shadow-sm sm:px-2 sm:py-1.5">
-                Click points on the map…
+                {pointCount === 0
+                  ? "Tap points around your land…"
+                  : `${pointCount} point${pointCount === 1 ? "" : "s"} placed`}
               </span>
+              <button
+                type="button"
+                onClick={() => setUndoTrigger((n) => n + 1)}
+                disabled={pointCount <= 1}
+                className="rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
+              >
+                Undo point
+              </button>
               <button
                 type="button"
                 onClick={() => setCancelTrigger((n) => n + 1)}
                 className="rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted sm:px-2.5 sm:py-1.5 sm:text-xs"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinishTrigger((n) => n + 1)}
+                disabled={pointCount < 3}
+                className="rounded-md bg-[#2563EB] px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
+              >
+                Confirm plot
               </button>
             </>
           ) : (
@@ -300,7 +380,7 @@ export function LandBoundaryMap({
                   setDrawTrigger((n) => n + 1);
                   toast("Trace your land's boundary", {
                     description:
-                      "Tap points around the edge of your land on the map. Tap the first point again to close the shape.",
+                      'Tap points around the edge of your land on the map, then tap "Confirm plot" when you\'re done.',
                   });
                 }}
                 className={

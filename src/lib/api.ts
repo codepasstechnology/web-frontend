@@ -74,6 +74,7 @@ function uploadWithProgress<T>(
   path: string,
   body: FormData,
   onProgress?: (pct: number) => void,
+  abortRef?: { current: (() => void) | null },
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -82,9 +83,13 @@ function uploadWithProgress<T>(
     const token = getToken();
     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
+    if (abortRef) abortRef.current = () => xhr.abort();
+
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
+
+    xhr.onabort = () => reject(Object.assign(new Error("Upload cancelled."), { aborted: true }));
 
     xhr.onload = () => {
       if (xhr.status === 401) {
@@ -177,6 +182,10 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   getBlob: (path: string) => requestBlob(path),
-  postWithProgress: <T>(path: string, body: FormData, onProgress?: (pct: number) => void) =>
-    uploadWithProgress<T>(path, body, onProgress),
+  postWithProgress: <T>(
+    path: string,
+    body: FormData,
+    onProgress?: (pct: number) => void,
+    abortRef?: { current: (() => void) | null },
+  ) => uploadWithProgress<T>(path, body, onProgress, abortRef),
 };

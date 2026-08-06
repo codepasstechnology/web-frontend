@@ -24,7 +24,6 @@ export interface AppUser {
   plan: string;
   maxListings: number; // Infinity = unlimited
   analyticsAccess: boolean;
-  bulkUpload: boolean;
   customReports: boolean;
   manager: { name: string; email: string } | null;
   listings: UserListing[];
@@ -81,13 +80,33 @@ interface ApiListing {
   cover_photo_url: string | null;
 }
 
+interface ApiListingDetail {
+  id: string;
+  title: string;
+  parcel_number: string | null;
+  county: string;
+  area: string | null;
+  size: string | null;
+  area_acres: number | null;
+  price: number;
+  description: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  boundary: { lat: number; lng: number }[] | null;
+  boundary_source: string | null;
+  listing_type: string;
+  land_type: string;
+  utilities: string[];
+  status: string;
+  photos: { id: string; url: string; is_cover: boolean }[];
+}
+
 interface ApiSubscription {
   plan: string;
   plan_name: string;
   status: string | null;
   max_listings?: number;
   analytics_access?: boolean;
-  bulk_upload?: boolean;
   custom_reports?: boolean;
   dedicated_manager?: { name: string; email: string } | null;
 }
@@ -122,7 +141,6 @@ function mapApiUser(
     maxListings:
       sub.max_listings === -1 || sub.max_listings === undefined ? Infinity : sub.max_listings,
     analyticsAccess: sub.analytics_access ?? false,
-    bulkUpload: sub.bulk_upload ?? false,
     customReports: sub.custom_reports ?? false,
     manager: sub.dedicated_manager ?? null,
     isAdmin: u.is_admin ?? false,
@@ -179,8 +197,34 @@ export interface NewListingInput {
   listingType?: "sale" | "lease";
   landType?: "residential" | "commercial" | "agricultural" | "mixed_use" | "industrial";
   utilities?: string[];
-  titleDeedFile?: File;
+  documents?: { type: string; file: File }[];
   photoFiles?: File[];
+}
+
+export interface ListingEditInput extends NewListingInput {
+  removePhotoIds?: string[];
+  coverPhotoId?: string;
+}
+
+export interface ListingDetail {
+  id: string;
+  title: string;
+  parcelNumber: string;
+  county: string;
+  area?: string;
+  size?: string;
+  areaAcres?: number;
+  price: number;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  boundary?: { lat: number; lng: number }[] | null;
+  boundarySource?: "traced" | "approximate" | null;
+  listingType: "sale" | "lease";
+  landType: "residential" | "commercial" | "agricultural" | "mixed_use" | "industrial";
+  utilities: string[];
+  status: "pending" | "active" | "sold";
+  photos: { id: string; url: string; isCover: boolean }[];
 }
 
 interface AuthCtx {
@@ -196,8 +240,18 @@ interface AuthCtx {
   }) => Promise<AppUser>;
   logout: () => Promise<void>;
   setPlan: (plan: string) => void;
-  addListing: (l: NewListingInput, onProgress?: (pct: number) => void) => Promise<void>;
-  bulkAddListings: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
+  addListing: (
+    l: NewListingInput,
+    onProgress?: (pct: number) => void,
+    abortRef?: { current: (() => void) | null },
+  ) => Promise<void>;
+  fetchListing: (id: string) => Promise<ListingDetail>;
+  updateListing: (
+    id: string,
+    l: ListingEditInput,
+    onProgress?: (pct: number) => void,
+    abortRef?: { current: (() => void) | null },
+  ) => Promise<void>;
   removeListing: (id: string) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -305,9 +359,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addListing: AuthCtx["addListing"] = useCallback(async (l, onProgress) => {
+  const addListing: AuthCtx["addListing"] = useCallback(async (l, onProgress, abortRef) => {
     let body: FormData | Record<string, unknown>;
-    const isMultipart = !!(l.titleDeedFile || l.photoFiles?.length);
+    const isMultipart = !!(l.documents?.length || l.photoFiles?.length);
     if (isMultipart) {
       const fd = new FormData();
       fd.append("title", l.title);
@@ -328,7 +382,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
       l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
-      if (l.titleDeedFile) fd.append("title_deed", l.titleDeedFile);
+      l.documents?.forEach((d, i) => {
+        fd.append(`documents[${i}][type]`, d.type);
+        fd.append(`documents[${i}][file]`, d.file);
+      });
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
     } else {
@@ -351,7 +408,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
     const created = isMultipart
-      ? await api.postWithProgress<ApiListing>("/user/listings", body as FormData, onProgress)
+      ? await api.postWithProgress<ApiListing>(
+          "/user/listings",
+          body as FormData,
+          onProgress,
+          abortRef,
+        )
       : await api.post<ApiListing>("/user/listings", body);
     const newL: UserListing = {
       id: created.id,
@@ -362,26 +424,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: "pending",
       views: 0,
       createdAt: created.created_at,
-      coverPhotoUrl: null,
+      coverPhotoUrl: created.cover_photo_url,
     };
     setUser((prev) => (prev ? { ...prev, listings: [newL, ...prev.listings] } : prev));
   }, []);
 
-  const bulkAddListings: AuthCtx["bulkAddListings"] = useCallback(async (rows) => {
-    const created = await api.post<ApiListing[]>("/user/listings/bulk", { listings: rows });
-    const newListings: UserListing[] = created.map((l) => ({
-      id: l.id,
-      title: l.title,
-      parcelNumber: l.parcel_number,
-      county: l.county,
-      price: l.price,
-      status: "pending",
-      views: 0,
-      createdAt: l.created_at,
-      coverPhotoUrl: null,
-    }));
-    setUser((prev) => (prev ? { ...prev, listings: [...newListings, ...prev.listings] } : prev));
+  const fetchListing: AuthCtx["fetchListing"] = useCallback(async (id) => {
+    const d = await api.get<ApiListingDetail>(`/user/listings/${id}`);
+    return {
+      id: d.id,
+      title: d.title,
+      parcelNumber: d.parcel_number ?? "",
+      county: d.county,
+      area: d.area ?? undefined,
+      size: d.size ?? undefined,
+      areaAcres: d.area_acres ?? undefined,
+      price: d.price,
+      description: d.description ?? undefined,
+      latitude: d.latitude ?? undefined,
+      longitude: d.longitude ?? undefined,
+      boundary: d.boundary,
+      boundarySource: (d.boundary_source as "traced" | "approximate" | null) ?? null,
+      listingType: (d.listing_type as ListingDetail["listingType"]) ?? "sale",
+      landType: (d.land_type as ListingDetail["landType"]) ?? "residential",
+      utilities: d.utilities ?? [],
+      status: (d.status as ListingDetail["status"]) ?? "pending",
+      photos: d.photos.map((p) => ({ id: p.id, url: p.url, isCover: p.is_cover })),
+    };
   }, []);
+
+  const updateListing: AuthCtx["updateListing"] = useCallback(
+    async (id, l, onProgress, abortRef) => {
+      const fd = new FormData();
+      fd.append("_method", "PATCH");
+      fd.append("title", l.title);
+      fd.append("county", l.county);
+      fd.append("price", String(l.price));
+      fd.append("listing_type", l.listingType ?? "sale");
+      fd.append("land_type", l.landType ?? "residential");
+      if (l.parcelNumber) fd.append("parcel_number", l.parcelNumber);
+      if (l.area) fd.append("area", l.area);
+      if (l.size) fd.append("size", l.size);
+      if (l.areaAcres != null) fd.append("area_acres", String(l.areaAcres));
+      if (l.description) fd.append("description", l.description);
+      if (l.latitude != null) fd.append("latitude", String(l.latitude));
+      if (l.longitude != null) fd.append("longitude", String(l.longitude));
+      l.boundary?.forEach((p, i) => {
+        fd.append(`boundary[${i}][lat]`, String(p.lat));
+        fd.append(`boundary[${i}][lng]`, String(p.lng));
+      });
+      if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
+      l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
+      l.documents?.forEach((d, i) => {
+        fd.append(`documents[${i}][type]`, d.type);
+        fd.append(`documents[${i}][file]`, d.file);
+      });
+      l.photoFiles?.forEach((f) => fd.append("photos[]", f));
+      l.removePhotoIds?.forEach((pid) => fd.append("remove_photo_ids[]", pid));
+      if (l.coverPhotoId) fd.append("cover_photo_id", l.coverPhotoId);
+
+      const updated = await api.postWithProgress<ApiListingDetail>(
+        `/user/listings/${id}`,
+        fd,
+        onProgress,
+        abortRef,
+      );
+      const coverPhotoUrl = updated.photos.find((p) => p.is_cover)?.url ?? null;
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              listings: prev.listings.map((x) =>
+                x.id === id
+                  ? {
+                      ...x,
+                      title: updated.title,
+                      parcelNumber: updated.parcel_number ?? "",
+                      county: updated.county,
+                      price: updated.price,
+                      status: (updated.status as UserListing["status"]) ?? "pending",
+                      coverPhotoUrl,
+                    }
+                  : x,
+              ),
+            }
+          : prev,
+      );
+    },
+    [],
+  );
 
   const removeListing = useCallback(async (id: string) => {
     await api.delete(`/user/listings/${id}`);
@@ -441,7 +572,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         setPlan,
         addListing,
-        bulkAddListings,
+        fetchListing,
+        updateListing,
         removeListing,
         updateUser,
         deleteAccount,

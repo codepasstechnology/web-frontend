@@ -7,6 +7,7 @@ export interface Plan {
   price: number; // KES / month
   listings: number; // Infinity for unlimited
   photos: number;
+  documents: number;
   cta: string;
   badge?: { label: string; color: "accent" | "primary" };
   features: string[];
@@ -21,6 +22,7 @@ interface ApiPlan {
   currency: string;
   max_listings: number;
   max_photos: number;
+  max_documents: number;
   badge_label: string | null;
   features: string[];
 }
@@ -32,6 +34,7 @@ function mapApiPlan(p: ApiPlan): Plan {
     price: p.price_monthly,
     listings: p.max_listings === -1 ? Infinity : p.max_listings,
     photos: p.max_photos,
+    documents: p.max_documents,
     cta: `Choose ${p.name}`,
     badge: p.badge_label ? { label: p.badge_label, color: "accent" } : undefined,
     features: p.features,

@@ -48,7 +48,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
   const handleSelect = (t: DashTab) => {
     setMoreOpen(false);
     if (t === "upload") {
-      navigate({ to: "/dashboard/upload" });
+      navigate({ to: "/dashboard/upload", search: { edit: undefined } });
       return;
     }
     onChange?.(t);
