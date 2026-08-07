@@ -93,23 +93,15 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function DashboardPage() {
-  const {
-    user,
-    ready,
-    removeListing,
-    bulkAddListings,
-    setPlan,
-    updateUser,
-    deleteAccount,
-    logout,
-  } = useAuth();
+  const { user, ready, removeListing, setPlan, updateUser, deleteAccount, logout } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const exportListings = async () => {
     setExporting(true);
@@ -165,16 +157,8 @@ function DashboardPage() {
                   <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
                 </button>
               )}
-              {user.bulkUpload && (
-                <button
-                  onClick={() => setBulkOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-                >
-                  <Upload className="h-3.5 w-3.5" /> Bulk upload
-                </button>
-              )}
               <button
-                onClick={() => navigate({ to: "/dashboard/upload" })}
+                onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
                 className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
               >
                 <Plus className="h-3.5 w-3.5" /> New
@@ -188,7 +172,7 @@ function DashboardPage() {
                 Once you upload land, it'll appear here for review.
               </p>
               <button
-                onClick={() => navigate({ to: "/dashboard/upload" })}
+                onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
                 className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
               >
                 <Plus className="h-4 w-4" /> Upload Land
@@ -225,13 +209,16 @@ function DashboardPage() {
                           </span>
                           <div className="flex gap-1">
                             <button
+                              onClick={() =>
+                                navigate({ to: "/dashboard/upload", search: { edit: l.id } })
+                              }
                               className="rounded-md p-2 text-muted-foreground hover:bg-muted"
                               title="Edit"
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => removeListing(l.id).catch(() => {})}
+                              onClick={() => setDeleteTarget(l.id)}
                               className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive"
                               title="Delete"
                             >
@@ -287,13 +274,16 @@ function DashboardPage() {
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1">
                             <button
+                              onClick={() =>
+                                navigate({ to: "/dashboard/upload", search: { edit: l.id } })
+                              }
                               className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
-                              onClick={() => removeListing(l.id).catch(() => {})}
+                              onClick={() => setDeleteTarget(l.id)}
                               className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
                               title="Delete"
                             >
@@ -350,87 +340,44 @@ function DashboardPage() {
         onSelect={(p) => setPlan(p)}
       />
 
-      <BulkUploadModal
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        onSubmit={bulkAddListings}
-      />
-    </DashboardShell>
-  );
-}
-
-function BulkUploadModal({
-  open,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
-}) {
-  const [text, setText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  if (!open) return null;
-
-  const rows = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [title, county, price] = line.split(",").map((v) => v.trim());
-      return { title: title ?? "", county: county ?? "", price: Number(price) || 0 };
-    });
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError("");
-    try {
-      await onSubmit(rows);
-      setText("");
-      onClose();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e?.message ?? "Bulk upload failed. Please check the format and try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-lg">
-        <h2 className="text-base font-semibold text-foreground">Bulk upload listings</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          One listing per line: <code>title, county, price</code>
-        </p>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={8}
-          placeholder={"5 Acre Parcel, Nakuru, 800000\n1/8 Acre Plot, Kiambu, 1200000"}
-          className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-[#2563EB]"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">{rows.length} listing(s) detected</p>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={submitting || rows.length === 0}
-            className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
-          >
-            {submitting ? "Uploading…" : "Upload"}
-          </button>
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold text-foreground">Delete this listing?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This can&apos;t be undone. The listing and its photos will be removed.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!deleteTarget) return;
+                  setDeleting(true);
+                  try {
+                    await removeListing(deleteTarget);
+                    setDeleteTarget(null);
+                  } catch {
+                    // leave the dialog open so the seller can retry
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+                className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </DashboardShell>
   );
 }
 
@@ -1381,7 +1328,7 @@ function OverviewTab({
       key: "listing",
       label: "Upload your first listing",
       done: used > 0,
-      action: () => navigate({ to: "/dashboard/upload" }),
+      action: () => navigate({ to: "/dashboard/upload", search: { edit: undefined } }),
     },
     {
       key: "verify",
@@ -1429,7 +1376,7 @@ function OverviewTab({
             <BarChart3 className="h-3.5 w-3.5" /> View analytics
           </button>
           <button
-            onClick={() => navigate({ to: "/dashboard/upload" })}
+            onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-2 text-xs font-medium text-white hover:bg-[#1d4ed8] sm:flex-none sm:py-1.5"
           >
             <Plus className="h-3.5 w-3.5" /> New listing
@@ -1565,7 +1512,7 @@ function OverviewTab({
             <div className="px-5 py-10 text-center">
               <p className="text-sm text-muted-foreground">No listings yet.</p>
               <button
-                onClick={() => navigate({ to: "/dashboard/upload" })}
+                onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
               >
                 <Plus className="h-3.5 w-3.5" /> Upload your first listing
@@ -2853,6 +2800,7 @@ interface UserParcel {
 
 const DOC_TYPES = [
   { value: "title_deed", label: "Title Deed" },
+  { value: "mutation", label: "Mutation Form" },
   { value: "lease_agreement", label: "Lease Agreement" },
   { value: "certificate_of_occupancy", label: "Certificate of Occupancy" },
   { value: "survey_map", label: "Survey Map" },
@@ -2875,7 +2823,7 @@ function KycTab() {
   const [loadingParcels, setLoadingParcels] = useState(false);
   const [submitParcel, setSubmitParcel] = useState("");
   const [submitDocType, setSubmitDocType] = useState("title_deed");
-  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitDocuments, setSubmitDocuments] = useState<{ type: string; file: File }[]>([]);
   const [submitError, setSubmitError] = useState("");
   const [submittingKyc, setSubmittingKyc] = useState(false);
   const submitFileRef = useRef<HTMLInputElement | null>(null);
@@ -2968,7 +2916,7 @@ function KycTab() {
     setShowSubmit(true);
     setSubmitParcel("");
     setSubmitDocType("title_deed");
-    setSubmitFile(null);
+    setSubmitDocuments([]);
     setSubmitError("");
     if (parcels.length === 0) {
       setLoadingParcels(true);
@@ -2984,8 +2932,8 @@ function KycTab() {
   };
 
   const handleSubmitKyc = async () => {
-    if (!submitParcel || !submitFile) {
-      setSubmitError("Please select a parcel and upload a document.");
+    if (!submitParcel || submitDocuments.length === 0) {
+      setSubmitError("Please select a parcel and add at least one document.");
       return;
     }
     setSubmittingKyc(true);
@@ -2993,8 +2941,10 @@ function KycTab() {
     try {
       const fd = new FormData();
       fd.append("parcel_id", submitParcel);
-      fd.append("document_type", submitDocType);
-      fd.append("document", submitFile);
+      submitDocuments.forEach((d, i) => {
+        fd.append(`documents[${i}][type]`, d.type);
+        fd.append(`documents[${i}][file]`, d.file);
+      });
       const res = await api.post<{ data: KycApplication }>("/user/kyc", fd);
       setApplications((prev) => [res.data, ...prev]);
       setShowSubmit(false);
@@ -3106,56 +3056,70 @@ function KycTab() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-foreground">
-                  Document type
+                  Add a document
                 </label>
-                <select
-                  value={submitDocType}
-                  onChange={(e) => setSubmitDocType(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                >
-                  {DOC_TYPES.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-foreground">
-                  Document file
-                </label>
-                <input
-                  ref={submitFileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,application/pdf"
-                  className="hidden"
-                  onChange={(e) => setSubmitFile(e.target.files?.[0] ?? null)}
-                />
                 <div className="flex items-center gap-2">
+                  <select
+                    value={submitDocType}
+                    onChange={(e) => setSubmitDocType(e.target.value)}
+                    className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                  >
+                    {DOC_TYPES.map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    ref={submitFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      if (submitFileRef.current) submitFileRef.current.value = "";
+                      if (!file) return;
+                      setSubmitDocuments((prev) => [...prev, { type: submitDocType, file }]);
+                    }}
+                  />
                   <button
                     type="button"
                     onClick={() => submitFileRef.current?.click()}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
                   >
                     <Upload className="h-3.5 w-3.5" />
-                    {submitFile ? submitFile.name : "Choose file"}
+                    Choose file
                   </button>
-                  {submitFile && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSubmitFile(null);
-                        if (submitFileRef.current) submitFileRef.current.value = "";
-                      }}
-                      className="text-[11px] text-muted-foreground hover:text-destructive"
-                    >
-                      Remove
-                    </button>
-                  )}
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  JPG, PNG or PDF · max 10 MB
+                  JPG, PNG or PDF · max 10 MB per document
                 </p>
+                {submitDocuments.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {submitDocuments.map((d, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-1.5 text-xs"
+                      >
+                        <span>
+                          <span className="font-medium text-foreground">
+                            {DOC_TYPES.find((t) => t.value === d.type)?.label}:
+                          </span>{" "}
+                          <span className="text-muted-foreground">{d.file.name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSubmitDocuments((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               {submitError && (
                 <p className="rounded-md bg-[#FEE2E2] px-3 py-2 text-xs font-medium text-[#DC2626]">
@@ -3173,7 +3137,7 @@ function KycTab() {
               </button>
               <button
                 onClick={handleSubmitKyc}
-                disabled={submittingKyc || !submitParcel || !submitFile}
+                disabled={submittingKyc || !submitParcel || submitDocuments.length === 0}
                 className="rounded-md bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submittingKyc ? "Submitting…" : "Submit application"}
