@@ -27,7 +27,14 @@ export interface AppUser {
   customReports: boolean;
   manager: { name: string; email: string } | null;
   listings: UserListing[];
-  payments: { date: string; amount: number; plan: string; status: "Paid" | "Pending" }[];
+  payments: {
+    number: string;
+    date: string;
+    amount: number;
+    plan: string;
+    status: "Paid" | "Pending";
+    downloadUrl: string;
+  }[];
   county?: string;
   bio?: string;
   company?: string;
@@ -112,10 +119,12 @@ interface ApiSubscription {
 }
 
 interface ApiPayment {
+  number: string;
   date: string;
   amount: number;
   plan: string;
   status: string;
+  download_url: string;
 }
 
 interface AuthResponse {
@@ -171,10 +180,12 @@ function mapApiUser(
       coverPhotoUrl: l.cover_photo_url,
     })),
     payments: payments.map((p) => ({
+      number: p.number,
       date: p.date,
       amount: p.amount,
       plan: p.plan,
       status: (p.status === "Paid" ? "Paid" : "Pending") as "Paid" | "Pending",
+      downloadUrl: p.download_url,
     })),
   };
 }

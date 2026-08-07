@@ -1020,7 +1020,14 @@ function BillingTab({
   maxListings: number;
   usedListings: number;
   onUpgrade: () => void;
-  payments: { date: string; amount: number; plan: string; status: string }[];
+  payments: {
+    number: string;
+    date: string;
+    amount: number;
+    plan: string;
+    status: string;
+    downloadUrl: string;
+  }[];
   onSelectPlan: (p: string) => void;
   manager: { name: string; email: string } | null;
 }) {
@@ -1273,9 +1280,7 @@ function BillingTab({
               {payments.map((pay, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 px-5 py-3">
                   <div className="min-w-0">
-                    <div className="font-mono text-xs text-foreground">
-                      INV-{String(payments.length - i).padStart(4, "0")}
-                    </div>
+                    <div className="font-mono text-xs text-foreground">{pay.number}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {pay.plan} · {pay.date}
                     </div>
@@ -1294,12 +1299,15 @@ function BillingTab({
                         {pay.status}
                       </span>
                     </div>
-                    <button
+                    <a
+                      href={pay.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title="Download PDF"
+                      title="Download invoice"
                     >
                       <Download className="h-4 w-4" />
-                    </button>
+                    </a>
                   </div>
                 </div>
               ))}
@@ -1319,9 +1327,7 @@ function BillingTab({
                 <tbody className="divide-y divide-border">
                   {payments.map((pay, i) => (
                     <tr key={i} className="hover:bg-muted/30">
-                      <td className="px-5 py-3 font-mono text-xs text-foreground">
-                        INV-{String(payments.length - i).padStart(4, "0")}
-                      </td>
+                      <td className="px-5 py-3 font-mono text-xs text-foreground">{pay.number}</td>
                       <td className="px-5 py-3 text-muted-foreground">{pay.date}</td>
                       <td className="px-5 py-3">{pay.plan}</td>
                       <td className="px-5 py-3 font-medium text-foreground">
@@ -1338,9 +1344,14 @@ function BillingTab({
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <button className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline">
+                        <a
+                          href={pay.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline"
+                        >
                           <Download className="h-3 w-3" /> PDF
-                        </button>
+                        </a>
                       </td>
                     </tr>
                   ))}
