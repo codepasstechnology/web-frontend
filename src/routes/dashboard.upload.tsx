@@ -23,6 +23,7 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_DEED_BYTES = 10 * 1024 * 1024;
 
 const DOC_TYPES = [
+  { value: "national_id", label: "National ID" },
   { value: "title_deed", label: "Title Deed" },
   { value: "mutation", label: "Mutation Form" },
   { value: "lease_agreement", label: "Lease Agreement" },
@@ -254,6 +255,11 @@ function UploadPage() {
   const photoLimit = plan?.photos ?? 0;
   const totalPhotoCount = existingPhotos.length + form.photos.length;
   const documentLimit = plan?.documents ?? 0;
+  const propertyDocCount = form.documents.filter((d) => d.type !== "national_id").length;
+  const hasRequiredDocs =
+    !!editId ||
+    (form.documents.some((d) => d.type === "national_id") &&
+      form.documents.some((d) => d.type === "title_deed"));
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -299,7 +305,9 @@ function UploadPage() {
       ? !!(form.title && form.parcelNumber && form.county && sizeAcres != null && form.price)
       : step === 1
         ? (!!form.pin || !!form.boundary) && !boundarySelfIntersects
-        : true;
+        : step === 2
+          ? hasRequiredDocs
+          : true;
 
   const submit = async () => {
     if (limitReached) {
@@ -864,10 +872,10 @@ function UploadPage() {
                 <div className="mt-5">
                   <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      Documents ({form.documents.length}/{documentLimit} allowed on{" "}
+                      Documents ({propertyDocCount}/{documentLimit} allowed on{" "}
                       {plan?.name ?? user.plan})
                     </span>
-                    {form.documents.length >= documentLimit && (
+                    {propertyDocCount >= documentLimit && (
                       <button
                         onClick={() => setUpgradeOpen(true)}
                         className="font-medium text-[#2563EB] hover:underline"
@@ -876,7 +884,7 @@ function UploadPage() {
                       </button>
                     )}
                   </div>
-                  <Field label="Documents (title deed, mutation form, etc., optional)">
+                  <Field label="Documents — National ID and Title Deed required">
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <select
                         className="lv-input sm:w-56"
@@ -893,7 +901,7 @@ function UploadPage() {
                         type="file"
                         accept="application/pdf,image/*"
                         className="lv-input"
-                        disabled={form.documents.length >= documentLimit}
+                        disabled={docType !== "national_id" && propertyDocCount >= documentLimit}
                         onChange={(e) => {
                           const f = e.target.files?.[0] ?? null;
                           e.target.value = "";
@@ -916,6 +924,11 @@ function UploadPage() {
                       />
                     </div>
                   </Field>
+                  {!editId && !hasRequiredDocs && (
+                    <p className="mt-2 text-xs text-amber-600">
+                      A National ID and a Title Deed are required to continue.
+                    </p>
+                  )}
                   {form.documents.length > 0 && (
                     <ul className="mt-2 space-y-1.5">
                       {form.documents.map((d, i) => (

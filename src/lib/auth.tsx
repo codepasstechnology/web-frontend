@@ -253,6 +253,7 @@ interface AuthCtx {
     abortRef?: { current: (() => void) | null },
   ) => Promise<void>;
   removeListing: (id: string) => Promise<void>;
+  markListingSold: (id: string) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshListings: () => Promise<void>;
@@ -521,6 +522,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const markListingSold = useCallback(async (id: string) => {
+    const { status } = await api.patch<{ status: UserListing["status"] }>(
+      `/user/listings/${id}/sold`,
+      {},
+    );
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            listings: prev.listings.map((x) => (x.id === id ? { ...x, status } : x)),
+          }
+        : prev,
+    );
+  }, []);
+
   const updateUser: AuthCtx["updateUser"] = useCallback(async (patch) => {
     // Build only the fields the backend accepts
     const body: Record<string, unknown> = {};
@@ -575,6 +591,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchListing,
         updateListing,
         removeListing,
+        markListingSold,
         updateUser,
         deleteAccount,
         refreshListings,

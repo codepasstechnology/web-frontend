@@ -11,7 +11,7 @@ import {
 import L from "leaflet";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type { DrawEvents } from "leaflet";
-import { MapPin } from "lucide-react";
+import { MapPin, HelpCircle, X, Info } from "lucide-react";
 import { toast } from "sonner";
 import {
   MapSearchBar,
@@ -20,6 +20,15 @@ import {
   OSM_TILES,
   SATELLITE_TILES,
 } from "@/components/MapSearchBar";
+
+const TUTORIAL_KEY = "lv_boundary_tutorial_seen";
+
+const TUTORIAL_STEPS: [string, string][] = [
+  ["Find your land", 'Search for a place, or tap "Satellite" to spot it from above.'],
+  ["Trace the outline", 'Tap "Trace boundary", then tap each corner along the edge of your land.'],
+  ["Finish the shape", 'Tap "Confirm plot" once you\'ve placed at least 3 corners.'],
+  ["Not sure of the shape?", "Just tap the map once to drop a single pin instead."],
+];
 
 const pinIcon = L.divIcon({
   className: "lv-marker",
@@ -174,6 +183,8 @@ interface LandBoundaryMapProps {
    * pin drop or pan. Full-screen/dedicated map steps don't need this.
    */
   requireTapToActivate?: boolean;
+  /** Show the first-run walkthrough overlay (and the "How it works" button). */
+  tutorial?: boolean;
 }
 
 export function LandBoundaryMap({
@@ -186,8 +197,20 @@ export function LandBoundaryMap({
   heightClassName = "h-[65vh] sm:h-80 lg:h-[28rem]",
   county,
   requireTapToActivate = false,
+  tutorial = true,
 }: LandBoundaryMapProps) {
   const [activated, setActivated] = useState(!requireTapToActivate);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (!tutorial || typeof window === "undefined") return;
+    if (!localStorage.getItem(TUTORIAL_KEY)) setShowTutorial(true);
+  }, [tutorial]);
+
+  const dismissTutorial = () => {
+    setShowTutorial(false);
+    if (typeof window !== "undefined") localStorage.setItem(TUTORIAL_KEY, "1");
+  };
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Center on the chosen county before the seller has placed anything —
@@ -278,10 +301,25 @@ export function LandBoundaryMap({
 
   return (
     <div>
-      {hintText && (
-        <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" /> {hintText}
-        </p>
+      {(hintText || tutorial) && (
+        <div className="mb-3 flex items-start justify-between gap-3">
+          {hintText ? (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 flex-shrink-0" /> {hintText}
+            </p>
+          ) : (
+            <span />
+          )}
+          {tutorial && (
+            <button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+            >
+              <HelpCircle className="h-3.5 w-3.5" /> How it works
+            </button>
+          )}
+        </div>
       )}
       <div className={`relative rounded-md border border-border ${heightClassName}`}>
         <div className="h-full overflow-hidden rounded-md">
@@ -407,6 +445,43 @@ export function LandBoundaryMap({
             </span>
           </div>
         )}
+        {showTutorial && (
+          <div className="absolute inset-0 z-[1000] flex items-center justify-center rounded-md bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-lg bg-background p-5 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">How to mark your land</h3>
+                <button
+                  type="button"
+                  onClick={dismissTutorial}
+                  aria-label="Close"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <ol className="space-y-3">
+                {TUTORIAL_STEPS.map(([title, body], i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-xs font-semibold text-white">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <div className="text-xs font-semibold text-foreground">{title}</div>
+                      <div className="text-xs text-muted-foreground">{body}</div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={dismissTutorial}
+                className="mt-5 w-full rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {countyMismatch && (
         <p className="mt-2 text-xs font-medium text-[#D97706]">
@@ -414,6 +489,13 @@ export function LandBoundaryMap({
           Double-check the pin before continuing.
         </p>
       )}
+      <p className="mt-2 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+        <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+        <span>
+          Please trace only your own land — avoid including roads, neighbouring plots, or public
+          spaces. A clean, accurate outline helps your listing pass verification faster.
+        </span>
+      </p>
       <style>{`.leaflet-draw-tooltip{display:none!important}`}</style>
     </div>
   );

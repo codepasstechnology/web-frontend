@@ -5,6 +5,7 @@ import {
   Plus,
   Trash2,
   Pencil,
+  Tag,
   ArrowUpRight,
   BarChart3,
   Eye,
@@ -93,7 +94,16 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function DashboardPage() {
-  const { user, ready, removeListing, setPlan, updateUser, deleteAccount, logout } = useAuth();
+  const {
+    user,
+    ready,
+    removeListing,
+    markListingSold,
+    setPlan,
+    updateUser,
+    deleteAccount,
+    logout,
+  } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const search = Route.useSearch();
@@ -102,6 +112,19 @@ function DashboardPage() {
   const [exporting, setExporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [soldTarget, setSoldTarget] = useState<string | null>(null);
+  const [selling, setSelling] = useState(false);
+
+  const confirmSold = async () => {
+    if (!soldTarget) return;
+    setSelling(true);
+    try {
+      await markListingSold(soldTarget);
+      setSoldTarget(null);
+    } finally {
+      setSelling(false);
+    }
+  };
 
   const exportListings = async () => {
     setExporting(true);
@@ -208,6 +231,15 @@ function DashboardPage() {
                             {l.views} views · {l.createdAt}
                           </span>
                           <div className="flex gap-1">
+                            {l.status === "active" && (
+                              <button
+                                onClick={() => setSoldTarget(l.id)}
+                                className="rounded-md p-2 text-muted-foreground hover:bg-muted"
+                                title="Mark as sold"
+                              >
+                                <Tag className="h-4 w-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() =>
                                 navigate({ to: "/dashboard/upload", search: { edit: l.id } })
@@ -273,6 +305,15 @@ function DashboardPage() {
                         <td className="px-4 py-3 text-muted-foreground">{l.createdAt}</td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1">
+                            {l.status === "active" && (
+                              <button
+                                onClick={() => setSoldTarget(l.id)}
+                                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+                                title="Mark as sold"
+                              >
+                                <Tag className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={() =>
                                 navigate({ to: "/dashboard/upload", search: { edit: l.id } })
@@ -372,6 +413,34 @@ function DashboardPage() {
                 className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-60"
               >
                 {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {soldTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold text-foreground">Mark this listing as sold?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              It will be removed from the marketplace and buyers can no longer see it. This
+              can&apos;t be undone — a sold listing can&apos;t be relisted.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setSoldTarget(null)}
+                disabled={selling}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSold}
+                disabled={selling}
+                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+              >
+                {selling ? "Marking…" : "Mark as sold"}
               </button>
             </div>
           </div>
