@@ -145,7 +145,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
         </div>
       </nav>
 
-      {user && !user.emailVerified && <VerifyAccountModal />}
+      {user && user.emailVerificationRequired && !user.emailVerified && <VerifyAccountModal />}
     </div>
   );
 }

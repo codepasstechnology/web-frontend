@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   BarChart3,
   Eye,
+  EyeOff,
   Inbox,
   ListChecks,
   TrendingUp,
@@ -103,6 +104,10 @@ function DashboardPage() {
     updateUser,
     deleteAccount,
     logout,
+    changePassword,
+    enableTwoFactor,
+    confirmTwoFactor,
+    disableTwoFactor,
   } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
@@ -369,6 +374,11 @@ function DashboardPage() {
             logout();
             navigate({ to: "/" });
           }}
+          onChangePassword={changePassword}
+          onSignedOut={() => navigate({ to: "/login" })}
+          onEnableTwoFactor={enableTwoFactor}
+          onConfirmTwoFactor={confirmTwoFactor}
+          onDisableTwoFactor={disableTwoFactor}
         />
       )}
 
@@ -1695,11 +1705,21 @@ function SettingsTab({
   onUpdate,
   onDelete,
   onLogout,
+  onChangePassword,
+  onSignedOut,
+  onEnableTwoFactor,
+  onConfirmTwoFactor,
+  onDisableTwoFactor,
 }: {
   user: AppUser;
   onUpdate: (patch: Partial<AppUser>) => Promise<void>;
   onDelete: () => Promise<void>;
   onLogout: () => void;
+  onChangePassword: (current: string, next: string) => Promise<void>;
+  onSignedOut: () => void;
+  onEnableTwoFactor: () => Promise<void>;
+  onConfirmTwoFactor: (code: string) => Promise<void>;
+  onDisableTwoFactor: (password: string) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     fullName: user.fullName,
@@ -1719,10 +1739,15 @@ function SettingsTab({
       marketing: false,
     },
   );
-  const [twoFactor, setTwoFactor] = useState(Boolean(user.twoFactor));
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
   const [pwdMsg, setPwdMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [pwdBusy, setPwdBusy] = useState(false);
+  const [tfaStep, setTfaStep] = useState<"idle" | "confirm" | "disable">("idle");
+  const [tfaCode, setTfaCode] = useState("");
+  const [tfaPassword, setTfaPassword] = useState("");
+  const [tfaBusy, setTfaBusy] = useState(false);
+  const [tfaMsg, setTfaMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [confirmDel, setConfirmDel] = useState("");
   const [section, setSection] = useState<
     "profile" | "security" | "notifications" | "preferences" | "danger"
@@ -1753,17 +1778,73 @@ function SettingsTab({
     await onUpdate({ notifications: notif });
     setSavedAt(new Date().toLocaleTimeString());
   };
-  const saveSecurity = async () => {
-    await onUpdate({ twoFactor });
-    setSavedAt(new Date().toLocaleTimeString());
+  const startTwoFactor = async () => {
+    setTfaMsg(null);
+    setTfaBusy(true);
+    try {
+      await onEnableTwoFactor();
+      setTfaStep("confirm");
+    } catch (e) {
+      setTfaMsg({ type: "err", text: (e as { message: string }).message });
+    } finally {
+      setTfaBusy(false);
+    }
   };
-  const changePassword = () => {
+
+  const confirmTwoFactorCode = async () => {
+    setTfaMsg(null);
+    setTfaBusy(true);
+    try {
+      await onConfirmTwoFactor(tfaCode);
+      setTfaStep("idle");
+      setTfaCode("");
+      setTfaMsg({ type: "ok", text: "Two-factor authentication is on." });
+    } catch (e) {
+      const err = e as { message: string; errors?: Record<string, string[]> };
+      setTfaMsg({ type: "err", text: err.errors?.code?.[0] ?? err.message });
+    } finally {
+      setTfaBusy(false);
+    }
+  };
+
+  const turnOffTwoFactor = async () => {
+    setTfaMsg(null);
+    setTfaBusy(true);
+    try {
+      await onDisableTwoFactor(tfaPassword);
+      setTfaStep("idle");
+      setTfaPassword("");
+      setTfaMsg({ type: "ok", text: "Two-factor authentication is off." });
+    } catch (e) {
+      const err = e as { message: string; errors?: Record<string, string[]> };
+      setTfaMsg({ type: "err", text: err.errors?.password?.[0] ?? err.message });
+    } finally {
+      setTfaBusy(false);
+    }
+  };
+  const changePassword = async () => {
     if (pwd.next.length < 8)
       return setPwdMsg({ type: "err", text: "Password must be at least 8 characters." });
     if (pwd.next !== pwd.confirm)
       return setPwdMsg({ type: "err", text: "Passwords do not match." });
-    setPwd({ current: "", next: "", confirm: "" });
-    setPwdMsg({ type: "ok", text: "Password updated successfully." });
+
+    setPwdBusy(true);
+    try {
+      await onChangePassword(pwd.current, pwd.next);
+      setPwd({ current: "", next: "", confirm: "" });
+      setPwdMsg({
+        type: "ok",
+        text: "Password updated. Signing you out on all devices…",
+      });
+      setTimeout(onSignedOut, 1500);
+    } catch (e) {
+      const err = e as { message: string; errors?: Record<string, string[]> };
+      setPwdMsg({
+        type: "err",
+        text: err.errors?.current_password?.[0] ?? err.errors?.password?.[0] ?? err.message,
+      });
+      setPwdBusy(false);
+    }
   };
 
   const sections: { id: typeof section; label: string; icon: React.ReactNode }[] = [
@@ -1983,9 +2064,10 @@ function SettingsTab({
             <div className="mt-4 flex justify-end">
               <button
                 onClick={changePassword}
-                className="rounded-md bg-[#0F172A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1e293b]"
+                disabled={pwdBusy}
+                className="rounded-md bg-[#0F172A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Update password
+                {pwdBusy ? "Updating…" : "Update password"}
               </button>
             </div>
           </div>
@@ -1995,19 +2077,92 @@ function SettingsTab({
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Two-factor authentication</h3>
                 <p className="text-xs text-muted-foreground">
-                  Add an extra layer via SMS to your registered number.
+                  Require a code sent to {user.email} each time you sign in.
                 </p>
               </div>
-              <Toggle checked={twoFactor} onChange={setTwoFactor} />
+              <Toggle
+                checked={Boolean(user.twoFactor)}
+                onChange={(next) => {
+                  setTfaMsg(null);
+                  setTfaCode("");
+                  setTfaPassword("");
+                  if (next) {
+                    startTwoFactor();
+                  } else {
+                    setTfaStep("disable");
+                  }
+                }}
+              />
             </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={saveSecurity}
-                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+
+            {tfaStep === "confirm" && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Enter the 6-digit code we just emailed you to finish turning this on.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    value={tfaCode}
+                    onChange={(e) => setTfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    inputMode="numeric"
+                    maxLength={6}
+                    className="h-9 w-32 rounded-md border border-border bg-background px-3 text-center text-sm font-semibold tracking-[0.25em] text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                  />
+                  <button
+                    onClick={confirmTwoFactorCode}
+                    disabled={tfaBusy || tfaCode.length !== 6}
+                    className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {tfaBusy ? "Confirming…" : "Confirm"}
+                  </button>
+                  <button
+                    onClick={() => setTfaStep("idle")}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tfaStep === "disable" && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Enter your password to turn off two-factor authentication.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    type="password"
+                    value={tfaPassword}
+                    onChange={(e) => setTfaPassword(e.target.value)}
+                    placeholder="Your password"
+                    className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                  />
+                  <button
+                    onClick={turnOffTwoFactor}
+                    disabled={tfaBusy || !tfaPassword}
+                    className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {tfaBusy ? "Turning off…" : "Turn off"}
+                  </button>
+                  <button
+                    onClick={() => setTfaStep("idle")}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tfaMsg && (
+              <p
+                className={`mt-3 text-xs font-medium ${tfaMsg.type === "ok" ? "text-[#16A34A]" : "text-destructive"}`}
               >
-                Save security settings
-              </button>
-            </div>
+                {tfaMsg.text}
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
@@ -2196,19 +2351,36 @@ function Field({
   placeholder?: string;
   icon?: React.ReactNode;
 }) {
+  const [reveal, setReveal] = useState(false);
+  const revealable = type === "password";
   return (
     <div>
       <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {icon}
         {label}
       </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="mt-1 h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
-      />
+      <div className="relative mt-1">
+        <input
+          type={revealable && reveal ? "text" : type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 ${
+            revealable ? "pr-9 [&::-ms-reveal]:hidden" : ""
+          }`}
+        />
+        {revealable && (
+          <button
+            type="button"
+            onClick={() => setReveal((v) => !v)}
+            tabIndex={-1}
+            aria-label={reveal ? "Hide password" : "Show password"}
+            className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

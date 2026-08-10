@@ -6,6 +6,10 @@ import { LoginPage } from "../routes/login";
 
 const mockNavigate = vi.fn();
 const mockLogin = vi.fn();
+const mockVerifyTwoFactor = vi.fn();
+const mockResendTwoFactorCode = vi.fn();
+
+const authenticated = { status: "authenticated", user: { id: "1", role: "individual" } };
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: unknown) => opts,
@@ -26,13 +30,19 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ login: mockLogin }),
+  useAuth: () => ({
+    login: mockLogin,
+    verifyTwoFactor: mockVerifyTwoFactor,
+    resendTwoFactorCode: mockResendTwoFactorCode,
+  }),
 }));
 
 describe("LoginPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockLogin.mockReset();
+    mockVerifyTwoFactor.mockReset();
+    mockResendTwoFactorCode.mockReset();
   });
 
   afterEach(() => {
@@ -62,7 +72,7 @@ describe("LoginPage", () => {
   });
 
   it("calls login() with the entered email and password", async () => {
-    mockLogin.mockResolvedValue({ id: "1", role: "individual" });
+    mockLogin.mockResolvedValue(authenticated);
     render(<LoginPage />);
     await userEvent.type(screen.getByPlaceholderText("you@example.com"), "user@example.com");
     await userEvent.type(screen.getByPlaceholderText("••••••••"), "password123");
@@ -89,7 +99,7 @@ describe("LoginPage", () => {
   });
 
   it("shows success state after successful login", async () => {
-    mockLogin.mockResolvedValue({ id: "1", role: "individual" });
+    mockLogin.mockResolvedValue(authenticated);
     render(<LoginPage />);
     await userEvent.type(screen.getByPlaceholderText("you@example.com"), "user@example.com");
     await userEvent.type(screen.getByPlaceholderText("••••••••"), "password123");
@@ -98,6 +108,68 @@ describe("LoginPage", () => {
     await waitFor(() =>
       expect(screen.getByText("Taking you to your dashboard…")).toBeInTheDocument(),
     );
+  });
+
+  it("shows the code screen instead of signing in when two-factor is required", async () => {
+    mockLogin.mockResolvedValue({
+      status: "two_factor_required",
+      challenge: "enc_challenge",
+      email: "user@example.com",
+    });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByPlaceholderText("you@example.com"), "user@example.com");
+    await userEvent.type(screen.getByPlaceholderText("••••••••"), "password123");
+    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => expect(screen.getByText("Check your email")).toBeInTheDocument());
+    expect(screen.queryByText("Taking you to your dashboard…")).not.toBeInTheDocument();
+  });
+
+  it("submits the code against the challenge it was issued", async () => {
+    mockLogin.mockResolvedValue({
+      status: "two_factor_required",
+      challenge: "enc_challenge",
+      email: "user@example.com",
+    });
+    mockVerifyTwoFactor.mockResolvedValue({ id: "1", role: "individual" });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByPlaceholderText("you@example.com"), "user@example.com");
+    await userEvent.type(screen.getByPlaceholderText("••••••••"), "password123");
+    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => expect(screen.getByPlaceholderText("000000")).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText("000000"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+    expect(mockVerifyTwoFactor).toHaveBeenCalledWith("enc_challenge", "123456", false);
+    await waitFor(() =>
+      expect(screen.getByText("Taking you to your dashboard…")).toBeInTheDocument(),
+    );
+  });
+
+  it("surfaces a rejected code and clears the input", async () => {
+    mockLogin.mockResolvedValue({
+      status: "two_factor_required",
+      challenge: "enc_challenge",
+      email: "user@example.com",
+    });
+    mockVerifyTwoFactor.mockRejectedValue({
+      errors: { code: ["The sign-in code is invalid or has expired."] },
+    });
+    render(<LoginPage />);
+    await userEvent.type(screen.getByPlaceholderText("you@example.com"), "user@example.com");
+    await userEvent.type(screen.getByPlaceholderText("••••••••"), "password123");
+    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => expect(screen.getByPlaceholderText("000000")).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText("000000"), "000000");
+    await userEvent.click(screen.getByRole("button", { name: /verify/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText("The sign-in code is invalid or has expired.")).toBeInTheDocument(),
+    );
+    expect(screen.getByPlaceholderText("000000")).toHaveValue("");
+    expect(screen.queryByText("Taking you to your dashboard…")).not.toBeInTheDocument();
   });
 
   it("toggles password visibility", async () => {

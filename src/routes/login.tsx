@@ -2,37 +2,15 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { MapPinned, Eye, EyeOff, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign In — Geo Properties Kenya" }] }),
   component: LoginPage,
 });
 
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-      <path
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-        fill="#EA4335"
-      />
-    </svg>
-  );
-}
-
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle, verifyTwoFactor, resendTwoFactorCode } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +19,33 @@ export function LoginPage() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [challenge, setChallenge] = useState<{ token: string; email: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [resent, setResent] = useState(false);
+
+  const goToDashboard = (role: string) => {
+    setSuccess(true);
+    setTimeout(() => {
+      if (role === "account_manager") {
+        navigate({ to: "/manager" });
+      } else {
+        navigate({ to: "/dashboard", search: { tab: undefined } });
+      }
+    }, 1500);
+  };
+
+  const readError = (err: unknown, fallback: string) => {
+    const e = err as { errors?: Record<string, string[]>; message?: string };
+    return (
+      e?.errors?.email?.[0] ??
+      e?.errors?.code?.[0] ??
+      e?.errors?.challenge?.[0] ??
+      e?.errors?.credential?.[0] ??
+      e?.errors?.password?.[0] ??
+      e?.message ??
+      fallback
+    );
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,26 +60,71 @@ export function LoginPage() {
     }
     setLoading(true);
     try {
-      const u = await login(email, password, rememberMe);
-      setSuccess(true);
-      setTimeout(() => {
-        if (u.role === "account_manager") {
-          navigate({ to: "/manager" });
-        } else {
-          navigate({ to: "/dashboard", search: { tab: undefined } });
-        }
-      }, 1500);
+      const result = await login(email, password, rememberMe);
+      if (result.status === "two_factor_required") {
+        setChallenge({ token: result.challenge, email: result.email });
+        setPassword("");
+      } else {
+        goToDashboard(result.user.role);
+      }
     } catch (err: unknown) {
-      const e = err as { errors?: Record<string, string[]>; message?: string };
-      setErr(
-        e?.errors?.email?.[0] ??
-          e?.errors?.password?.[0] ??
-          e?.message ??
-          "Login failed. Please try again.",
-      );
+      setErr(readError(err, "Login failed. Please try again."));
     } finally {
       setLoading(false);
     }
+  };
+
+  const onGoogleCredential = async (credential: string) => {
+    setErr("");
+    setLoading(true);
+    try {
+      const result = await loginWithGoogle(credential);
+      if (result.status === "two_factor_required") {
+        setChallenge({ token: result.challenge, email: result.email });
+      } else {
+        goToDashboard(result.user.role);
+      }
+    } catch (err: unknown) {
+      setErr(readError(err, "Google sign-in failed. Please try again."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challenge) return;
+    setErr("");
+    setResent(false);
+    setLoading(true);
+    try {
+      const u = await verifyTwoFactor(challenge.token, code, rememberMe);
+      goToDashboard(u.role);
+    } catch (err: unknown) {
+      setErr(readError(err, "That code didn't work. Please try again."));
+      setCode("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onResend = async () => {
+    if (!challenge) return;
+    setErr("");
+    setResent(false);
+    try {
+      await resendTwoFactorCode(challenge.token);
+      setResent(true);
+    } catch (err: unknown) {
+      setErr(readError(err, "Could not send a new code. Please try again."));
+    }
+  };
+
+  const restart = () => {
+    setChallenge(null);
+    setCode("");
+    setErr("");
+    setResent(false);
   };
 
   return (
@@ -133,6 +183,76 @@ export function LoginPage() {
                 />
               </div>
             </div>
+          ) : challenge ? (
+            /* ── Two-factor code state ── */
+            <>
+              <div className="mb-7 text-center">
+                <h1 className="text-2xl font-bold text-white drop-shadow">Check your email</h1>
+                <p className="mt-1.5 text-sm text-white/70">
+                  We sent a 6-digit sign-in code to{" "}
+                  <span className="font-semibold text-white">{challenge.email}</span>.
+                </p>
+              </div>
+
+              {err && (
+                <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/40 bg-red-500/20 px-4 py-3 text-sm font-medium text-red-200">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500/40 text-xs font-bold text-red-200 ring-1 ring-red-400/50">
+                    !
+                  </span>
+                  {err}
+                </div>
+              )}
+              {resent && !err && (
+                <div className="mb-5 rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-4 py-3 text-sm font-medium text-emerald-200">
+                  A new code is on its way.
+                </div>
+              )}
+
+              <form onSubmit={onSubmitCode} className="space-y-4">
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  maxLength={6}
+                  className="lv-input text-center text-lg font-semibold tracking-[0.3em]"
+                />
+
+                <button
+                  type="submit"
+                  disabled={loading || code.length !== 6}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98] disabled:opacity-60"
+                >
+                  {loading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  ) : (
+                    <>
+                      {" "}
+                      Verify <ArrowRight className="h-4 w-4" />{" "}
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-4 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={onResend}
+                  className="font-semibold text-blue-300 hover:text-blue-200 hover:underline"
+                >
+                  Resend code
+                </button>
+                <button
+                  type="button"
+                  onClick={restart}
+                  className="text-white/60 hover:text-white hover:underline"
+                >
+                  Use a different account
+                </button>
+              </div>
+            </>
           ) : (
             <>
               {/* Heading */}
@@ -230,16 +350,7 @@ export function LoginPage() {
               </div>
 
               {/* Google sign-in */}
-              <button
-                type="button"
-                onClick={() => {
-                  /* TODO: initiate Google OAuth once credentials are added */
-                }}
-                className="mt-3 flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-white/20 bg-white text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-gray-50 active:scale-[0.98]"
-              >
-                <GoogleIcon />
-                Continue with Google
-              </button>
+              <GoogleSignInButton onCredential={onGoogleCredential} text="continue_with" />
 
               <p className="mt-6 text-center text-sm text-white/70">
                 Don't have an account?{" "}
