@@ -5,6 +5,7 @@ export interface Plan {
   id: string;
   name: string;
   price: number; // KES / month
+  priceYearly: number | null;
   listings: number; // Infinity for unlimited
   photos: number;
   documents: number;
@@ -32,6 +33,7 @@ function mapApiPlan(p: ApiPlan): Plan {
     id: p.slug,
     name: p.name,
     price: p.price_monthly,
+    priceYearly: p.price_yearly,
     listings: p.max_listings === -1 ? Infinity : p.max_listings,
     photos: p.max_photos,
     documents: p.max_documents,

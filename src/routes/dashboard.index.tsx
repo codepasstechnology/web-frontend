@@ -67,6 +67,7 @@ import {
 } from "recharts";
 import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { CheckoutModal } from "@/components/CheckoutModal";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { usePlans, addOns, type Plan } from "@/lib/plans";
@@ -114,7 +115,17 @@ function DashboardPage() {
   const search = Route.useSearch();
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const handleSelectPlan = (id: string) => {
+    const selected = plans.find((p) => p.id === id);
+    if (selected && selected.price > 0) {
+      setCheckoutPlan(selected);
+    } else {
+      setPlan(id);
+    }
+  };
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [soldTarget, setSoldTarget] = useState<string | null>(null);
@@ -357,7 +368,7 @@ function DashboardPage() {
           usedListings={used}
           onUpgrade={() => setUpgradeOpen(true)}
           payments={user.payments}
-          onSelectPlan={(p) => setPlan(p)}
+          onSelectPlan={handleSelectPlan}
           manager={user.manager}
         />
       )}
@@ -388,8 +399,10 @@ function DashboardPage() {
         open={upgradeOpen}
         currentPlan={user.plan}
         onClose={() => setUpgradeOpen(false)}
-        onSelect={(p) => setPlan(p)}
+        onSelect={handleSelectPlan}
       />
+
+      {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />}
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -1015,6 +1028,13 @@ function SmallStat({ label, value, sub }: { label: string; value: string; sub: s
   );
 }
 
+function payStatusStyles(status: string) {
+  if (status === "Paid") return { badge: "bg-[#16A34A]/10 text-[#16A34A]", dot: "bg-[#16A34A]" };
+  if (status === "Failed" || status === "Refunded")
+    return { badge: "bg-[#DC2626]/10 text-[#DC2626]", dot: "bg-[#DC2626]" };
+  return { badge: "bg-[#D97706]/10 text-[#D97706]", dot: "bg-[#D97706]" };
+}
+
 function BillingTab({
   plan,
   plans,
@@ -1301,10 +1321,10 @@ function BillingTab({
                         Ksh {pay.amount.toLocaleString()}
                       </div>
                       <span
-                        className={`mt-0.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
+                        className={`mt-0.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${payStatusStyles(pay.status).badge}`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${pay.status === "Paid" ? "bg-[#16A34A]" : "bg-[#D97706]"}`}
+                          className={`h-1.5 w-1.5 rounded-full ${payStatusStyles(pay.status).dot}`}
                         />
                         {pay.status}
                       </span>
@@ -1345,10 +1365,10 @@ function BillingTab({
                       </td>
                       <td className="px-5 py-3">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${payStatusStyles(pay.status).badge}`}
                         >
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${pay.status === "Paid" ? "bg-[#16A34A]" : "bg-[#D97706]"}`}
+                            className={`h-1.5 w-1.5 rounded-full ${payStatusStyles(pay.status).dot}`}
                           />
                           {pay.status}
                         </span>

@@ -292,6 +292,13 @@ interface AuthCtx {
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshListings: () => Promise<void>;
+  reloadUser: () => Promise<void>;
+  startPlanCheckout: (
+    planId: string,
+    billingCycle: "monthly" | "yearly",
+    phone: string,
+  ) => Promise<{ invoiceId: string; checkoutRequestId: string | null }>;
+  getInvoiceStatus: (invoiceId: string) => Promise<string>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerificationCode: () => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
@@ -404,9 +411,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  // Local-only: real payment integration wires here later
   const setPlan = useCallback((plan: string) => {
     setUser((prev) => (prev ? { ...prev, plan } : prev));
+  }, []);
+
+  const reloadUser = useCallback(async () => {
+    const apiUser = await api.get<ApiUser>("/user/me").catch(() => null);
+    if (!apiUser) return;
+    const [listings, sub, payments] = await Promise.all([
+      api.get<ApiListing[]>("/user/listings").catch(() => [] as ApiListing[]),
+      api
+        .get<ApiSubscription>("/user/subscription")
+        .catch(() => ({ plan: "free", plan_name: "Free", status: null })),
+      api.get<ApiPayment[]>("/user/payments").catch(() => [] as ApiPayment[]),
+    ]);
+    setUser(mapApiUser(apiUser, listings, sub, payments));
+  }, []);
+
+  const startPlanCheckout = useCallback(
+    async (planId: string, billingCycle: "monthly" | "yearly", phone: string) => {
+      const res = await api.post<{ invoice_id: string; checkout_request_id: string | null }>(
+        "/user/subscription/checkout",
+        { plan: planId, billing_cycle: billingCycle, phone },
+      );
+      return { invoiceId: res.invoice_id, checkoutRequestId: res.checkout_request_id };
+    },
+    [],
+  );
+
+  const getInvoiceStatus = useCallback(async (invoiceId: string) => {
+    const res = await api.get<{ status: string }>(`/user/invoices/${invoiceId}/status`);
+    return res.status;
   }, []);
 
   const refreshListings = useCallback(async () => {
@@ -692,6 +727,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUser,
         deleteAccount,
         refreshListings,
+        reloadUser,
+        startPlanCheckout,
+        getInvoiceStatus,
         verifyEmail,
         resendVerificationCode,
         changePassword,
