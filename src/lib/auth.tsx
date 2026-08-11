@@ -49,6 +49,8 @@ export interface AppUser {
   language?: "en" | "sw";
   isAdmin?: boolean;
   emailVerified: boolean;
+  /** Platform-wide setting — admins can turn the requirement off entirely. */
+  emailVerificationRequired: boolean;
 }
 
 // ── API shapes ────────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ interface ApiUser {
   language: string | null;
   two_factor_enabled: boolean;
   email_verified_at: string | null;
+  email_verification_required?: boolean;
   notifications: {
     email_inquiries: boolean;
     sms_alerts: boolean;
@@ -132,6 +135,18 @@ interface AuthResponse {
   token: string;
 }
 
+interface TwoFactorChallengeResponse {
+  two_factor_required: true;
+  challenge: string;
+  email: string;
+}
+
+type LoginResponse = AuthResponse | TwoFactorChallengeResponse;
+
+export type LoginResult =
+  | { status: "authenticated"; user: AppUser }
+  | { status: "two_factor_required"; challenge: string; email: string };
+
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
 function mapApiUser(
@@ -154,6 +169,9 @@ function mapApiUser(
     manager: sub.dedicated_manager ?? null,
     isAdmin: u.is_admin ?? false,
     emailVerified: u.email_verified_at !== null,
+    // Defaults to false so a backend that omits the field suppresses the
+    // verification modal rather than hard-blocking the dashboard.
+    emailVerificationRequired: u.email_verification_required ?? false,
     county: u.county ?? undefined,
     bio: u.bio ?? undefined,
     company: u.company ?? undefined,
@@ -241,7 +259,13 @@ export interface ListingDetail {
 interface AuthCtx {
   user: AppUser | null;
   ready: boolean;
-  login: (email: string, password: string, remember?: boolean) => Promise<AppUser>;
+  login: (email: string, password: string, remember?: boolean) => Promise<LoginResult>;
+  loginWithGoogle: (credential: string, role?: UserRole) => Promise<LoginResult>;
+  verifyTwoFactor: (challenge: string, code: string, remember?: boolean) => Promise<AppUser>;
+  resendTwoFactorCode: (challenge: string) => Promise<void>;
+  enableTwoFactor: () => Promise<void>;
+  confirmTwoFactor: (code: string) => Promise<void>;
+  disableTwoFactor: (password: string) => Promise<void>;
   register: (data: {
     fullName: string;
     email: string;
@@ -270,6 +294,7 @@ interface AuthCtx {
   refreshListings: () => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerificationCode: () => Promise<void>;
+  changePassword: (current: string, next: string) => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -306,13 +331,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
-  const login = async (email: string, password: string, remember = true): Promise<AppUser> => {
-    const res = await api.post<AuthResponse>("/auth/login", { email, password });
+  const login = async (email: string, password: string, remember = true): Promise<LoginResult> => {
+    const res = await api.post<LoginResponse>("/auth/login", { email, password });
+
+    if ("two_factor_required" in res) {
+      return { status: "two_factor_required", challenge: res.challenge, email: res.email };
+    }
+
+    setToken(res.token, remember);
+    const u = await loadUser(res.user);
+    setUser(u);
+    return { status: "authenticated", user: u };
+  };
+
+  const loginWithGoogle = async (credential: string, role?: UserRole): Promise<LoginResult> => {
+    const res = await api.post<LoginResponse>("/auth/google", { credential, role });
+
+    if ("two_factor_required" in res) {
+      return { status: "two_factor_required", challenge: res.challenge, email: res.email };
+    }
+
+    setToken(res.token);
+    const u = await loadUser(res.user);
+    setUser(u);
+    return { status: "authenticated", user: u };
+  };
+
+  const verifyTwoFactor = async (
+    challenge: string,
+    code: string,
+    remember = true,
+  ): Promise<AppUser> => {
+    const res = await api.post<AuthResponse>("/auth/two-factor/verify", { challenge, code });
     setToken(res.token, remember);
     const u = await loadUser(res.user);
     setUser(u);
     return u;
   };
+
+  const resendTwoFactorCode = useCallback(async (challenge: string) => {
+    await api.post("/auth/two-factor/resend", { challenge });
+  }, []);
 
   const register = async (data: {
     fullName: string;
@@ -589,12 +648,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post("/auth/email/resend");
   }, []);
 
+  const enableTwoFactor = useCallback(async () => {
+    await api.post("/user/two-factor/enable");
+  }, []);
+
+  const confirmTwoFactor = useCallback(async (code: string) => {
+    await api.post("/user/two-factor/confirm", { code });
+    setUser((prev) => (prev ? { ...prev, twoFactor: true } : prev));
+  }, []);
+
+  const disableTwoFactor = useCallback(async (password: string) => {
+    await api.delete("/user/two-factor", { password });
+    setUser((prev) => (prev ? { ...prev, twoFactor: false } : prev));
+  }, []);
+
+  // The backend revokes every token, so there is no session left to log out of —
+  // calling logout() here would 401 and trigger the hard redirect in api.ts.
+  const changePassword = useCallback(async (current: string, next: string) => {
+    await api.put("/user/password", {
+      current_password: current,
+      password: next,
+      password_confirmation: next,
+    });
+    clearToken();
+    setUser(null);
+  }, []);
+
   return (
     <Ctx.Provider
       value={{
         user,
         ready,
         login,
+        loginWithGoogle,
         register,
         logout,
         setPlan,
@@ -608,6 +694,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshListings,
         verifyEmail,
         resendVerificationCode,
+        changePassword,
+        verifyTwoFactor,
+        resendTwoFactorCode,
+        enableTwoFactor,
+        confirmTwoFactor,
+        disableTwoFactor,
       }}
     >
       {children}
