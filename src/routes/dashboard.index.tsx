@@ -1061,6 +1061,11 @@ function BillingTab({
   onSelectPlan: (p: string) => void;
   manager: { name: string; email: string } | null;
 }) {
+  const { reloadUser } = useAuth();
+  useEffect(() => {
+    reloadUser();
+  }, [reloadUser]);
+
   const p = plans.find((pl) => pl.id === plan);
   const limitNum = maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
