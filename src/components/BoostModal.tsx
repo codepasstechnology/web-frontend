@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Smartphone, CheckCircle2, Loader2, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import type { Plan } from "@/lib/plans";
+
+interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  period: string;
+}
 
 interface Props {
-  plan: Plan;
-  initialCycle?: "monthly" | "yearly";
+  addOn: AddOn;
   onClose: () => void;
 }
 
@@ -14,15 +19,13 @@ type Stage = "form" | "waiting" | "success" | "failed" | "pending";
 const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT = 90_000;
 
-export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
-  const { startPlanCheckout, previewPlanChange, getInvoiceStatus, reloadUser, cancelInvoice } =
-    useAuth();
-  const [cycle, setCycle] = useState<"monthly" | "yearly">(initialCycle ?? "monthly");
+export function BoostModal({ addOn, onClose }: Props) {
+  const { user, startBoostCheckout, getInvoiceStatus, reloadUser } = useAuth();
+  const listings = (user?.listings ?? []).filter((l) => l.status !== "sold");
+  const [listingId, setListingId] = useState(listings[0]?.id ?? "");
   const [phone, setPhone] = useState("");
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
-  const [creditedDays, setCreditedDays] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -31,26 +34,14 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    previewPlanChange(plan.id, cycle)
-      .then((p) => active && setCreditedDays(p.credited_days))
-      .catch(() => active && setCreditedDays(0));
-    return () => {
-      active = false;
-    };
-  }, [plan.id, cycle, previewPlanChange]);
-
-  const yearly = plan.priceYearly ?? plan.price * 12;
-  const amount = cycle === "yearly" ? yearly : plan.price;
+  const boostType = addOn.id === "featured" ? "featured" : "boost";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setStage("waiting");
     try {
-      const { invoiceId } = await startPlanCheckout(plan.id, cycle, phone);
-      setInvoiceId(invoiceId);
+      const { invoiceId } = await startBoostCheckout(listingId, boostType, phone);
       const startedAt = Date.now();
       pollRef.current = setInterval(async () => {
         const status = await getInvoiceStatus(invoiceId).catch(() => "pending");
@@ -60,12 +51,10 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
           setStage("success");
         } else if (status === "failed") {
           if (pollRef.current) clearInterval(pollRef.current);
-          await reloadUser();
           setStage("failed");
           setError("The payment was cancelled or failed. Please try again.");
         } else if (Date.now() - startedAt > POLL_TIMEOUT) {
           if (pollRef.current) clearInterval(pollRef.current);
-          await reloadUser();
           setStage("pending");
         }
       }, POLL_INTERVAL);
@@ -76,14 +65,6 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
       setStage("failed");
       setError(message);
     }
-  };
-
-  const cancel = async () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (invoiceId) await cancelInvoice(invoiceId).catch(() => {});
-    setInvoiceId(null);
-    setError(null);
-    setStage("form");
   };
 
   return (
@@ -102,7 +83,8 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
             <CheckCircle2 className="mx-auto h-12 w-12 text-[#16A34A]" />
             <h2 className="mt-4 text-lg font-semibold text-foreground">Payment received</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your {plan.name} plan is now active.
+              Your listing is now {boostType === "featured" ? "featured" : "boosted to the top"} for{" "}
+              {addOn.period}.
             </p>
             <button
               onClick={onClose}
@@ -116,8 +98,8 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
             <Clock className="mx-auto h-12 w-12 text-[#15803d]" />
             <h2 className="mt-4 text-lg font-semibold text-foreground">Still processing</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              M-Pesa is taking longer than usual. You don't need to pay again — if it went through,
-              your {plan.name} plan activates automatically and we'll email your receipt.
+              M-Pesa is taking longer than usual. You don&apos;t need to pay again — if it went
+              through, your listing is updated automatically.
             </p>
             <button
               onClick={onClose}
@@ -136,68 +118,64 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
             <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Waiting for confirmation…
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Didn't get a prompt? Cancel and try again.
-            </p>
-            <button
-              onClick={cancel}
-              className="mt-3 w-full rounded-md border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
-            >
-              Cancel and try again
-            </button>
           </div>
         ) : (
           <form onSubmit={submit}>
-            <h2 className="pr-10 text-lg font-semibold text-foreground">Upgrade to {plan.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pay with M-Pesa to activate.</p>
+            <h2 className="pr-10 text-lg font-semibold text-foreground">{addOn.name}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Active for {addOn.period}. Pay with M-Pesa to activate.
+            </p>
 
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              {(["monthly", "yearly"] as const).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCycle(c)}
-                  className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                    cycle === c
-                      ? "border-[#15803d] bg-[#f0fdf4] text-[#15803d]"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {c === "monthly" ? "Monthly" : "Yearly"}
-                  <span className="mt-0.5 block text-xs font-normal">
-                    KES {(c === "yearly" ? yearly : plan.price).toLocaleString()}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {creditedDays > 0 && (
-              <p className="mt-3 rounded-md bg-[#f0fdf4] px-3 py-2 text-xs text-[#15803d]">
-                You&apos;ll pay for a full {cycle === "yearly" ? "year" : "month"} and keep about{" "}
-                {creditedDays} bonus {creditedDays === 1 ? "day" : "days"} carried over from your
-                current plan.
+            {listings.length === 0 ? (
+              <p className="mt-5 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                You need an active listing before you can boost one.
               </p>
-            )}
+            ) : (
+              <>
+                <label
+                  className="mt-5 block text-sm font-medium text-foreground"
+                  htmlFor="boost-listing"
+                >
+                  Choose a listing
+                </label>
+                <select
+                  id="boost-listing"
+                  value={listingId}
+                  onChange={(e) => setListingId(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
+                >
+                  {listings.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.title}
+                    </option>
+                  ))}
+                </select>
 
-            <label className="mt-4 block text-sm font-medium text-foreground" htmlFor="mpesa-phone">
-              M-Pesa phone number
-            </label>
-            <input
-              id="mpesa-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              placeholder="07XX XXX XXX"
-              className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
-            />
+                <label
+                  className="mt-4 block text-sm font-medium text-foreground"
+                  htmlFor="boost-phone"
+                >
+                  M-Pesa phone number
+                </label>
+                <input
+                  id="boost-phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  placeholder="07XX XXX XXX"
+                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
+                />
+              </>
+            )}
 
             {error && <p className="mt-3 text-sm text-[#DC2626]">{error}</p>}
 
             <button
               type="submit"
-              className="mt-5 w-full rounded-md bg-[#15803d] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+              disabled={listings.length === 0}
+              className="mt-5 w-full rounded-md bg-[#15803d] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
             >
-              Pay KES {amount.toLocaleString()}
+              Pay Ksh {addOn.price.toLocaleString()}
             </button>
           </form>
         )}

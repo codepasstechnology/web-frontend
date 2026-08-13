@@ -22,6 +22,10 @@ export interface AppUser {
   phone: string;
   role: UserRole;
   plan: string;
+  billingCycle: "monthly" | "yearly" | null;
+  planStatus: string | null;
+  planEndsAt: string | null;
+  planCancelledAt: string | null;
   maxListings: number; // Infinity = unlimited
   analyticsAccess: boolean;
   customReports: boolean;
@@ -115,6 +119,9 @@ interface ApiSubscription {
   plan: string;
   plan_name: string;
   status: string | null;
+  billing_cycle?: "monthly" | "yearly" | null;
+  ends_at?: string | null;
+  cancelled_at?: string | null;
   max_listings?: number;
   analytics_access?: boolean;
   custom_reports?: boolean;
@@ -162,6 +169,10 @@ function mapApiUser(
     phone: u.phone ?? "",
     role: u.role as UserRole,
     plan: sub.plan ?? "free",
+    billingCycle: sub.billing_cycle ?? null,
+    planStatus: sub.status,
+    planEndsAt: sub.ends_at ?? null,
+    planCancelledAt: sub.cancelled_at ?? null,
     maxListings:
       sub.max_listings === -1 || sub.max_listings === undefined ? Infinity : sub.max_listings,
     analyticsAccess: sub.analytics_access ?? false,
@@ -298,8 +309,18 @@ interface AuthCtx {
     billingCycle: "monthly" | "yearly",
     phone: string,
   ) => Promise<{ invoiceId: string; checkoutRequestId: string | null }>;
+  startBoostCheckout: (
+    listingId: string,
+    boostType: "boost" | "featured",
+    phone: string,
+  ) => Promise<{ invoiceId: string; checkoutRequestId: string | null }>;
+  previewPlanChange: (
+    planId: string,
+    billingCycle: "monthly" | "yearly",
+  ) => Promise<{ amount: number; credited_days: number; ends_at: string }>;
   getInvoiceStatus: (invoiceId: string) => Promise<string>;
   cancelInvoice: (invoiceId: string) => Promise<void>;
+  cancelSubscription: () => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerificationCode: () => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
@@ -440,6 +461,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const startBoostCheckout = useCallback(
+    async (listingId: string, boostType: "boost" | "featured", phone: string) => {
+      const res = await api.post<{ invoice_id: string; checkout_request_id: string | null }>(
+        "/user/listings/boost",
+        { listing_id: listingId, boost_type: boostType, phone },
+      );
+      return { invoiceId: res.invoice_id, checkoutRequestId: res.checkout_request_id };
+    },
+    [],
+  );
+
+  const previewPlanChange = useCallback(
+    async (planId: string, billingCycle: "monthly" | "yearly") =>
+      api.post<{ amount: number; credited_days: number; ends_at: string }>(
+        "/user/subscription/preview",
+        { plan: planId, billing_cycle: billingCycle },
+      ),
+    [],
+  );
+
   const getInvoiceStatus = useCallback(async (invoiceId: string) => {
     const res = await api.get<{ status: string }>(`/user/invoices/${invoiceId}/status`);
     return res.status;
@@ -448,6 +489,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const cancelInvoice = useCallback(async (invoiceId: string) => {
     await api.post(`/user/invoices/${invoiceId}/cancel`);
   }, []);
+
+  const cancelSubscription = useCallback(async () => {
+    await api.post("/user/subscription/cancel");
+    await reloadUser();
+  }, [reloadUser]);
 
   const refreshListings = useCallback(async () => {
     const listings = await api.get<ApiListing[]>("/user/listings").catch(() => [] as ApiListing[]);
@@ -734,8 +780,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshListings,
         reloadUser,
         startPlanCheckout,
+        startBoostCheckout,
+        previewPlanChange,
         getInvoiceStatus,
         cancelInvoice,
+        cancelSubscription,
         verifyEmail,
         resendVerificationCode,
         changePassword,

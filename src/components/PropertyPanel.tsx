@@ -15,6 +15,7 @@ import {
   ChevronRight,
   FileCheck,
   Heart,
+  Star,
 } from "lucide-react";
 import { statusMeta, type LandParcel, type Rental } from "@/lib/landData";
 import { useAuth } from "@/lib/auth";
@@ -270,6 +271,11 @@ export function ParcelPanel({
             {parcel.verified && (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--success)]">
                 <ShieldCheck className="h-3 w-3" /> Verified
+              </span>
+            )}
+            {parcel.featured && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-[#D97706] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                <Star className="h-3 w-3" /> Featured
               </span>
             )}
           </div>

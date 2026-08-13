@@ -50,6 +50,7 @@ import {
   MessageSquare,
   Clock,
   Send,
+  RefreshCw,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -68,6 +69,7 @@ import {
 import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { CheckoutModal } from "@/components/CheckoutModal";
+import { BoostModal } from "@/components/BoostModal";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { usePlans, addOns, type Plan } from "@/lib/plans";
@@ -116,11 +118,13 @@ function DashboardPage() {
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  const [checkoutCycle, setCheckoutCycle] = useState<"monthly" | "yearly" | undefined>(undefined);
   const [exporting, setExporting] = useState(false);
 
-  const handleSelectPlan = (id: string) => {
+  const handleSelectPlan = (id: string, cycle?: "monthly" | "yearly") => {
     const selected = plans.find((p) => p.id === id);
     if (selected && selected.price > 0) {
+      setCheckoutCycle(cycle);
       setCheckoutPlan(selected);
     } else {
       setPlan(id);
@@ -363,6 +367,10 @@ function DashboardPage() {
       {tab === "billing" && (
         <BillingTab
           plan={user.plan}
+          billingCycle={user.billingCycle}
+          planStatus={user.planStatus}
+          planEndsAt={user.planEndsAt}
+          planCancelledAt={user.planCancelledAt}
           plans={plans}
           maxListings={user.maxListings}
           usedListings={used}
@@ -402,7 +410,16 @@ function DashboardPage() {
         onSelect={handleSelectPlan}
       />
 
-      {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />}
+      {checkoutPlan && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          initialCycle={checkoutCycle}
+          onClose={() => {
+            setCheckoutPlan(null);
+            setCheckoutCycle(undefined);
+          }}
+        />
+      )}
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -1037,6 +1054,10 @@ function payStatusStyles(status: string) {
 
 function BillingTab({
   plan,
+  billingCycle,
+  planStatus,
+  planEndsAt,
+  planCancelledAt,
   plans,
   maxListings,
   usedListings,
@@ -1046,6 +1067,10 @@ function BillingTab({
   manager,
 }: {
   plan: string;
+  billingCycle: "monthly" | "yearly" | null;
+  planStatus: string | null;
+  planEndsAt: string | null;
+  planCancelledAt: string | null;
   plans: Plan[];
   maxListings: number;
   usedListings: number;
@@ -1058,10 +1083,13 @@ function BillingTab({
     status: string;
     downloadUrl: string;
   }[];
-  onSelectPlan: (p: string) => void;
+  onSelectPlan: (p: string, cycle?: "monthly" | "yearly") => void;
   manager: { name: string; email: string } | null;
 }) {
-  const { reloadUser } = useAuth();
+  const { reloadUser, cancelSubscription } = useAuth();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [boostAddOn, setBoostAddOn] = useState<(typeof addOns)[number] | null>(null);
   useEffect(() => {
     reloadUser();
   }, [reloadUser]);
@@ -1069,18 +1097,34 @@ function BillingTab({
   const p = plans.find((pl) => pl.id === plan);
   const limitNum = maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
-  const pct =
-    limitNum === Infinity ? 8 : Math.min(100, Math.round((usedListings / limitNum) * 100));
+  const unlimited = limitNum === Infinity;
+  const pct = unlimited ? 100 : Math.min(100, Math.round((usedListings / limitNum) * 100));
 
   if (!p) {
     return <div className="text-sm text-muted-foreground">Loading plan details…</div>;
   }
-  const nextBillDate = new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const isYearly = billingCycle === "yearly";
+  const cycleLabel = isYearly ? "year" : "month";
+  const planAmount = isYearly ? (p.priceYearly ?? p.price * 12) : p.price;
+  const cancelled = Boolean(planCancelledAt);
+  const renewDate = planEndsAt
+    ? new Date(planEndsAt).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
   const totalPaid = payments.filter((x) => x.status === "Paid").reduce((a, b) => a + b.amount, 0);
+
+  const confirmCancel = async () => {
+    setCancelling(true);
+    try {
+      await cancelSubscription();
+      setCancelOpen(false);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1103,14 +1147,30 @@ function BillingTab({
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-semibold text-foreground">{p.name}</span>
               <span className="text-xs text-muted-foreground">
-                / {p.price === 0 ? "Free forever" : "month"}
+                / {p.price === 0 ? "Free forever" : cycleLabel}
               </span>
             </div>
             <div className="mt-1 text-lg font-semibold text-foreground">
-              {p.price === 0 ? "Ksh 0" : `Ksh ${p.price.toLocaleString()}`}
+              {p.price === 0 ? "Ksh 0" : `Ksh ${planAmount.toLocaleString()}`}
             </div>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#16A34A]" /> Active
+              {p.price === 0 || planStatus === "active" ? (
+                cancelled ? (
+                  <>
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#D97706]" /> Cancels
+                    on {renewDate}
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#16A34A]" /> Active
+                  </>
+                )
+              ) : (
+                <>
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#DC2626]" />{" "}
+                  {planStatus ?? "Inactive"}
+                </>
+              )}
             </div>
           </div>
 
@@ -1122,14 +1182,16 @@ function BillingTab({
               {usedListings}{" "}
               <span className="text-sm font-normal text-muted-foreground">of {limitText}</span>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-[#2563EB] transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            {!unlimited && (
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-[#2563EB] transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
             <div className="mt-2 text-[11px] text-muted-foreground">
-              {limitNum === Infinity
+              {unlimited
                 ? "Unlimited listings on Pro"
                 : `${Math.max(0, limitNum - usedListings)} listing slots remaining`}
             </div>
@@ -1137,13 +1199,23 @@ function BillingTab({
 
           <div className="p-5">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {p.price === 0 ? "Upgrade for more" : "Next billing"}
+              {p.price === 0
+                ? "Upgrade for more"
+                : cancelled
+                  ? "Subscription ends"
+                  : "Next billing"}
             </div>
             <div className="mt-2 text-2xl font-semibold text-foreground">
-              {p.price === 0 ? "—" : `Ksh ${p.price.toLocaleString()}`}
+              {p.price === 0 ? "—" : `Ksh ${planAmount.toLocaleString()}`}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {p.price === 0 ? "You are on the free tier" : `on ${nextBillDate}`}
+              {p.price === 0
+                ? "You are on the free tier"
+                : cancelled
+                  ? `Cancelled — access until ${renewDate ?? "the period end"}`
+                  : renewDate
+                    ? `Renews on ${renewDate}`
+                    : "—"}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {plan !== "pro" && (
@@ -1156,7 +1228,15 @@ function BillingTab({
               )}
               {plan !== "free" && (
                 <button
-                  onClick={() => onSelectPlan("free")}
+                  onClick={() => onSelectPlan(plan, billingCycle ?? undefined)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#2563EB] px-3 py-1.5 text-xs font-medium text-[#2563EB] hover:bg-[#2563EB]/10"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> {cancelled ? "Resume" : "Renew"}
+                </button>
+              )}
+              {plan !== "free" && !cancelled && (
+                <button
+                  onClick={() => setCancelOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   Cancel plan
@@ -1211,6 +1291,11 @@ function BillingTab({
                   </span>
                   <span className="text-xs text-muted-foreground">/ mo</span>
                 </div>
+                {pl.priceYearly != null && pl.priceYearly > 0 && (
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    or Ksh {pl.priceYearly.toLocaleString()} / yr
+                  </div>
+                )}
                 <ul className="mt-4 space-y-1.5 text-xs text-foreground">
                   {pl.features.slice(0, 5).map((f) => (
                     <li key={f} className="flex items-start gap-2">
@@ -1220,7 +1305,7 @@ function BillingTab({
                 </ul>
                 <button
                   disabled={isCurrent}
-                  onClick={() => onSelectPlan(pl.id)}
+                  onClick={() => (pl.id === "free" ? setCancelOpen(true) : onSelectPlan(pl.id))}
                   className={`mt-5 inline-flex items-center justify-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                     isCurrent
                       ? "cursor-default bg-muted text-muted-foreground"
@@ -1263,7 +1348,10 @@ function BillingTab({
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold text-foreground">Ksh {a.price}</div>
-                  <button className="mt-1 text-[11px] font-medium text-[#2563EB] hover:underline">
+                  <button
+                    onClick={() => setBoostAddOn(a)}
+                    className="mt-1 text-[11px] font-medium text-[#2563EB] hover:underline"
+                  >
                     Buy
                   </button>
                 </div>
@@ -1275,13 +1363,13 @@ function BillingTab({
         <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Payment method</h3>
+            <h3 className="text-sm font-semibold text-foreground">How you pay</h3>
           </div>
           <div className="mt-4 rounded-lg border border-dashed border-border p-4 text-center">
-            <p className="text-xs text-muted-foreground">No payment method on file</p>
-            <button className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted">
-              <Plus className="h-3.5 w-3.5" /> Add M-Pesa or card
-            </button>
+            <p className="text-xs text-muted-foreground">
+              Payments are made with M-Pesa at checkout — you approve each charge on your phone.
+              Card payments are coming soon.
+            </p>
           </div>
           <div className="mt-4 flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Total paid</span>
@@ -1396,6 +1484,37 @@ function BillingTab({
           </>
         )}
       </div>
+
+      {boostAddOn && <BoostModal addOn={boostAddOn} onClose={() => setBoostAddOn(null)} />}
+
+      {cancelOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold text-foreground">Cancel your subscription?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your {p.name} plan stays active until {renewDate ?? "the end of your billing period"}.
+              It won&apos;t renew after that, and you&apos;ll move to the Free plan. You can resume
+              anytime before then.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setCancelOpen(false)}
+                disabled={cancelling}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Keep plan
+              </button>
+              <button
+                onClick={confirmCancel}
+                disabled={cancelling}
+                className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#b91c1c] disabled:opacity-60"
+              >
+                {cancelling ? "Cancelling…" : "Cancel subscription"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
