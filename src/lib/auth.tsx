@@ -32,7 +32,7 @@ export interface AppUser {
     date: string;
     amount: number;
     plan: string;
-    status: "Paid" | "Pending";
+    status: "Paid" | "Pending" | "Failed" | "Refunded";
     downloadUrl: string;
   }[];
   county?: string;
@@ -202,7 +202,7 @@ function mapApiUser(
       date: p.date,
       amount: p.amount,
       plan: p.plan,
-      status: (p.status === "Paid" ? "Paid" : "Pending") as "Paid" | "Pending",
+      status: p.status as "Paid" | "Pending" | "Failed" | "Refunded",
       downloadUrl: p.download_url,
     })),
   };
@@ -299,6 +299,7 @@ interface AuthCtx {
     phone: string,
   ) => Promise<{ invoiceId: string; checkoutRequestId: string | null }>;
   getInvoiceStatus: (invoiceId: string) => Promise<string>;
+  cancelInvoice: (invoiceId: string) => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerificationCode: () => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
@@ -442,6 +443,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getInvoiceStatus = useCallback(async (invoiceId: string) => {
     const res = await api.get<{ status: string }>(`/user/invoices/${invoiceId}/status`);
     return res.status;
+  }, []);
+
+  const cancelInvoice = useCallback(async (invoiceId: string) => {
+    await api.post(`/user/invoices/${invoiceId}/cancel`);
   }, []);
 
   const refreshListings = useCallback(async () => {
@@ -730,6 +735,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reloadUser,
         startPlanCheckout,
         getInvoiceStatus,
+        cancelInvoice,
         verifyEmail,
         resendVerificationCode,
         changePassword,

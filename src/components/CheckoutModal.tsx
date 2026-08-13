@@ -14,11 +14,12 @@ const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT = 90_000;
 
 export function CheckoutModal({ plan, onClose }: Props) {
-  const { startPlanCheckout, getInvoiceStatus, reloadUser } = useAuth();
+  const { startPlanCheckout, getInvoiceStatus, reloadUser, cancelInvoice } = useAuth();
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [phone, setPhone] = useState("");
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export function CheckoutModal({ plan, onClose }: Props) {
     setStage("waiting");
     try {
       const { invoiceId } = await startPlanCheckout(plan.id, cycle, phone);
+      setInvoiceId(invoiceId);
       const startedAt = Date.now();
       pollRef.current = setInterval(async () => {
         const status = await getInvoiceStatus(invoiceId).catch(() => "pending");
@@ -61,6 +63,14 @@ export function CheckoutModal({ plan, onClose }: Props) {
       setStage("failed");
       setError(message);
     }
+  };
+
+  const cancel = async () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (invoiceId) await cancelInvoice(invoiceId).catch(() => {});
+    setInvoiceId(null);
+    setError(null);
+    setStage("form");
   };
 
   return (
@@ -113,6 +123,15 @@ export function CheckoutModal({ plan, onClose }: Props) {
             <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Waiting for confirmation…
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Didn't get a prompt? Cancel and try again.
+            </p>
+            <button
+              onClick={cancel}
+              className="mt-3 w-full rounded-md border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
+            >
+              Cancel and try again
+            </button>
           </div>
         ) : (
           <form onSubmit={submit}>
