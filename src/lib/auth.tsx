@@ -314,6 +314,15 @@ interface AuthCtx {
     boostType: "boost" | "featured",
     phone: string,
   ) => Promise<{ invoiceId: string; checkoutRequestId: string | null }>;
+  startCardCheckout: (
+    planId: string,
+    billingCycle: "monthly" | "yearly",
+  ) => Promise<{ invoiceId: string; authorizationUrl: string }>;
+  startBoostCardCheckout: (
+    listingId: string,
+    boostType: "boost" | "featured",
+  ) => Promise<{ invoiceId: string; authorizationUrl: string }>;
+  verifyCardPayment: (reference: string) => Promise<string>;
   previewPlanChange: (
     planId: string,
     billingCycle: "monthly" | "yearly",
@@ -471,6 +480,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  const startCardCheckout = useCallback(
+    async (planId: string, billingCycle: "monthly" | "yearly") => {
+      const res = await api.post<{ invoice_id: string; authorization_url: string }>(
+        "/user/subscription/checkout/card",
+        { plan: planId, billing_cycle: billingCycle },
+      );
+      return { invoiceId: res.invoice_id, authorizationUrl: res.authorization_url };
+    },
+    [],
+  );
+
+  const startBoostCardCheckout = useCallback(
+    async (listingId: string, boostType: "boost" | "featured") => {
+      const res = await api.post<{ invoice_id: string; authorization_url: string }>(
+        "/user/listings/boost/card",
+        { listing_id: listingId, boost_type: boostType },
+      );
+      return { invoiceId: res.invoice_id, authorizationUrl: res.authorization_url };
+    },
+    [],
+  );
+
+  const verifyCardPayment = useCallback(async (reference: string) => {
+    const res = await api.get<{ status: string }>(`/user/payments/paystack/${reference}/verify`);
+    return res.status;
+  }, []);
 
   const previewPlanChange = useCallback(
     async (planId: string, billingCycle: "monthly" | "yearly") =>
@@ -781,6 +817,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reloadUser,
         startPlanCheckout,
         startBoostCheckout,
+        startCardCheckout,
+        startBoostCardCheckout,
+        verifyCardPayment,
         previewPlanChange,
         getInvoiceStatus,
         cancelInvoice,

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Lock,
@@ -1086,13 +1087,54 @@ function BillingTab({
   onSelectPlan: (p: string, cycle?: "monthly" | "yearly") => void;
   manager: { name: string; email: string } | null;
 }) {
-  const { reloadUser, cancelSubscription } = useAuth();
+  const { reloadUser, cancelSubscription, verifyCardPayment } = useAuth();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [boostAddOn, setBoostAddOn] = useState<(typeof addOns)[number] | null>(null);
+  const navigate = useNavigate();
   useEffect(() => {
     reloadUser();
   }, [reloadUser]);
+
+  // Paystack redirects the browser back here with ?payment=paystack&reference=...
+  // after checkout. These aren't part of the route's validated search (adding
+  // them there would force every /dashboard navigation elsewhere in the app to
+  // supply them), so they're read directly off the URL, once, on mount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    if (params.get("payment") !== "paystack" || !reference) return;
+
+    let cancelled = false;
+    const startedAt = Date.now();
+
+    const poll = async () => {
+      const status = await verifyCardPayment(reference).catch(() => "pending");
+      if (cancelled) return;
+
+      if (status === "paid") {
+        await reloadUser();
+        toast("Payment received", { description: "Your plan is now active." });
+      } else if (status === "failed") {
+        toast("Payment failed", { description: "The card payment was not completed." });
+      } else if (Date.now() - startedAt < 60_000) {
+        setTimeout(poll, 3000);
+        return;
+      } else {
+        toast("Still processing", {
+          description: "This can take a moment — your plan updates automatically once confirmed.",
+        });
+      }
+
+      navigate({ to: "/dashboard", search: { tab: "billing" } });
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const p = plans.find((pl) => pl.id === plan);
   const limitNum = maxListings;
@@ -1367,8 +1409,7 @@ function BillingTab({
           </div>
           <div className="mt-4 rounded-lg border border-dashed border-border p-4 text-center">
             <p className="text-xs text-muted-foreground">
-              Payments are made with M-Pesa at checkout — you approve each charge on your phone.
-              Card payments are coming soon.
+              Pay with M-Pesa (approve the charge on your phone) or by card at checkout.
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">

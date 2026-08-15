@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Smartphone, CheckCircle2, Loader2, Clock } from "lucide-react";
+import { X, Smartphone, CreditCard, CheckCircle2, Loader2, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Plan } from "@/lib/plans";
 
@@ -10,14 +10,22 @@ interface Props {
 }
 
 type Stage = "form" | "waiting" | "success" | "failed" | "pending";
+type Method = "mpesa" | "card";
 
 const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT = 90_000;
 
 export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
-  const { startPlanCheckout, previewPlanChange, getInvoiceStatus, reloadUser, cancelInvoice } =
-    useAuth();
+  const {
+    startPlanCheckout,
+    startCardCheckout,
+    previewPlanChange,
+    getInvoiceStatus,
+    reloadUser,
+    cancelInvoice,
+  } = useAuth();
   const [cycle, setCycle] = useState<"monthly" | "yearly">(initialCycle ?? "monthly");
+  const [method, setMethod] = useState<Method>("mpesa");
   const [phone, setPhone] = useState("");
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +56,22 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
     e.preventDefault();
     setError(null);
     setStage("waiting");
+
+    if (method === "card") {
+      try {
+        const { authorizationUrl } = await startCardCheckout(plan.id, cycle);
+        window.location.href = authorizationUrl;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "Could not start the payment. Please try again.";
+        setStage("failed");
+        setError(message);
+      }
+      return;
+    }
+
     try {
       const { invoiceId } = await startPlanCheckout(plan.id, cycle, phone);
       setInvoiceId(invoiceId);
@@ -71,8 +95,9 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
       }, POLL_INTERVAL);
     } catch (err: unknown) {
       const message =
-        (err as { data?: { message?: string } }).data?.message ??
-        "Could not start the payment. Please try again.";
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not start the payment. Please try again.";
       setStage("failed");
       setError(message);
     }
@@ -126,6 +151,14 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
               Done
             </button>
           </div>
+        ) : stage === "waiting" && method === "card" ? (
+          <div className="py-6 text-center">
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#15803d]" />
+            <h2 className="mt-4 text-lg font-semibold text-foreground">Redirecting to checkout…</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Taking you to a secure page to complete your card payment.
+            </p>
+          </div>
         ) : stage === "waiting" ? (
           <div className="py-6 text-center">
             <Smartphone className="mx-auto h-12 w-12 text-[#15803d]" />
@@ -149,9 +182,33 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
         ) : (
           <form onSubmit={submit}>
             <h2 className="pr-10 text-lg font-semibold text-foreground">Upgrade to {plan.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pay with M-Pesa to activate.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Pay with {method === "mpesa" ? "M-Pesa" : "card"} to activate.
+            </p>
 
-            <div className="mt-5 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {(
+                [
+                  { id: "mpesa", label: "M-Pesa", icon: Smartphone },
+                  { id: "card", label: "Card", icon: CreditCard },
+                ] as const
+              ).map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMethod(m.id)}
+                  className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium ${
+                    method === m.id
+                      ? "border-[#15803d] bg-[#f0fdf4] text-[#15803d]"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  <m.icon className="h-4 w-4" /> {m.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {(["monthly", "yearly"] as const).map((c) => (
                 <button
                   key={c}
@@ -179,17 +236,28 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
               </p>
             )}
 
-            <label className="mt-4 block text-sm font-medium text-foreground" htmlFor="mpesa-phone">
-              M-Pesa phone number
-            </label>
-            <input
-              id="mpesa-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              placeholder="07XX XXX XXX"
-              className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
-            />
+            {method === "mpesa" ? (
+              <>
+                <label
+                  className="mt-4 block text-sm font-medium text-foreground"
+                  htmlFor="mpesa-phone"
+                >
+                  M-Pesa phone number
+                </label>
+                <input
+                  id="mpesa-phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  placeholder="07XX XXX XXX"
+                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
+                />
+              </>
+            ) : (
+              <p className="mt-4 text-xs text-muted-foreground">
+                You&apos;ll be redirected to a secure page to enter your card details.
+              </p>
+            )}
 
             {error && <p className="mt-3 text-sm text-[#DC2626]">{error}</p>}
 
