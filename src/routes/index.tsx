@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   MapPinned,
   ShieldCheck,
@@ -13,11 +14,47 @@ import {
   Zap,
   Building2,
 } from "lucide-react";
-import { landParcels, statusMeta } from "@/lib/landData";
+import { statusMeta, type LandStatus } from "@/lib/landData";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
+
+interface ApiParcel {
+  id: string;
+  title: string;
+  parcel_number: string;
+  county: string;
+  price: number;
+  verified: boolean;
+  featured: boolean;
+  status: string;
+}
+
+interface ParcelSummary {
+  id: string;
+  title: string;
+  parcelNumber: string;
+  county: string;
+  price: number;
+  verified: boolean;
+  featured: boolean;
+  status: LandStatus;
+}
+
+function mapApiParcel(p: ApiParcel): ParcelSummary {
+  return {
+    id: p.id,
+    title: p.title,
+    parcelNumber: p.parcel_number,
+    county: p.county,
+    price: p.price,
+    verified: p.verified,
+    featured: p.featured,
+    status: p.status === "verified" ? "verified" : "available",
+  };
+}
 
 const testimonials = [
   {
@@ -46,8 +83,18 @@ const testimonials = [
 ];
 
 function Index() {
-  const verifiedCount = landParcels.filter((p) => p.verified).length;
-  const countiesSet = new Set(landParcels.map((p) => p.county));
+  const [parcels, setParcels] = useState<ParcelSummary[]>([]);
+
+  useEffect(() => {
+    api
+      .get<ApiParcel[]>("/parcels")
+      .then((data) => setParcels(data.map(mapApiParcel)))
+      .catch(() => {});
+  }, []);
+
+  const verifiedCount = parcels.filter((p) => p.verified).length;
+  const countiesSet = new Set(parcels.map((p) => p.county));
+  const featured = [...parcels].sort((a, b) => Number(b.featured) - Number(a.featured)).slice(0, 5);
 
   return (
     <div className="min-h-screen bg-black">
@@ -88,7 +135,7 @@ function Index() {
             </div>
 
             <dl className="mt-10 grid grid-cols-3 gap-6 border-t border-white/10 pt-6">
-              <Metric label="Parcels mapped" value={landParcels.length.toString()} />
+              <Metric label="Parcels mapped" value={parcels.length.toString()} />
               <Metric label="Verified" value={verifiedCount.toString()} />
               <Metric label="Counties" value={countiesSet.size.toString()} />
             </dl>
@@ -102,11 +149,11 @@ function Index() {
                   Live Parcel Index
                 </div>
                 <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-sm">
-                  Sample
+                  Live
                 </span>
               </div>
               <ul className="divide-y divide-white/10">
-                {landParcels.slice(0, 5).map((p) => {
+                {featured.map((p) => {
                   const m = statusMeta[p.status];
                   return (
                     <li
@@ -341,7 +388,7 @@ function Index() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             {[
               {
-                value: landParcels.length.toString(),
+                value: parcels.length.toString(),
                 label: "Parcels indexed",
                 note: "and growing",
               },
