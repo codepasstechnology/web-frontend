@@ -141,44 +141,46 @@ function Index() {
             </dl>
           </div>
 
-          <div className="relative flex items-center">
-            <div className="w-full rounded-2xl border border-white/20 bg-white/10 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-white">
-                  <MapPinned className="h-3.5 w-3.5 text-emerald-400" />
-                  Live Parcel Index
+          {featured.length > 0 && (
+            <div className="relative flex items-center">
+              <div className="w-full rounded-2xl border border-white/20 bg-white/10 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                    <MapPinned className="h-3.5 w-3.5 text-emerald-400" />
+                    Live Parcel Index
+                  </div>
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-sm">
+                    Live
+                  </span>
                 </div>
-                <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-sm">
-                  Live
-                </span>
+                <ul className="divide-y divide-white/10">
+                  {featured.map((p) => {
+                    const m = statusMeta[p.status];
+                    return (
+                      <li
+                        key={p.id}
+                        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-white/5"
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-sm"
+                          style={{ backgroundColor: m.color }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-white">{p.title}</p>
+                          <p className="truncate text-[11px] text-white/50">
+                            {p.parcelNumber} · {p.county}
+                          </p>
+                        </div>
+                        <span className="text-[11px] font-semibold text-emerald-300">
+                          KES {(p.price / 1_000_000).toFixed(1)}M
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-              <ul className="divide-y divide-white/10">
-                {featured.map((p) => {
-                  const m = statusMeta[p.status];
-                  return (
-                    <li
-                      key={p.id}
-                      className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-white/5"
-                    >
-                      <span
-                        className="h-2.5 w-2.5 rounded-sm"
-                        style={{ backgroundColor: m.color }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white">{p.title}</p>
-                        <p className="truncate text-[11px] text-white/50">
-                          {p.parcelNumber} · {p.county}
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-semibold text-emerald-300">
-                        KES {(p.price / 1_000_000).toFixed(1)}M
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
