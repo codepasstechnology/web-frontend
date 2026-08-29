@@ -14,6 +14,7 @@ export interface LandParcel {
   county: string;
   description: string;
   verified: boolean;
+  featured?: boolean;
   seller: { name: string; phone: string; agency: string };
   amenities: {
     school: string;

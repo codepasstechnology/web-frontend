@@ -42,6 +42,7 @@ interface ApiParcel {
   listing_type: "sale" | "lease";
   posted_by: "owner" | "broker";
   verified: boolean;
+  featured: boolean;
   status: string;
   latitude: number;
   longitude: number;
@@ -75,6 +76,7 @@ function mapApiParcel(p: ApiParcel): LandParcel {
     county: p.county,
     description: p.description || "",
     verified: p.verified,
+    featured: p.featured,
     photos: p.photos ?? [],
     seller: {
       name: p.seller_name || "—",

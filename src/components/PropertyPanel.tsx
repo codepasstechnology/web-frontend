@@ -15,6 +15,8 @@ import {
   ChevronRight,
   FileCheck,
   Heart,
+  Star,
+  MessageCircle,
 } from "lucide-react";
 import { statusMeta, type LandParcel, type Rental } from "@/lib/landData";
 import { useAuth } from "@/lib/auth";
@@ -122,6 +124,29 @@ function ShareButton({ title, text }: { title: string; text: string }) {
       )}
       {copied ? "Link copied" : "Share"}
     </button>
+  );
+}
+
+function whatsappUrl(phone: string, message: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 9) return null;
+  const withCountryCode = digits.startsWith("0") ? `254${digits.slice(1)}` : digits;
+  return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
+}
+
+function WhatsAppButton({ phone, message }: { phone: string; message: string }) {
+  const url = whatsappUrl(phone, message);
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+    >
+      <MessageCircle className="h-3.5 w-3.5 text-[var(--success)]" />
+      WhatsApp
+    </a>
   );
 }
 
@@ -272,6 +297,11 @@ export function ParcelPanel({
                 <ShieldCheck className="h-3 w-3" /> Verified
               </span>
             )}
+            {parcel.featured && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-[#D97706] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                <Star className="h-3 w-3" /> Featured
+              </span>
+            )}
           </div>
           <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{parcel.title}</h2>
           <p className="text-xs text-muted-foreground">
@@ -374,6 +404,10 @@ export function ParcelPanel({
 
       <div className="flex items-center gap-2 border-t border-border p-4">
         <VerificationRequestButton parcelId={parcel.id} />
+        <WhatsAppButton
+          phone={parcel.seller.phone}
+          message={`Hi, I'm interested in ${parcel.title} (${parcel.parcelNumber}) listed on Geo Properties.`}
+        />
         <ShareButton
           title={parcel.title}
           text={`${parcel.parcelNumber} · ${parcel.size} · KES ${parcel.price.toLocaleString()}`}
