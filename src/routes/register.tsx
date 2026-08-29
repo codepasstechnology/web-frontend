@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth, type UserRole } from "@/lib/auth";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { useSignupsOpen } from "@/lib/settings";
 
 export const Route = createFileRoute("/register")({
   head: () => ({ meta: [{ title: "Create Account — Geo Properties Kenya" }] }),
@@ -40,9 +41,10 @@ function getStrength(pw: string): { score: number; label: string; color: string 
   return { score: 4, label: "Strong", color: "#22c55e" };
 }
 
-function RegisterPage() {
+export function RegisterPage() {
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const signupsOpen = useSignupsOpen();
 
   const [form, setForm] = useState({
     fullName: "",
@@ -150,7 +152,32 @@ function RegisterPage() {
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[480px] mx-4 mt-16">
         <div className="rounded-2xl bg-white/15 px-8 py-8 shadow-2xl shadow-black/50 ring-1 ring-white/25 backdrop-blur-2xl">
-          {registered ? (
+          {!signupsOpen ? (
+            /* ── Sign-ups closed by the platform ── */
+            <div className="flex flex-col items-center py-4 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
+                <Lock className="h-8 w-8 text-white/80" />
+              </div>
+              <h2 className="mt-5 text-2xl font-bold text-white">Registrations are closed</h2>
+              <p className="mt-2 text-sm text-white/70">
+                New accounts are paused right now. Please check back later.
+              </p>
+              <div className="mt-7 flex w-full flex-col gap-2.5">
+                <Link
+                  to="/login"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98]"
+                >
+                  Sign in <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/"
+                  className="flex h-11 w-full items-center justify-center rounded-xl border border-white/25 bg-white/10 text-sm font-semibold text-white transition-all hover:bg-white/20"
+                >
+                  Back to home
+                </Link>
+              </div>
+            </div>
+          ) : registered ? (
             /* ── Success state ── */
             <div className="flex flex-col items-center py-4 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 ring-1 ring-emerald-400/30">
@@ -382,7 +409,7 @@ function RegisterPage() {
           )}
 
           {/* OR divider + Google — hide after registration */}
-          {!registered && (
+          {signupsOpen && !registered && (
             <>
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/15" />
@@ -395,7 +422,7 @@ function RegisterPage() {
         </div>
 
         {/* Terms & Privacy */}
-        {!registered && (
+        {signupsOpen && !registered && (
           <p className="mt-5 text-center text-xs text-white/40">
             By creating an account you agree to our{" "}
             <Link
