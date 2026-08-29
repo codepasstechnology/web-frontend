@@ -10,7 +10,8 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import L from "leaflet";
-import { rentals, statusMeta, type LandParcel, type Rental } from "@/lib/landData";
+import { statusMeta, type LandParcel } from "@/lib/landData";
+import { formatPrice, INTENT_LABELS, type Property } from "@/lib/properties";
 import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/MapSearchBar";
 
 // Fix default marker icons in bundlers
@@ -54,6 +55,14 @@ const pinIconFor = (color: string, status: string, selected: boolean) => {
 
 // Anchored to the polygon's own rightmost vertex — a real point on the
 // boundary line, not floating outside it, and never inside the land itself.
+// Property pins are coloured by what the listing is for, the way land pins are
+// coloured by parcel status.
+const intentColors: Record<Property["intent"], string> = {
+  rent: "#2563EB",
+  short_stay: "#7C3AED",
+  sale: "#16A34A",
+};
+
 const polygonAnchorPoint = (poly: [number, number][]): [number, number] =>
   poly.reduce((best, p) => (p[1] > best[1] ? p : best), poly[0]);
 
@@ -75,10 +84,10 @@ function FlyToTarget({ target }: { target: FlyTarget | null }) {
 interface Props {
   mode: "land" | "rentals";
   onSelectParcel?: (p: LandParcel | null) => void;
-  onSelectRental?: (r: Rental | null) => void;
+  onSelectProperty?: (p: Property | null) => void;
   selectedId?: string | null;
   parcels?: LandParcel[];
-  rentalItems?: Rental[];
+  properties?: Property[];
   flyTarget?: FlyTarget | null;
 }
 
@@ -140,14 +149,13 @@ function MapController({
 export function LandMap({
   mode,
   onSelectParcel,
-  onSelectRental,
+  onSelectProperty,
   selectedId,
   parcels = [],
-  rentalItems,
+  properties = [],
   flyTarget,
 }: Props) {
   const parcelList = parcels;
-  const rentalList = rentalItems ?? rentals;
   const [mounted, setMounted] = useState(false);
   const [isSatellite, setIsSatellite] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -237,22 +245,25 @@ export function LandMap({
           })}
 
         {mode === "rentals" &&
-          rentalList.map((r) => (
+          properties.map((p) => (
             <Marker
-              key={r.id}
-              position={r.position}
-              icon={icon}
-              eventHandlers={{ click: () => onSelectRental?.(r) }}
+              key={p.id}
+              position={p.position}
+              icon={pinIconFor(
+                intentColors[p.intent],
+                p.intent === "sale" ? "sold" : "available",
+                selectedId === p.id,
+              )}
+              eventHandlers={{ click: () => onSelectProperty?.(p) }}
             >
-              <Popup>
+              <Tooltip direction="top" offset={[0, -18]}>
                 <div className="text-xs">
-                  <div className="font-semibold">{r.title}</div>
-                  <div>KES {r.price.toLocaleString()} / mo</div>
+                  <div className="font-semibold text-foreground">{p.title}</div>
                   <div className="text-muted-foreground">
-                    {r.area}, {r.county}
+                    {INTENT_LABELS[p.intent]} · {formatPrice(p.price, p.pricePeriod)}
                   </div>
                 </div>
-              </Popup>
+              </Tooltip>
             </Marker>
           ))}
       </MapContainer>

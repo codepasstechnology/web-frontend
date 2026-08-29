@@ -7,6 +7,7 @@ import {
   Wallet,
   Settings,
   ShieldCheck,
+  Building2,
   MoreHorizontal,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -15,11 +16,12 @@ import { VerifyAccountModal } from "@/components/VerifyAccountModal";
 import { Navbar } from "@/components/Navbar";
 
 export type DashTab =
-  "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
+  "overview" | "listings" | "properties" | "upload" | "analytics" | "billing" | "settings" | "kyc";
 
 const items: { id: DashTab; label: string; icon: ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <LayoutGrid className="h-4 w-4" /> },
   { id: "listings", label: "My Listings", icon: <List className="h-4 w-4" /> },
+  { id: "properties", label: "My Properties", icon: <Building2 className="h-4 w-4" /> },
   { id: "upload", label: "Upload Land", icon: <Upload className="h-4 w-4" /> },
   { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
   { id: "billing", label: "Billing & Plan", icon: <Wallet className="h-4 w-4" /> },

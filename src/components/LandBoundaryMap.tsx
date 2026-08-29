@@ -185,6 +185,11 @@ interface LandBoundaryMapProps {
   requireTapToActivate?: boolean;
   /** Show the first-run walkthrough overlay (and the "How it works" button). */
   tutorial?: boolean;
+  /**
+   * Drop the boundary-tracing controls entirely. A rental or a home for sale
+   * has an address, not a surveyed outline — a pin is all it needs.
+   */
+  pinOnly?: boolean;
 }
 
 export function LandBoundaryMap({
@@ -198,6 +203,7 @@ export function LandBoundaryMap({
   county,
   requireTapToActivate = false,
   tutorial = true,
+  pinOnly = false,
 }: LandBoundaryMapProps) {
   const [activated, setActivated] = useState(!requireTapToActivate);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -366,7 +372,7 @@ export function LandBoundaryMap({
           ref={controlsRef}
           className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5"
         >
-          {tracing ? (
+          {pinOnly ? null : tracing ? (
             <>
               <span className="rounded-md bg-background/95 px-2.5 py-2 text-xs text-muted-foreground shadow-sm sm:px-2 sm:py-1.5">
                 {pointCount === 0
