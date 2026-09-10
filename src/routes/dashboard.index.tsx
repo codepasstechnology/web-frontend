@@ -585,7 +585,7 @@ function PropertiesTab() {
         <div className="rounded-xl border border-border bg-card px-4 py-16 text-center">
           <p className="text-sm font-medium text-foreground">No properties yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Post a rental, short stay or home for sale to see it here.
+            Post a rental, BnB or home for sale to see it here.
           </p>
         </div>
       )}

@@ -6,6 +6,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
+import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/dashboard/upload")({
@@ -647,10 +648,8 @@ function UploadPage() {
                     className="lv-input"
                     type="text"
                     inputMode="numeric"
-                    value={form.price ? Number(form.price).toLocaleString() : ""}
-                    onChange={(e) =>
-                      set("price", e.target.value.replace(/[^0-9]/g, "").slice(0, 12))
-                    }
+                    value={formatThousands(form.price)}
+                    onChange={(e) => set("price", toDigits(e.target.value))}
                   />
                 </Field>
                 <Field label="Listing type">

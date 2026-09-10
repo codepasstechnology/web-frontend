@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { List, X, SlidersHorizontal } from "lucide-react";
 import { LandMap } from "@/components/LandMap";
 import { RentalPanel } from "@/components/PropertyPanel";
 import {
   usePublicProperties,
+  useProperty,
   formatPrice,
   INTENT_LABELS,
   TYPE_LABELS,
@@ -14,10 +15,15 @@ import {
   type PropertyType,
 } from "@/lib/properties";
 import { kenyaCounties } from "@/lib/plans";
+import { api } from "@/lib/api";
+import type { FlyTarget } from "@/components/LandMap";
 
 export const Route = createFileRoute("/rentals")({
   component: RentalsPage,
   ssr: false,
+  validateSearch: (s: Record<string, unknown>): { property?: string } => ({
+    property: typeof s.property === "string" ? s.property : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Rentals Map — Geo Properties Kenya" },
@@ -30,10 +36,21 @@ export const Route = createFileRoute("/rentals")({
 });
 
 function RentalsPage() {
-  const [selected, setSelected] = useState<Property | null>(null);
+  const search = Route.useSearch();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<PropertyFilters>({ intent: "all", type: "all" });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const { data: properties = [], isLoading, isError, refetch } = usePublicProperties(filters);
+
+  // The URL names the open listing. Resolve it from the loaded page when it is
+  // there, and fetch it by id when it is not — the feed is paginated and
+  // filtered, so a shared link often names a listing this page has not loaded.
+  const openId = search.property;
+  const fromList = properties.find((p) => p.id === openId);
+  const { data: fetched } = useProperty(fromList ? undefined : openId);
+  const selected = fromList ?? (fetched?.id === openId ? fetched : null);
+
   const [listOpen, setListOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : true,
   );
@@ -47,10 +64,24 @@ function RentalsPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // A filter change can drop the open listing out of the result set.
+  // Centre the map on a listing opened from a shared link, once — without the
+  // guard every re-render would yank the map back and the viewer could not pan.
+  const centredFromLink = useRef(false);
   useEffect(() => {
-    setSelected((prev) => (prev ? (properties.find((p) => p.id === prev.id) ?? null) : prev));
-  }, [properties]);
+    if (centredFromLink.current || !selected) return;
+    centredFromLink.current = true;
+    setFlyTarget({ lat: selected.position[0], lng: selected.position[1], zoom: 16 });
+    api.post(`/properties/${selected.id}/view`).catch(() => {});
+  }, [selected]);
+
+  const handleSelect = (p: Property | null) => {
+    navigate({ to: "/rentals", search: { property: p?.id }, replace: true });
+    if (p) {
+      centredFromLink.current = true;
+      setFlyTarget({ lat: p.position[0], lng: p.position[1], zoom: 16 });
+      api.post(`/properties/${p.id}/view`).catch(() => {});
+    }
+  };
 
   const set = <K extends keyof PropertyFilters>(key: K, value: PropertyFilters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -204,7 +235,7 @@ function RentalsPage() {
                   <li key={p.id}>
                     <button
                       onClick={() => {
-                        setSelected(p);
+                        handleSelect(p);
                         if (isMobile) setListOpen(false);
                       }}
                       className={`flex w-full flex-col gap-0.5 border-b border-border px-4 py-3 text-left hover:bg-muted ${
@@ -231,10 +262,11 @@ function RentalsPage() {
           <LandMap
             mode="rentals"
             properties={properties}
-            onSelectProperty={setSelected}
+            onSelectProperty={handleSelect}
             selectedId={selected?.id ?? null}
+            flyTarget={flyTarget}
           />
-          {selected && <RentalPanel property={selected} onClose={() => setSelected(null)} />}
+          {selected && <RentalPanel property={selected} onClose={() => handleSelect(null)} />}
         </div>
       </div>
     </div>

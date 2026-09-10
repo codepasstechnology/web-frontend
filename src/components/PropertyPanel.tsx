@@ -493,8 +493,8 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
           <Stat label="Furnished" value={property.furnished ? "Yes" : "No"} />
         </div>
 
-        {property.intent === "short_stay" && (property.minNights || property.cleaningFee) && (
-          <Section title="Short-stay terms">
+        {property.intent === "bnb" && (property.minNights || property.cleaningFee) && (
+          <Section title="BnB terms">
             {property.minNights && (
               <p className="text-sm text-foreground">Minimum stay: {property.minNights} nights</p>
             )}

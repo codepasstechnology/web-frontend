@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { StkCheckoutModal } from "@/components/StkCheckoutModal";
 import { kenyaCounties } from "@/lib/plans";
+import { formatThousands, toDigits } from "@/lib/utils";
 import {
   useCreateProperty,
   INTENT_LABELS,
@@ -37,7 +38,7 @@ const AMENITY_OPTIONS = [
 
 const PRICE_LABEL: Record<PropertyIntent, string> = {
   rent: "Monthly rent (KES)",
-  short_stay: "Nightly rate (KES)",
+  bnb: "Nightly rate (KES)",
   sale: "Asking price (KES)",
 };
 
@@ -120,10 +121,9 @@ function PostPropertyPage() {
         bathrooms: form.bathrooms ? Number(form.bathrooms) : undefined,
         furnished: form.furnished,
         amenities: form.amenities,
-        minNights:
-          form.intent === "short_stay" && form.minNights ? Number(form.minNights) : undefined,
+        minNights: form.intent === "bnb" && form.minNights ? Number(form.minNights) : undefined,
         cleaningFee:
-          form.intent === "short_stay" && form.cleaningFee ? Number(form.cleaningFee) : undefined,
+          form.intent === "bnb" && form.cleaningFee ? Number(form.cleaningFee) : undefined,
         postedBy: form.postedBy,
         agentName: form.agentName || undefined,
         agentPhone: form.agentPhone || undefined,
@@ -194,7 +194,7 @@ function PostPropertyPage() {
       <div className="mx-auto max-w-3xl">
         <h1 className="text-xl font-semibold text-foreground md:text-2xl">Post a property</h1>
         <p className="text-sm text-muted-foreground">
-          Rentals, short stays and homes for sale. Listings go live once approved.
+          Rentals, BnBs and homes for sale. Listings go live once approved.
         </p>
 
         <ol className="mt-5 flex flex-wrap gap-2">
@@ -262,10 +262,10 @@ function PostPropertyPage() {
 
               <Field label={PRICE_LABEL[form.intent]}>
                 <input
-                  type="number"
-                  min={0}
-                  value={form.price}
-                  onChange={(e) => set("price", e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatThousands(form.price)}
+                  onChange={(e) => set("price", toDigits(e.target.value))}
                   className="dp-input"
                 />
               </Field>
@@ -314,7 +314,7 @@ function PostPropertyPage() {
                 />
               </Field>
 
-              {form.intent === "short_stay" && (
+              {form.intent === "bnb" && (
                 <>
                   <Field label="Minimum nights">
                     <input
@@ -327,10 +327,10 @@ function PostPropertyPage() {
                   </Field>
                   <Field label="Cleaning fee (KES)">
                     <input
-                      type="number"
-                      min={0}
-                      value={form.cleaningFee}
-                      onChange={(e) => set("cleaningFee", e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatThousands(form.cleaningFee)}
+                      onChange={(e) => set("cleaningFee", toDigits(e.target.value))}
                       className="dp-input"
                     />
                   </Field>
@@ -503,11 +503,7 @@ function PostPropertyPage() {
                 label="Price"
                 value={formatPrice(
                   Number(form.price || 0),
-                  form.intent === "rent"
-                    ? "month"
-                    : form.intent === "short_stay"
-                      ? "night"
-                      : "total",
+                  form.intent === "rent" ? "month" : form.intent === "bnb" ? "night" : "total",
                 )}
               />
               <Review label="County" value={form.county} />
