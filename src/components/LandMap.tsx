@@ -59,7 +59,7 @@ const pinIconFor = (color: string, status: string, selected: boolean) => {
 // coloured by parcel status.
 const intentColors: Record<Property["intent"], string> = {
   rent: "#2563EB",
-  short_stay: "#7C3AED",
+  bnb: "#7C3AED",
   sale: "#16A34A",
 };
 

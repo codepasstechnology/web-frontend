@@ -1,13 +1,20 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { formatPrice, mapApiProperty } from "@/lib/properties";
+import userEvent from "@testing-library/user-event";
+import { formatPrice, mapApiProperty, type Property } from "@/lib/properties";
 
 const mockUsePublicProperties = vi.fn();
+const mockUseProperty = vi.fn<(id: string | undefined) => { data: Property | undefined }>(() => ({
+  data: undefined,
+}));
+const mockSearch = vi.fn<() => { property?: string }>(() => ({}));
+const mockNavigate = vi.fn();
+const mockApiPost = vi.fn<(path: string) => Promise<unknown>>(() => Promise.resolve({}));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (opts: unknown) => opts,
-  useNavigate: () => vi.fn(),
+  createFileRoute: () => (opts: object) => ({ ...opts, useSearch: () => mockSearch() }),
+  useNavigate: () => mockNavigate,
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
@@ -15,11 +22,21 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/lib/properties", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/properties")>();
-  return { ...actual, usePublicProperties: () => mockUsePublicProperties() };
+  return {
+    ...actual,
+    usePublicProperties: () => mockUsePublicProperties(),
+    useProperty: (id: string | undefined) => mockUseProperty(id),
+  };
 });
 
+vi.mock("@/lib/api", () => ({
+  api: { get: vi.fn(), post: (path: string) => mockApiPost(path) },
+}));
+
 vi.mock("@/components/LandMap", () => ({
-  LandMap: () => <div data-testid="land-map" />,
+  LandMap: ({ onSelectProperty }: { onSelectProperty?: (p: unknown) => void }) => (
+    <div data-testid="land-map" onClick={() => onSelectProperty?.(null)} />
+  ),
 }));
 
 vi.mock("@/components/PropertyPanel", () => ({
@@ -81,7 +98,7 @@ describe("formatPrice", () => {
     expect(formatPrice(75000, "month")).toBe("KES 75,000 / month");
   });
 
-  it("labels a short stay per night", () => {
+  it("labels a BnB per night", () => {
     expect(formatPrice(4500, "night")).toBe("KES 4,500 / night");
   });
 
@@ -93,6 +110,20 @@ describe("formatPrice", () => {
 describe("RentalsPage", () => {
   beforeEach(() => {
     mockUsePublicProperties.mockReset();
+    mockUseProperty.mockReset();
+    mockUseProperty.mockReturnValue({ data: undefined });
+    mockSearch.mockReset();
+    mockSearch.mockReturnValue({});
+    mockNavigate.mockReset();
+    mockApiPost.mockReset();
+    mockApiPost.mockResolvedValue({});
+  });
+
+  const feedOf = (...items: ReturnType<typeof mapApiProperty>[]) => ({
+    data: items,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   });
 
   it("renders listings returned by the API", () => {
@@ -149,5 +180,101 @@ describe("RentalsPage", () => {
     render(<RentalsPage />);
 
     expect(screen.getByText("No properties match these filters yet.")).toBeInTheDocument();
+  });
+});
+
+describe("RentalsPage — shareable ?property= links", () => {
+  const property = mapApiProperty(apiProperty);
+
+  beforeEach(() => {
+    mockUsePublicProperties.mockReset();
+    mockUseProperty.mockReset();
+    mockUseProperty.mockReturnValue({ data: undefined });
+    mockSearch.mockReset();
+    mockSearch.mockReturnValue({});
+    mockNavigate.mockReset();
+    mockApiPost.mockReset();
+    mockApiPost.mockResolvedValue({});
+    mockUsePublicProperties.mockReturnValue({
+      data: [property],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  it("opens no panel when the URL names nothing", () => {
+    render(<RentalsPage />);
+
+    expect(screen.queryByTestId("rental-panel")).not.toBeInTheDocument();
+  });
+
+  it("opens the listing named in the URL", () => {
+    mockSearch.mockReturnValue({ property: "p-1" });
+
+    render(<RentalsPage />);
+
+    expect(screen.getByTestId("rental-panel")).toBeInTheDocument();
+    expect(mockUseProperty).toHaveBeenCalledWith(undefined);
+  });
+
+  /**
+   * The feed is paginated and filtered, so a shared link routinely names a
+   * listing the loaded page does not contain.
+   */
+  it("fetches a listing that is absent from the loaded feed", () => {
+    const offPage = mapApiProperty({ ...apiProperty, id: "p-99", title: "Off-page listing" });
+    mockSearch.mockReturnValue({ property: "p-99" });
+    mockUseProperty.mockReturnValue({ data: offPage });
+
+    render(<RentalsPage />);
+
+    expect(mockUseProperty).toHaveBeenCalledWith("p-99");
+    expect(screen.getByTestId("rental-panel")).toBeInTheDocument();
+  });
+
+  it("renders without a panel when the id matches nothing", () => {
+    mockSearch.mockReturnValue({ property: "does-not-exist" });
+    mockUseProperty.mockReturnValue({ data: undefined });
+
+    render(<RentalsPage />);
+
+    expect(screen.queryByTestId("rental-panel")).not.toBeInTheDocument();
+    expect(screen.getByText("Kilimani 2BR Apartment")).toBeInTheDocument();
+  });
+
+  it("counts a view when a shared link resolves", () => {
+    mockSearch.mockReturnValue({ property: "p-1" });
+
+    render(<RentalsPage />);
+
+    expect(mockApiPost).toHaveBeenCalledWith("/properties/p-1/view");
+  });
+
+  it("puts the listing in the URL when one is opened from the list", async () => {
+    const user = userEvent.setup();
+    render(<RentalsPage />);
+
+    await user.click(screen.getByText("Kilimani 2BR Apartment"));
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/rentals",
+      search: { property: "p-1" },
+      replace: true,
+    });
+    expect(mockApiPost).toHaveBeenCalledWith("/properties/p-1/view");
+  });
+
+  it("clears the URL when the panel is closed", async () => {
+    const user = userEvent.setup();
+    render(<RentalsPage />);
+
+    await user.click(screen.getByTestId("land-map"));
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/rentals",
+      search: { property: undefined },
+      replace: true,
+    });
   });
 });

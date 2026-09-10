@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 
-export type PropertyIntent = "rent" | "short_stay" | "sale";
+export type PropertyIntent = "rent" | "bnb" | "sale";
 export type PropertyType =
   "apartment" | "house" | "townhouse" | "studio" | "bedsitter" | "commercial" | "office";
 export type PropertyStatus = "pending" | "available" | "taken" | "suspended";
@@ -103,7 +103,7 @@ export interface PropertyFilters {
 
 export const INTENT_LABELS: Record<PropertyIntent, string> = {
   rent: "For rent",
-  short_stay: "Short stay",
+  bnb: "BnB",
   sale: "For sale",
 };
 
@@ -193,6 +193,20 @@ export function usePublicProperties(filters: PropertyFilters = {}) {
       const page = await api.get<{ data: ApiProperty[] }>(`/properties${toQuery(filters)}`);
       return page.data.map(mapApiProperty);
     },
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Resolves a single property by id. The public feed is paginated and filtered,
+ * so a shared /rentals?property=<id> link can name a listing that is not in the
+ * loaded page.
+ */
+export function useProperty(id: string | undefined) {
+  return useQuery({
+    queryKey: ["property", id],
+    queryFn: async () => mapApiProperty(await api.get<ApiProperty>(`/properties/${id}`)),
+    enabled: !!id,
     staleTime: 60_000,
   });
 }
