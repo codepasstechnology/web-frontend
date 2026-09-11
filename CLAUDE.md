@@ -1,4 +1,7 @@
-# Claude Instructions — LandVerify Kenya
+# Claude Instructions — LandVerify Kenya (web-frontend)
+
+The public marketplace app. The admin console lives in `../admin-web-frontend-`
+and the API in `../backend`, each with their own CLAUDE.md.
 
 ## Commit messages
 
@@ -19,38 +22,79 @@
 - Follow the patterns already established in the file you are editing. Match the existing style, naming, and structure.
 - All code must be industry-standard and production-ready.
 
+## React / TypeScript
+
+- TanStack Router with file-based routes.
+- The `@/` path alias maps to `src/`. Use it consistently — do not use relative `../` paths when `@/` works.
+- Do not install new dependencies without being asked. Prefer what is already in `package.json`.
+- Node version in CI is 24. Do not downgrade it.
+- Data fetching goes through TanStack Query hooks in `src/lib/` (see `plans.ts`, `properties.ts`, `settings.ts`). Do not thread new server state through `AuthProvider`.
+- Any route that renders a Leaflet map must set `ssr: false` — leaflet touches `window` at import time.
+
+## Responsive tables
+
+**Every table must have a defined mobile treatment.** A desktop table rendered at
+phone width either overflows horizontally or wraps into unreadable rows.
+
+For a **record list** — one row is one entity — render a table on desktop and
+cards on mobile. `md` is the breakpoint:
+
+```tsx
+<>
+  {/* Desktop */}
+  <div className="hidden max-h-[70vh] overflow-auto md:block">
+    <table className="w-full text-sm">
+      <thead className="sticky top-0 z-10 bg-muted text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+        {/* … */}
+      </thead>
+    </table>
+  </div>
+
+  {/* Mobile */}
+  <ul className="divide-y divide-border md:hidden">
+    {rows.map((r) => (
+      <li key={r.id}>
+        <button
+          onClick={() => open(r)}
+          className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/50"
+        >
+          {/* identity: thumbnail · title · secondary id · headline value */}
+          {/* status chips */}
+          {/* footer: context left, action affordance right */}
+        </button>
+      </li>
+    ))}
+  </ul>
+</>
+```
+
+Rules:
+
+- A card shows **identity, one headline value, status, and one line of context** — not every column. Detail belongs in a modal or a detail view, otherwise the card duplicates it and the list stops being scannable.
+- The whole card is the tap target, not a small link inside it.
+- A KPI/stat row above a table uses `grid-cols-3` (or `grid-cols-2`) on mobile, never one per row. Stacked stat cards pushed the first listing on the admin Properties page to 690px before this rule existed.
+- **Matrix tables are the exception.** When rows and columns are both data (a permissions grid, a comparison matrix), keep one table and give it `overflow-x-auto` with a sticky first column. One card per row would just relocate the problem.
+
+The reference implementation is `PropertiesTab` in `../admin-web-frontend-/src/routes/admin.tsx`.
+
 ## Formatting and CI
 
 Every pull request runs Prettier, ESLint, and TypeScript checks. Code that fails these will block the PR.
 
-- After editing any `.ts`, `.tsx`, or `.md` file in a frontend repo, run `npx prettier --write <file>` before committing.
-- To format everything at once: `npx prettier --write .`
-- Never commit a file that Prettier would reformat — CI will fail.
+- After editing any `.ts`, `.tsx`, or `.md` file, run `npx prettier --write <file>` before committing.
 - TypeScript must compile cleanly with `npx tsc --noEmit`. Fix type errors; do not use `any` to bypass them.
-- ESLint must pass with `npm run lint`. Do not disable lint rules inline unless there is a documented reason.
+- ESLint must pass. **Lint the changed files directly — `npx eslint src/lib/foo.ts` — not `eslint .`**: the whole-tree run walks vendored directories outside `src/` and takes over 15 minutes locally. Do not disable lint rules inline unless there is a documented reason.
 
 ## Tests
 
 - New code must not break existing tests.
-- When writing tests, follow the patterns in `src/test/` (frontend) or `tests/Feature/` (backend).
-- All imports used in test files must be explicitly listed in the import statement — do not rely on globals.
-- Frontend tests use Vitest + React Testing Library. Mock only what you must (external modules, auth context, router). Do not mock internal logic being tested.
-- Backend tests use PHPUnit with `RefreshDatabase`. Assert outcomes via the database or response body — do not re-use revoked tokens within the same test (Sanctum guard caches the user).
-- Tests must pass `npm test` (frontend) and `C:\xampp\php\php.exe artisan test` (backend) before committing.
+- Follow the patterns in `src/test/`.
+- Vitest + React Testing Library. The glob is `src/test/**/*.test.{ts,tsx}`, so a pure-logic test can be a plain `.ts` file.
+- All imports used in test files must be explicitly listed — do not rely on globals.
+- Mock only what you must (external modules, auth context, router). Do not mock internal logic being tested.
+- jsdom has no media queries, so both the table and the card list render. Assert that each exists and is gated to the right breakpoint rather than trying to assert visibility.
+- Tests must pass `npm test` before committing.
 
 ## General philosophy
 
-Extend the backend without increasing accidental complexity. Favor changes that leave the repo easier to understand and safer for the next engineer or agent.
-
-## Backend (Laravel)
-
-- Always use `C:\xampp\php\php.exe` for artisan commands — never the system `php` binary (Herd 8.3 is missing DLLs).
-- Do not pass `--env=testing` to `artisan test` — the `phpunit.xml` env tags handle the database connection.
-- PHPStan runs at level 5. New code must not introduce PHPStan errors. Do not add errors to the baseline unless explicitly asked.
-
-## Frontend (React / TypeScript)
-
-- Both `web-frontend` and `admin-web-frontend-` use TanStack Router with file-based routes.
-- The `@/` path alias maps to `src/`. Use it consistently — do not use relative `../` paths when `@/` works.
-- Do not install new dependencies without being asked. Prefer what is already in `package.json`.
-- Node version in CI is 24. Do not downgrade it.
+Extend the app without increasing accidental complexity. Favor changes that leave the repo easier to understand and safer for the next engineer or agent.
