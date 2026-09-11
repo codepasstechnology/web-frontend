@@ -264,6 +264,7 @@ function PostPropertyPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  placeholder="e.g. 45,000"
                   value={formatThousands(form.price)}
                   onChange={(e) => set("price", toDigits(e.target.value))}
                   className="dp-input"
@@ -298,6 +299,7 @@ function PostPropertyPage() {
                 <input
                   type="number"
                   min={0}
+                  placeholder="e.g. 2"
                   value={form.bedrooms}
                   onChange={(e) => set("bedrooms", e.target.value)}
                   className="dp-input"
@@ -308,6 +310,7 @@ function PostPropertyPage() {
                 <input
                   type="number"
                   min={0}
+                  placeholder="e.g. 1"
                   value={form.bathrooms}
                   onChange={(e) => set("bathrooms", e.target.value)}
                   className="dp-input"
@@ -320,6 +323,7 @@ function PostPropertyPage() {
                     <input
                       type="number"
                       min={1}
+                      placeholder="e.g. 2"
                       value={form.minNights}
                       onChange={(e) => set("minNights", e.target.value)}
                       className="dp-input"
@@ -329,6 +333,7 @@ function PostPropertyPage() {
                     <input
                       type="text"
                       inputMode="numeric"
+                      placeholder="e.g. 2,000"
                       value={formatThousands(form.cleaningFee)}
                       onChange={(e) => set("cleaningFee", toDigits(e.target.value))}
                       className="dp-input"
@@ -342,6 +347,7 @@ function PostPropertyPage() {
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                   rows={4}
+                  placeholder="Describe the property — layout, condition, nearby amenities…"
                   className="dp-input"
                 />
               </Field>
@@ -411,6 +417,7 @@ function PostPropertyPage() {
                     <input
                       value={form.agentName}
                       onChange={(e) => set("agentName", e.target.value)}
+                      placeholder="e.g. Jane Wanjiru"
                       className="dp-input"
                     />
                   </Field>
@@ -418,6 +425,7 @@ function PostPropertyPage() {
                     <input
                       value={form.agentAgency}
                       onChange={(e) => set("agentAgency", e.target.value)}
+                      placeholder="e.g. Prime Realty Kenya"
                       className="dp-input"
                     />
                   </Field>

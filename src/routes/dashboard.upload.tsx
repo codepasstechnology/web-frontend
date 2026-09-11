@@ -39,7 +39,6 @@ const DRAFT_KEY = "lv_upload_draft_v1";
 
 interface UploadDraft {
   step: number;
-  title: string;
   parcelNumber: string;
   county: string;
   area: string;
@@ -175,7 +174,6 @@ function UploadPage() {
   const [coverPhotoId, setCoverPhotoId] = useState<string | undefined>(undefined);
 
   const [form, setForm] = useState({
-    title: draft?.title ?? "",
     parcelNumber: draft?.parcelNumber ?? "",
     county: draft?.county ?? "",
     area: draft?.area ?? "",
@@ -216,7 +214,6 @@ function UploadPage() {
       .then((d) => {
         setForm((f) => ({
           ...f,
-          title: d.title,
           parcelNumber: d.parcelNumber,
           county: d.county,
           area: d.area ?? "",
@@ -303,7 +300,7 @@ function UploadPage() {
 
   const canNext =
     step === 0
-      ? !!(form.title && form.parcelNumber && form.county && sizeAcres != null && form.price)
+      ? !!(form.parcelNumber && form.county && sizeAcres != null && form.price)
       : step === 1
         ? (!!form.pin || !!form.boundary) && !boundarySelfIntersects
         : step === 2
@@ -319,7 +316,7 @@ function UploadPage() {
     setSubmitErr("");
     setUploadProgress(form.documents.length || form.photos.length ? 0 : null);
     const payload: NewListingInput = {
-      title: form.title,
+      title: form.parcelNumber,
       parcelNumber: form.parcelNumber,
       county: form.county,
       area: form.area || undefined,
@@ -505,7 +502,6 @@ function UploadPage() {
                     setSubmitted(false);
                     setStep(0);
                     setForm({
-                      title: "",
                       parcelNumber: "",
                       county: "",
                       area: "",
@@ -536,16 +532,10 @@ function UploadPage() {
           <div className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
             {step === 0 && (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Property title" full>
+                <Field label="Title number" full>
                   <input
                     className="lv-input"
-                    value={form.title}
-                    onChange={(e) => set("title", e.target.value)}
-                  />
-                </Field>
-                <Field label="Parcel number">
-                  <input
-                    className="lv-input"
+                    placeholder="e.g. KAJ/KTG/4521"
                     value={form.parcelNumber}
                     onChange={(e) => set("parcelNumber", e.target.value)}
                   />
@@ -567,6 +557,7 @@ function UploadPage() {
                 <Field label="Sub-county / Area">
                   <input
                     className="lv-input"
+                    placeholder="e.g. Kitengela"
                     value={form.area}
                     onChange={(e) => set("area", e.target.value)}
                   />
@@ -648,6 +639,7 @@ function UploadPage() {
                     className="lv-input"
                     type="text"
                     inputMode="numeric"
+                    placeholder="e.g. 1,850,000"
                     value={formatThousands(form.price)}
                     onChange={(e) => set("price", toDigits(e.target.value))}
                   />
@@ -712,6 +704,7 @@ function UploadPage() {
                     className="lv-input"
                     rows={4}
                     maxLength={5000}
+                    placeholder="Describe the parcel — access, nearby developments, why it's a good investment…"
                     value={form.description}
                     onChange={(e) => set("description", e.target.value)}
                   />
@@ -793,7 +786,6 @@ function UploadPage() {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     multiple
                     className="hidden"
                     onChange={(e) => handlePhotos(e.target.files)}
@@ -963,8 +955,7 @@ function UploadPage() {
 
             {step === 3 && (
               <div className="space-y-4 text-sm">
-                <Summary label="Title" value={form.title} />
-                <Summary label="Parcel" value={form.parcelNumber || "—"} />
+                <Summary label="Title number" value={form.parcelNumber || "—"} />
                 <Summary
                   label="County"
                   value={`${form.county}${form.area ? " · " + form.area : ""}`}
