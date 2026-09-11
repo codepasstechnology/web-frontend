@@ -46,7 +46,7 @@ interface ParcelSummary {
 function mapApiParcel(p: ApiParcel): ParcelSummary {
   return {
     id: p.id,
-    title: p.title,
+    title: p.parcel_number,
     parcelNumber: p.parcel_number,
     county: p.county,
     price: p.price,
@@ -167,9 +167,7 @@ function Index() {
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-white">{p.title}</p>
-                          <p className="truncate text-[11px] text-white/50">
-                            {p.parcelNumber} · {p.county}
-                          </p>
+                          <p className="truncate text-[11px] text-white/50">{p.county}</p>
                         </div>
                         <span className="text-[11px] font-semibold text-emerald-300">
                           KES {(p.price / 1_000_000).toFixed(1)}M

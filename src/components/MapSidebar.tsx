@@ -100,7 +100,7 @@ export function MapSidebar({
                     <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Title or parcel number…"
+                      placeholder="Title number…"
                       value={filters.query}
                       onChange={(e) => setFilters({ ...filters, query: e.target.value })}
                       className="w-full rounded-sm border border-border bg-background py-1.5 pl-7 pr-2 text-xs text-foreground outline-none focus:border-primary"

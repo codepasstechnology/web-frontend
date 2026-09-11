@@ -17,6 +17,7 @@ import {
   Heart,
   Star,
   MessageCircle,
+  Copy,
 } from "lucide-react";
 import { statusMeta, type LandParcel } from "@/lib/landData";
 import { formatPrice, INTENT_LABELS, TYPE_LABELS, type Property } from "@/lib/properties";
@@ -227,6 +228,32 @@ function SaveButton({ saved, onToggle }: { saved: boolean; onToggle: () => void 
   );
 }
 
+function CoordinatesRow({ lat, lng }: { lat: number; lng: number }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <button
+      onClick={onCopy}
+      className="mb-4 inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-[var(--success)]" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+      {copied ? "Copied" : "Copy coordinates"}
+    </button>
+  );
+}
+
 function PhotoGallery({ photos }: { photos: string[] }) {
   const [index, setIndex] = useState(0);
   if (photos.length === 0) return null;
@@ -305,9 +332,7 @@ export function ParcelPanel({
             )}
           </div>
           <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{parcel.title}</h2>
-          <p className="text-xs text-muted-foreground">
-            {parcel.parcelNumber} · {parcel.county}
-          </p>
+          <p className="text-xs text-muted-foreground">{parcel.county}</p>
         </div>
         <div className="ml-2 flex shrink-0 items-center gap-1.5">
           <SaveButton saved={saved} onToggle={onToggleSaved} />
@@ -327,6 +352,10 @@ export function ParcelPanel({
           <Stat label="Size" value={parcel.size} />
           <Stat label={priceLabel} value={`KES ${parcel.price.toLocaleString()}`} />
         </div>
+
+        {parcel.latitude != null && parcel.longitude != null && (
+          <CoordinatesRow lat={parcel.latitude} lng={parcel.longitude} />
+        )}
 
         <div className="mb-4 rounded-md border border-border bg-background p-3">
           <div className="mb-1 flex items-center justify-between">
@@ -407,7 +436,7 @@ export function ParcelPanel({
         <VerificationRequestButton parcelId={parcel.id} />
         <WhatsAppButton
           phone={parcel.seller.phone}
-          message={`Hi, I'm interested in ${parcel.title} (${parcel.parcelNumber}) listed on Geo Properties.`}
+          message={`Hi, I'm interested in ${parcel.title} listed on Geo Properties.`}
         />
         <ShareButton
           title={parcel.title}
@@ -492,6 +521,8 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
           />
           <Stat label="Furnished" value={property.furnished ? "Yes" : "No"} />
         </div>
+
+        <CoordinatesRow lat={property.position[0]} lng={property.position[1]} />
 
         {property.intent === "bnb" && (property.minNights || property.cleaningFee) && (
           <Section title="BnB terms">

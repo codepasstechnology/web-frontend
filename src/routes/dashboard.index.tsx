@@ -249,7 +249,9 @@ function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="truncate font-medium text-foreground">{l.title}</div>
+                            <div className="truncate font-medium text-foreground">
+                              {l.parcelNumber}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {l.county} · KES {l.price.toLocaleString()}
                             </div>
@@ -298,7 +300,6 @@ function DashboardPage() {
                   <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3">Listing</th>
-                      <th className="px-4 py-3">Parcel</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Views</th>
                       <th className="px-4 py-3">Date</th>
@@ -320,14 +321,13 @@ function DashboardPage() {
                               <div className="h-9 w-12 shrink-0 rounded bg-muted" />
                             )}
                             <div>
-                              <div className="font-medium text-foreground">{l.title}</div>
+                              <div className="font-medium text-foreground">{l.parcelNumber}</div>
                               <div className="text-xs text-muted-foreground">
                                 {l.county} · KES {l.price.toLocaleString()}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">{l.parcelNumber}</td>
                         <td className="px-4 py-3">
                           <StatusBadge status={l.status} />
                         </td>
@@ -680,7 +680,7 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
 
   const topListings = analytics?.top_listings.length
     ? analytics.top_listings
-    : (user?.listings.slice(0, 5).map((l) => ({ name: l.title, views: l.views })) ?? []);
+    : (user?.listings.slice(0, 5).map((l) => ({ name: l.parcelNumber, views: l.views })) ?? []);
 
   const countyBreakdown = analytics?.county_breakdown.length
     ? analytics.county_breakdown
@@ -710,8 +710,8 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
         time: l.createdAt,
         text:
           l.status === "pending"
-            ? `"${l.title}" is under review`
-            : `"${l.title}" · ${l.views} views`,
+            ? `"${l.parcelNumber}" is under review`
+            : `"${l.parcelNumber}" · ${l.views} views`,
         icon: <ListChecks className="h-3.5 w-3.5" />,
       })) ?? []);
 
@@ -1933,7 +1933,9 @@ function OverviewTab({
                     <div className="h-10 w-12 shrink-0 rounded bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">{l.title}</div>
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {l.parcelNumber}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">
                       {l.county} · KES {l.price.toLocaleString()}
                     </div>
@@ -3610,8 +3612,7 @@ function KycTab() {
                     <option value="">Select a parcel…</option>
                     {parcels.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.title}
-                        {p.parcel_number ? ` · ${p.parcel_number}` : ""}
+                        {p.parcel_number ?? p.title}
                       </option>
                     ))}
                   </select>

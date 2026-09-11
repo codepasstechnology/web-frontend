@@ -66,7 +66,7 @@ interface ApiParcel {
 function mapApiParcel(p: ApiParcel): LandParcel {
   return {
     id: p.id,
-    title: p.title,
+    title: p.parcel_number,
     parcelNumber: p.parcel_number,
     size: p.size || "—",
     price: p.price,
@@ -208,9 +208,7 @@ function LandPage() {
     const q = filters.query.trim().toLowerCase();
     return dbParcels.filter(
       (p) =>
-        (q === "" ||
-          p.title.toLowerCase().includes(q) ||
-          p.parcelNumber.toLowerCase().includes(q)) &&
+        (q === "" || p.parcelNumber.toLowerCase().includes(q)) &&
         (filters.county === "All" || p.county === filters.county) &&
         (filters.status === "all" || p.status === filters.status) &&
         (filters.listingType === "all" || p.listingType === filters.listingType) &&
