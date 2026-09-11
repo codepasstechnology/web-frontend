@@ -127,46 +127,80 @@ function ManagerPage() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">Client</th>
-                      <th className="px-4 py-3">Plan</th>
-                      <th className="px-4 py-3">Listings</th>
-                      <th className="px-4 py-3">Pending KYC</th>
-                      <th className="px-4 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredClients.map((c) => (
-                      <tr key={c.id}>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-foreground">{c.name}</div>
-                          <div className="text-xs text-muted-foreground">{c.email}</div>
-                        </td>
-                        <td className="px-4 py-3 text-foreground">{c.plan}</td>
-                        <td className="px-4 py-3 text-foreground">{c.listings_count}</td>
-                        <td className="px-4 py-3">
-                          {c.pending_kyc_count > 0 ? (
-                            <span className="inline-flex rounded-md bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-medium text-[#B45309]">
-                              {c.pending_kyc_count} pending
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setEditing(c)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                          >
-                            <Pencil className="h-3.5 w-3.5" /> Edit
-                          </button>
-                        </td>
+                <div className="hidden md:block">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3">Client</th>
+                        <th className="px-4 py-3">Plan</th>
+                        <th className="px-4 py-3">Listings</th>
+                        <th className="px-4 py-3">Pending KYC</th>
+                        <th className="px-4 py-3"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredClients.map((c) => (
+                        <tr key={c.id}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{c.name}</div>
+                            <div className="text-xs text-muted-foreground">{c.email}</div>
+                          </td>
+                          <td className="px-4 py-3 text-foreground">{c.plan}</td>
+                          <td className="px-4 py-3 text-foreground">{c.listings_count}</td>
+                          <td className="px-4 py-3">
+                            {c.pending_kyc_count > 0 ? (
+                              <span className="inline-flex rounded-md bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-medium text-[#B45309]">
+                                {c.pending_kyc_count} pending
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => setEditing(c)}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                            >
+                              <Pencil className="h-3.5 w-3.5" /> Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <ul className="divide-y divide-border md:hidden">
+                  {filteredClients.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        onClick={() => setEditing(c)}
+                        className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/50"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-foreground">{c.name}</div>
+                          <div className="truncate text-xs text-muted-foreground">{c.email}</div>
+                        </div>
+
+                        {c.pending_kyc_count > 0 && (
+                          <span className="inline-flex w-fit rounded-md bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-medium text-[#B45309]">
+                            {c.pending_kyc_count} pending KYC
+                          </span>
+                        )}
+
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-[11px] text-muted-foreground">
+                            {c.plan} · {c.listings_count} listing
+                            {c.listings_count === 1 ? "" : "s"}
+                          </span>
+                          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB]">
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </>
