@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { List, X, SlidersHorizontal } from "lucide-react";
 import { LandMap } from "@/components/LandMap";
+import { MapSearchBar } from "@/components/MapSearchBar";
 import { RentalPanel } from "@/components/PropertyPanel";
 import {
   usePublicProperties,
@@ -266,6 +267,7 @@ function RentalsPage() {
             selectedId={selected?.id ?? null}
             flyTarget={flyTarget}
           />
+          <MapSearchBar onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 14 })} />
           {selected && <RentalPanel property={selected} onClose={() => handleSelect(null)} />}
         </div>
       </div>

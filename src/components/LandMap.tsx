@@ -10,6 +10,7 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import L from "leaflet";
+import "leaflet-rotate";
 import { statusMeta, type LandParcel } from "@/lib/landData";
 import { formatPrice, INTENT_LABELS, type Property } from "@/lib/properties";
 import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/MapSearchBar";
@@ -91,41 +92,59 @@ interface Props {
   flyTarget?: FlyTarget | null;
 }
 
-// Fits map to all parcels on first load, and zooms to a selected parcel when chosen.
+// Fits map to all parcels/properties on first load, and zooms to the
+// selected one when chosen.
 function MapController({
   mode,
   selectedId,
   parcels,
+  properties,
 }: {
   mode: "land" | "rentals";
   selectedId?: string | null;
   parcels: LandParcel[];
+  properties: Property[];
 }) {
   const map = useMap();
   useEffect(() => {
-    if (mode !== "land" || parcels.length === 0) return;
-    const all = parcels.flatMap(
-      (p) =>
-        p.polygon ??
-        (p.latitude != null && p.longitude != null
-          ? [[p.latitude, p.longitude] as [number, number]]
-          : []),
-    );
-    if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
+    if (mode === "land") {
+      if (parcels.length === 0) return;
+      const all = parcels.flatMap(
+        (p) =>
+          p.polygon ??
+          (p.latitude != null && p.longitude != null
+            ? [[p.latitude, p.longitude] as [number, number]]
+            : []),
+      );
+      if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
+    } else {
+      if (properties.length === 0) return;
+      map.fitBounds(properties.map((p) => p.position) as L.LatLngBoundsLiteral, {
+        padding: [40, 40],
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, mode]);
   useEffect(() => {
     if (!selectedId) return;
-    const p = parcels.find((x) => x.id === selectedId);
-    if (!p) return;
-    const bounds =
-      p.polygon ??
-      (p.latitude != null && p.longitude != null
-        ? ([
-            [p.latitude, p.longitude],
-            [p.latitude, p.longitude],
-          ] as [number, number][])
-        : null);
+
+    let bounds: [number, number][] | null = null;
+    if (mode === "land") {
+      const p = parcels.find((x) => x.id === selectedId);
+      if (!p) return;
+      bounds =
+        p.polygon ??
+        (p.latitude != null && p.longitude != null
+          ? [
+              [p.latitude, p.longitude],
+              [p.latitude, p.longitude],
+            ]
+          : null);
+    } else {
+      const p = properties.find((x) => x.id === selectedId);
+      if (!p) return;
+      bounds = [p.position, p.position];
+    }
     if (!bounds) return;
 
     // The listing panel covers the right side of the map on desktop and the
@@ -142,7 +161,7 @@ function MapController({
       maxZoom: 17,
       duration: 1,
     });
-  }, [map, selectedId, parcels]);
+  }, [map, mode, selectedId, parcels, properties]);
   return null;
 }
 
@@ -174,11 +193,19 @@ export function LandMap({
         zoom={11}
         scrollWheelZoom
         zoomControl={false}
+        rotate
+        touchRotate
+        rotateControl={{ position: "topleft", closeOnZeroBearing: false }}
         className="h-full w-full"
         style={{ background: "#e8eef5" }}
       >
         <ZoomControl position="topright" />
-        <MapController mode={mode} selectedId={selectedId} parcels={parcelList} />
+        <MapController
+          mode={mode}
+          selectedId={selectedId}
+          parcels={parcelList}
+          properties={properties}
+        />
         <FlyToTarget target={flyTarget ?? null} />
         <TileLayer
           key={isSatellite ? "sat" : "osm"}
@@ -208,7 +235,7 @@ export function LandMap({
                   <div className="text-xs">
                     <div className="font-semibold text-foreground">{p.title}</div>
                     <div className="text-muted-foreground">
-                      {p.parcelNumber} · {meta.label} · KES {p.price.toLocaleString()}
+                      {meta.label} · KES {p.price.toLocaleString()}
                     </div>
                   </div>
                 </Tooltip>
