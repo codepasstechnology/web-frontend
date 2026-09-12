@@ -1,7 +1,8 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
 @import "leaflet/dist/leaflet.css";
+
+@source "../src";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -79,6 +80,10 @@
   --muted-foreground: oklch(0.5 0.038 257.4); /* #475569 */
   --accent: oklch(0.546 0.215 262.9); /* #2563EB */
   --accent-foreground: oklch(1 0 0);
+  /* The brand blue, named separately from --accent: shadcn's primitives read
+     --accent as a hover tint and .dark reassigns it to a grey slate. */
+  --brand: oklch(0.546 0.215 262.9); /* #2563EB */
+  --brand-foreground: oklch(1 0 0);
   --destructive: oklch(0.59 0.222 27); /* #DC2626 */
   --destructive-foreground: oklch(1 0 0);
   --success: oklch(0.62 0.18 145); /* #16A34A */
@@ -102,6 +107,8 @@
 }
 
 @theme inline {
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -133,6 +140,8 @@
   --muted-foreground: oklch(0.704 0.04 256.788);
   --accent: oklch(0.279 0.041 260.031);
   --accent-foreground: oklch(0.984 0.003 247.858);
+  --brand: oklch(0.546 0.215 262.9);
+  --brand-foreground: oklch(1 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(1 0 0 / 10%);
