@@ -17,15 +17,93 @@ import { Navbar } from "@/components/Navbar";
 export type DashTab =
   "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
 
-const items: { id: DashTab; label: string; icon: ReactNode }[] = [
-  { id: "overview", label: "Overview", icon: <LayoutGrid className="h-4 w-4" /> },
-  { id: "listings", label: "My Listings", icon: <List className="h-4 w-4" /> },
-  { id: "upload", label: "Upload", icon: <Upload className="h-4 w-4" /> },
-  { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
-  { id: "billing", label: "Billing & Plan", icon: <Wallet className="h-4 w-4" /> },
-  { id: "kyc", label: "KYC Status", icon: <ShieldCheck className="h-4 w-4" /> },
-  { id: "settings", label: "Account Settings", icon: <Settings className="h-4 w-4" /> },
+// `short` is what the bottom nav's expanded pill shows; `label` stays the full
+// name for the sidebar and for every button's accessible name.
+const items: { id: DashTab; label: string; short: string; icon: ReactNode }[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    short: "Overview",
+    icon: <LayoutGrid className="h-4 w-4" />,
+  },
+  { id: "listings", label: "My Listings", short: "Listings", icon: <List className="h-4 w-4" /> },
+  { id: "upload", label: "Upload", short: "Upload", icon: <Upload className="h-4 w-4" /> },
+  {
+    id: "analytics",
+    label: "Analytics",
+    short: "Analytics",
+    icon: <BarChart3 className="h-4 w-4" />,
+  },
+  {
+    id: "billing",
+    label: "Billing & Plan",
+    short: "Billing",
+    icon: <Wallet className="h-4 w-4" />,
+  },
+  { id: "kyc", label: "KYC Status", short: "KYC", icon: <ShieldCheck className="h-4 w-4" /> },
+  {
+    id: "settings",
+    label: "Account Settings",
+    short: "Settings",
+    icon: <Settings className="h-4 w-4" />,
+  },
 ];
+
+/**
+ * One slot of the floating bottom bar. Collapsed it is a 44px icon-only circle;
+ * expanded it grows into a pill carrying a filled badge and the label.
+ *
+ * The label's width is animated through a 0fr -> 1fr grid column rather than a
+ * width, so the pill sizes itself to whatever text it holds without anything
+ * having to measure it first.
+ */
+function NavPill({
+  icon,
+  label,
+  short,
+  expanded,
+  onClick,
+  ...rest
+}: {
+  icon: ReactNode;
+  label: string;
+  short: string;
+  expanded: boolean;
+  onClick: () => void;
+} & React.ComponentPropsWithoutRef<"button">) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`flex h-11 items-center rounded-full transition-colors duration-300 ease-in-out motion-reduce:transition-none ${
+        expanded ? "min-w-0 bg-brand/10 pl-1.5 pr-3" : "w-11 shrink-0 justify-center hover:bg-muted"
+      }`}
+      {...rest}
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center rounded-full transition-all duration-300 ease-in-out motion-reduce:transition-none ${
+          expanded ? "h-8 w-8 bg-brand text-brand-foreground" : "text-muted-foreground"
+        }`}
+      >
+        {icon}
+      </span>
+      <span
+        aria-hidden
+        className="grid transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none"
+        style={{ gridTemplateColumns: expanded ? "1fr" : "0fr" }}
+      >
+        <span
+          className={`overflow-hidden whitespace-nowrap text-xs font-medium text-foreground transition-opacity duration-200 motion-reduce:transition-none ${
+            expanded ? "pl-2 opacity-100" : "opacity-0"
+          }`}
+        >
+          {short}
+        </span>
+      </span>
+    </button>
+  );
+}
 
 // The mobile bottom nav only has room for a handful of comfortable tap
 // targets — the rest live behind "More" so none of them end up as an
@@ -44,6 +122,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const overflowActive = mobileOverflowItems.find((it) => it.id === active);
 
   const handleSelect = (t: DashTab) => {
     setMoreOpen(false);
@@ -95,55 +174,56 @@ export function DashboardShell({ active, onChange, children }: Props) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t border-border bg-card md:hidden">
-        {mobilePrimaryItems.map((it) => {
-          const isActive = it.id === active;
-          return (
-            <button
+      <div className="fixed inset-x-3 bottom-3 z-30 pb-[env(safe-area-inset-bottom)] md:hidden">
+        <nav
+          aria-label="Dashboard sections"
+          className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card p-1.5 shadow-lg"
+        >
+          {mobilePrimaryItems.map((it) => (
+            <NavPill
               key={it.id}
+              icon={it.icon}
+              label={it.label}
+              short={it.short}
+              expanded={it.id === active}
+              aria-current={it.id === active ? "page" : undefined}
               onClick={() => handleSelect(it.id)}
-              className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium ${
-                isActive ? "text-[#2563EB]" : "text-muted-foreground"
-              }`}
-            >
-              {it.icon}
-              <span className="truncate px-1">{it.label.split(" ")[0]}</span>
-            </button>
-          );
-        })}
-        <div ref={moreRef} className="relative">
-          <button
-            onClick={() => setMoreOpen((v) => !v)}
-            className={`flex w-full flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium ${
-              mobileOverflowItems.some((it) => it.id === active) || moreOpen
-                ? "text-[#2563EB]"
-                : "text-muted-foreground"
-            }`}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="truncate px-1">More</span>
-          </button>
-          {moreOpen && (
-            <div className="absolute bottom-full right-0 z-30 mb-2 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-              {mobileOverflowItems.map((it) => {
-                const isActive = it.id === active;
-                return (
-                  <button
-                    key={it.id}
-                    onClick={() => handleSelect(it.id)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                      isActive ? "bg-[#2563EB]/10 text-[#2563EB]" : "text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {it.icon}
-                    {it.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </nav>
+            />
+          ))}
+          <div ref={moreRef} className="relative">
+            <NavPill
+              icon={<MoreHorizontal className="h-4 w-4" />}
+              label="More sections"
+              short={overflowActive?.short ?? "More"}
+              expanded={!!overflowActive}
+              aria-haspopup="menu"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen((v) => !v)}
+            />
+            {moreOpen && (
+              <div className="absolute bottom-full right-0 z-30 mb-2 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+                {mobileOverflowItems.map((it) => {
+                  const isActive = it.id === active;
+                  return (
+                    <button
+                      key={it.id}
+                      onClick={() => handleSelect(it.id)}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                        isActive
+                          ? "bg-[#2563EB]/10 text-[#2563EB]"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {it.icon}
+                      {it.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </nav>
+      </div>
 
       {user && user.emailVerificationRequired && !user.emailVerified && <VerifyAccountModal />}
     </div>
