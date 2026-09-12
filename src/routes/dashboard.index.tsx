@@ -91,17 +91,17 @@ export const Route = createFileRoute("/dashboard/")({
     const allowed: DashTab[] = [
       "overview",
       "listings",
-      "properties",
       "upload",
       "analytics",
       "billing",
       "settings",
       "kyc",
     ];
+    // "properties" was its own tab before land and rentals were merged; keep
+    // old links and bookmarks landing on the combined list.
+    const raw = s.tab === "properties" ? "listings" : s.tab;
     const t =
-      typeof s.tab === "string" && (allowed as string[]).includes(s.tab)
-        ? (s.tab as DashTab)
-        : undefined;
+      typeof raw === "string" && (allowed as string[]).includes(raw) ? (raw as DashTab) : undefined;
     return { tab: t };
   },
   component: DashboardPage,
@@ -111,8 +111,6 @@ function DashboardPage() {
   const {
     user,
     ready,
-    removeListing,
-    markListingSold,
     setPlan,
     updateUser,
     deleteAccount,
@@ -129,7 +127,6 @@ function DashboardPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [checkoutCycle, setCheckoutCycle] = useState<"monthly" | "yearly" | undefined>(undefined);
-  const [exporting, setExporting] = useState(false);
 
   const handleSelectPlan = (id: string, cycle?: "monthly" | "yearly") => {
     const selected = plans.find((p) => p.id === id);
@@ -140,39 +137,6 @@ function DashboardPage() {
       setPlan(id);
     }
   };
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [soldTarget, setSoldTarget] = useState<string | null>(null);
-  const [selling, setSelling] = useState(false);
-
-  const confirmSold = async () => {
-    if (!soldTarget) return;
-    setSelling(true);
-    try {
-      await markListingSold(soldTarget);
-      setSoldTarget(null);
-    } finally {
-      setSelling(false);
-    }
-  };
-
-  const exportListings = async () => {
-    setExporting(true);
-    try {
-      const blob = await api.getBlob("/user/listings/export");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `listings_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // silent — export button stays available to retry
-    } finally {
-      setExporting(false);
-    }
-  };
-
   useEffect(() => {
     if (search.tab && search.tab !== tab) setTab(search.tab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,183 +160,7 @@ function DashboardPage() {
         />
       )}
 
-      {tab === "listings" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold text-foreground">My Listings</h1>
-            <div className="flex items-center gap-2">
-              {user.customReports && (
-                <button
-                  onClick={exportListings}
-                  disabled={exporting}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
-                >
-                  <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
-                </button>
-              )}
-              <button
-                onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
-                className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
-              >
-                <Plus className="h-3.5 w-3.5" /> New
-              </button>
-            </div>
-          </div>
-          {user.listings.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-              <h3 className="text-base font-semibold text-foreground">No listings yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Once you upload land, it'll appear here for review.
-              </p>
-              <button
-                onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
-              >
-                <Plus className="h-4 w-4" /> Upload Land
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2 md:hidden">
-                {user.listings.map((l) => (
-                  <div key={l.id} className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                    <div className="flex gap-3">
-                      {l.coverPhotoUrl ? (
-                        <img
-                          src={l.coverPhotoUrl}
-                          alt=""
-                          className="h-12 w-16 shrink-0 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-12 w-16 shrink-0 rounded bg-muted" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-foreground">
-                              {l.parcelNumber}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {l.county} · KES {l.price.toLocaleString()}
-                            </div>
-                          </div>
-                          <StatusBadge status={l.status} />
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {l.views} views · {l.createdAt}
-                          </span>
-                          <div className="flex gap-1">
-                            {l.status === "active" && (
-                              <button
-                                onClick={() => setSoldTarget(l.id)}
-                                className="rounded-md p-2 text-muted-foreground hover:bg-muted"
-                                title="Mark as sold"
-                              >
-                                <Tag className="h-4 w-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() =>
-                                navigate({ to: "/dashboard/upload", search: { edit: l.id } })
-                              }
-                              className="rounded-md p-2 text-muted-foreground hover:bg-muted"
-                              title="Edit"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(l.id)}
-                              className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-sm md:block">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">Listing</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Views</th>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {user.listings.map((l) => (
-                      <tr key={l.id}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            {l.coverPhotoUrl ? (
-                              <img
-                                src={l.coverPhotoUrl}
-                                alt=""
-                                className="h-9 w-12 shrink-0 rounded object-cover"
-                              />
-                            ) : (
-                              <div className="h-9 w-12 shrink-0 rounded bg-muted" />
-                            )}
-                            <div>
-                              <div className="font-medium text-foreground">{l.parcelNumber}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {l.county} · KES {l.price.toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={l.status} />
-                        </td>
-                        <td className="px-4 py-3">{l.views}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{l.createdAt}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-1">
-                            {l.status === "active" && (
-                              <button
-                                onClick={() => setSoldTarget(l.id)}
-                                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                                title="Mark as sold"
-                              >
-                                <Tag className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() =>
-                                navigate({ to: "/dashboard/upload", search: { edit: l.id } })
-                              }
-                              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                              title="Edit"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(l.id)}
-                              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {tab === "properties" && <PropertiesTab />}
+      {tab === "listings" && <ListingsTab />}
 
       {tab === "analytics" && <AnalyticsTab onUpgrade={() => setUpgradeOpen(true)} />}
 
@@ -432,72 +220,6 @@ function DashboardPage() {
           }}
         />
       )}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
-            <h2 className="text-base font-semibold text-foreground">Delete this listing?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              This can&apos;t be undone. The listing and its photos will be removed.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (!deleteTarget) return;
-                  setDeleting(true);
-                  try {
-                    await removeListing(deleteTarget);
-                    setDeleteTarget(null);
-                  } catch {
-                    // leave the dialog open so the seller can retry
-                  } finally {
-                    setDeleting(false);
-                  }
-                }}
-                disabled={deleting}
-                className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-60"
-              >
-                {deleting ? "Deleting…" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {soldTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
-            <h2 className="text-base font-semibold text-foreground">Mark this listing as sold?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              It will be removed from the marketplace and buyers can no longer see it. This
-              can&apos;t be undone — a sold listing can&apos;t be relisted.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setSoldTarget(null)}
-                disabled={selling}
-                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmSold}
-                disabled={selling}
-                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
-              >
-                {selling ? "Marking…" : "Mark as sold"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </DashboardShell>
   );
 }
@@ -540,115 +262,417 @@ interface ApiAnalytics {
   traffic_sources: { name: string; value: number; color: string }[];
 }
 
-function PropertiesTab() {
+type ListingRow = {
+  kind: "land" | "property";
+  id: string;
+  name: string;
+  sub: string;
+  status: string;
+  views: number;
+  createdAt: string;
+  coverPhotoUrl: string | null;
+};
+
+const PROPERTY_STATUS_STYLE: Record<string, string> = {
+  available: "bg-[#16A34A]/10 text-[#16A34A]",
+  pending: "bg-[#D97706]/10 text-[#D97706]",
+  taken: "bg-muted text-muted-foreground",
+  suspended: "bg-destructive/10 text-destructive",
+};
+
+function RowStatus({ row }: { row: ListingRow }) {
+  if (row.kind === "land") return <StatusBadge status={row.status} />;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${PROPERTY_STATUS_STYLE[row.status]}`}
+    >
+      {row.status}
+    </span>
+  );
+}
+
+function KindChip({ kind }: { kind: ListingRow["kind"] }) {
+  return (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      {kind === "land" ? "Land" : "Rental"}
+    </span>
+  );
+}
+
+export function ListingsTab() {
   const navigate = useNavigate();
+  const { user, removeListing, markListingSold } = useAuth();
   const { data: properties = [], isLoading, isError, refetch } = useMyProperties();
-  const remove = useDeleteProperty();
+  const removeProperty = useDeleteProperty();
   const markTaken = useMarkPropertyTaken();
 
-  const statusStyle: Record<string, string> = {
-    available: "bg-[#16A34A]/10 text-[#16A34A]",
-    pending: "bg-[#D97706]/10 text-[#D97706]",
-    taken: "bg-muted text-muted-foreground",
-    suspended: "bg-destructive/10 text-destructive",
+  const [filter, setFilter] = useState<"all" | "land" | "property">("all");
+  const [deleteTarget, setDeleteTarget] = useState<ListingRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [takenTarget, setTakenTarget] = useState<ListingRow | null>(null);
+  const [taking, setTaking] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const userListings = user?.listings;
+
+  const rows = useMemo<ListingRow[]>(() => {
+    const land: ListingRow[] = (userListings ?? []).map((l) => ({
+      kind: "land",
+      id: l.id,
+      name: l.parcelNumber,
+      sub: `${l.county} · KES ${l.price.toLocaleString()}`,
+      status: l.status,
+      views: l.views,
+      createdAt: l.createdAt,
+      coverPhotoUrl: l.coverPhotoUrl,
+    }));
+    const rentals: ListingRow[] = properties.map((p) => ({
+      kind: "property",
+      id: p.id,
+      name: p.title,
+      sub: `${p.reference} · ${INTENT_LABELS[p.intent]} · ${TYPE_LABELS[p.type]} · ${formatPrice(p.price, p.pricePeriod)}`,
+      status: p.status,
+      views: p.views,
+      createdAt: p.createdAt,
+      coverPhotoUrl: p.coverPhotoUrl,
+    }));
+    // Both APIs emit created_at as a YYYY-MM-DD date string, so this sorts
+    // without parsing.
+    return [...land, ...rentals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [userListings, properties]);
+
+  const visible = filter === "all" ? rows : rows.filter((r) => r.kind === filter);
+  const counts = {
+    all: rows.length,
+    land: rows.filter((r) => r.kind === "land").length,
+    property: rows.filter((r) => r.kind === "property").length,
+  };
+
+  const exportListings = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob("/user/listings/export");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `listings_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — export button stays available to retry
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.kind === "land") await removeListing(deleteTarget.id);
+      else await removeProperty.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      // leave the dialog open so the seller can retry
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmTaken = async () => {
+    if (!takenTarget) return;
+    setTaking(true);
+    try {
+      if (takenTarget.kind === "land") await markListingSold(takenTarget.id);
+      else await markTaken.mutateAsync(takenTarget.id);
+      setTakenTarget(null);
+    } catch {
+      // leave the dialog open so the seller can retry
+    } finally {
+      setTaking(false);
+    }
+  };
+
+  const canClose = (r: ListingRow) =>
+    r.kind === "land" ? r.status === "active" : r.status === "available";
+
+  const rowActions = (r: ListingRow, size: "sm" | "md") => {
+    const icon = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
+    const pad = size === "md" ? "p-2" : "p-1.5";
+    return (
+      <div className="flex gap-1">
+        {canClose(r) && (
+          <button
+            onClick={() => setTakenTarget(r)}
+            className={`rounded-md ${pad} text-muted-foreground hover:bg-muted`}
+            title={r.kind === "land" ? "Mark as sold" : "Mark as taken"}
+          >
+            <Tag className={icon} />
+          </button>
+        )}
+        {r.kind === "land" && (
+          <button
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: r.id, type: undefined } })
+            }
+            className={`rounded-md ${pad} text-muted-foreground hover:bg-muted`}
+            title="Edit"
+          >
+            <Pencil className={icon} />
+          </button>
+        )}
+        <button
+          onClick={() => setDeleteTarget(r)}
+          aria-label={`Delete ${r.name}`}
+          className={`rounded-md ${pad} text-muted-foreground hover:bg-muted hover:text-destructive`}
+          title="Delete"
+        >
+          <Trash2 className={icon} />
+        </button>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">My Properties</h1>
-        <button
-          onClick={() => navigate({ to: "/dashboard/properties" })}
-          className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
-        >
-          <Plus className="h-3.5 w-3.5" /> Post a property
-        </button>
+        <h1 className="text-2xl font-semibold text-foreground">My Listings</h1>
+        <div className="flex items-center gap-2">
+          {user?.customReports && (
+            <button
+              onClick={exportListings}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
+            </button>
+          )}
+          <button
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+            }
+            className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+          >
+            <Plus className="h-3.5 w-3.5" /> New listing
+          </button>
+        </div>
       </div>
 
-      {isLoading && (
-        <p className="py-16 text-center text-sm text-muted-foreground">Loading properties…</p>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["all", "All"],
+            ["land", "Land"],
+            ["property", "Rentals"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setFilter(id)}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              filter === id
+                ? "bg-[#2563EB] text-white"
+                : "border border-border bg-card text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {label} {counts[id]}
+          </button>
+        ))}
+      </div>
 
       {isError && (
-        <div className="rounded-xl border border-border bg-card px-4 py-10 text-center">
-          <p className="text-sm font-medium text-destructive">Could not load your properties.</p>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-sm text-destructive">Could not load your rentals.</p>
           <button
             onClick={() => refetch()}
-            className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
           >
             Try again
           </button>
         </div>
       )}
 
-      {!isLoading && !isError && properties.length === 0 && (
-        <div className="rounded-xl border border-border bg-card px-4 py-16 text-center">
-          <p className="text-sm font-medium text-foreground">No properties yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Post a rental, BnB or home for sale to see it here.
+      {isLoading && rows.length === 0 ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">Loading listings…</p>
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
+          <h3 className="text-base font-semibold text-foreground">No listings yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Post a land parcel, rental, BnB or home for sale and it'll appear here for review.
           </p>
+          <button
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+            }
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
+          >
+            <Plus className="h-4 w-4" /> New listing
+          </button>
+        </div>
+      ) : visible.length === 0 ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">
+          Nothing here under this filter.
+        </p>
+      ) : (
+        <>
+          {/* Mobile */}
+          <div className="space-y-2 md:hidden">
+            {visible.map((r) => (
+              <div
+                key={`${r.kind}-${r.id}`}
+                className="rounded-lg border border-border bg-card p-3 shadow-sm"
+              >
+                <div className="flex gap-3">
+                  {r.coverPhotoUrl ? (
+                    <img
+                      src={r.coverPhotoUrl}
+                      alt=""
+                      className="h-12 w-16 shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="h-12 w-16 shrink-0 rounded bg-muted" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-foreground">{r.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{r.sub}</div>
+                      </div>
+                      <RowStatus row={r} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <KindChip kind={r.kind} />
+                        {r.views} views · {r.createdAt}
+                      </span>
+                      {rowActions(r, "md")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop */}
+          <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-sm md:block">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">Listing</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Views</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {visible.map((r) => (
+                  <tr key={`${r.kind}-${r.id}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {r.coverPhotoUrl ? (
+                          <img
+                            src={r.coverPhotoUrl}
+                            alt=""
+                            className="h-9 w-12 shrink-0 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="h-9 w-12 shrink-0 rounded bg-muted" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground">{r.name}</div>
+                          <div className="text-xs text-muted-foreground">{r.sub}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <KindChip kind={r.kind} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <RowStatus row={r} />
+                    </td>
+                    <td className="px-4 py-3">{r.views}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.createdAt}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">{rowActions(r, "sm")}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+          >
+            <h2 className="text-base font-semibold text-foreground">
+              Delete {deleteTarget.kind === "land" ? "this listing" : "this property"}?
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This can&apos;t be undone. The listing and its photos will be removed.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {properties.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <ul className="divide-y divide-border">
-            {properties.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                {p.coverPhotoUrl ? (
-                  <img
-                    src={p.coverPhotoUrl}
-                    alt=""
-                    className="h-12 w-16 flex-shrink-0 rounded-md object-cover"
-                  />
-                ) : (
-                  <div className="h-12 w-16 flex-shrink-0 rounded-md bg-muted" />
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-foreground">{p.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {p.reference} · {INTENT_LABELS[p.intent]} · {TYPE_LABELS[p.type]} ·{" "}
-                    {formatPrice(p.price, p.pricePeriod)}
-                  </div>
-                </div>
-
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusStyle[p.status]}`}
-                >
-                  {p.status}
-                </span>
-
-                {p.postingPaymentStatus === "pending" && (
-                  <span className="rounded-full bg-[#D97706]/10 px-2 py-0.5 text-[11px] font-medium text-[#D97706]">
-                    fee due
-                  </span>
-                )}
-
-                <span className="text-[11px] text-muted-foreground">{p.views} views</span>
-
-                <div className="flex items-center gap-1.5">
-                  {p.status === "available" && (
-                    <button
-                      onClick={() => markTaken.mutate(p.id)}
-                      disabled={markTaken.isPending}
-                      className="rounded-md border border-border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted disabled:opacity-50"
-                    >
-                      Mark taken
-                    </button>
-                  )}
-                  <button
-                    onClick={() => remove.mutate(p.id)}
-                    disabled={remove.isPending}
-                    aria-label={`Delete ${p.title}`}
-                    className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {takenTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+          >
+            <h2 className="text-base font-semibold text-foreground">
+              Mark this listing as {takenTarget.kind === "land" ? "sold" : "taken"}?
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              It will be removed from the marketplace and buyers can no longer see it. This
+              can&apos;t be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setTakenTarget(null)}
+                disabled={taking}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmTaken}
+                disabled={taking}
+                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+              >
+                {taking
+                  ? "Marking…"
+                  : takenTarget.kind === "land"
+                    ? "Mark as sold"
+                    : "Mark as taken"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1729,7 +1753,8 @@ function OverviewTab({
       key: "listing",
       label: "Upload your first listing",
       done: used > 0,
-      action: () => navigate({ to: "/dashboard/upload", search: { edit: undefined } }),
+      action: () =>
+        navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } }),
     },
     {
       key: "verify",
@@ -1777,7 +1802,9 @@ function OverviewTab({
             <BarChart3 className="h-3.5 w-3.5" /> View analytics
           </button>
           <button
-            onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+            }
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-2 text-xs font-medium text-white hover:bg-[#1d4ed8] sm:flex-none sm:py-1.5"
           >
             <Plus className="h-3.5 w-3.5" /> New listing
@@ -1913,7 +1940,12 @@ function OverviewTab({
             <div className="px-5 py-10 text-center">
               <p className="text-sm text-muted-foreground">No listings yet.</p>
               <button
-                onClick={() => navigate({ to: "/dashboard/upload", search: { edit: undefined } })}
+                onClick={() =>
+                  navigate({
+                    to: "/dashboard/upload",
+                    search: { edit: undefined, type: undefined },
+                  })
+                }
                 className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
               >
                 <Plus className="h-3.5 w-3.5" /> Upload your first listing

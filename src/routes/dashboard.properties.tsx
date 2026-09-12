@@ -149,7 +149,7 @@ function PostPropertyPage() {
 
   if (submitted) {
     return (
-      <DashboardShell active="properties">
+      <DashboardShell active="upload">
         <div className="mx-auto max-w-lg rounded-xl border border-border bg-card p-8 text-center shadow-sm">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#16A34A]/10">
             <Check className="h-7 w-7 text-[#16A34A]" />
@@ -168,10 +168,10 @@ function PostPropertyPage() {
           )}
 
           <button
-            onClick={() => navigate({ to: "/dashboard", search: { tab: "properties" } })}
+            onClick={() => navigate({ to: "/dashboard", search: { tab: "listings" } })}
             className="mt-6 w-full rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
           >
-            Go to my properties
+            Go to my listings
           </button>
         </div>
 
@@ -190,7 +190,7 @@ function PostPropertyPage() {
   }
 
   return (
-    <DashboardShell active="properties">
+    <DashboardShell active="upload">
       <div className="mx-auto max-w-3xl">
         <h1 className="text-xl font-semibold text-foreground md:text-2xl">Post a property</h1>
         <p className="text-sm text-muted-foreground">

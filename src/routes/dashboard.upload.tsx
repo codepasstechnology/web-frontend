@@ -1,6 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, Star, UploadCloud, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  Lock,
+  Map as MapIcon,
+  Star,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
@@ -15,6 +25,7 @@ export const Route = createFileRoute("/dashboard/upload")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     edit: typeof s.edit === "string" ? s.edit : undefined,
+    type: s.type === "land" ? ("land" as const) : undefined,
   }),
 });
 
@@ -146,6 +157,59 @@ function polygonAreaAcres(points: { lat: number; lng: number }[]): number {
   return Math.abs(area) / 2 / 4046.8564224;
 }
 
+function ListingTypeChooser({
+  onLand,
+  onProperty,
+}: {
+  onLand: () => void;
+  onProperty: () => void;
+}) {
+  const options = [
+    {
+      icon: <MapIcon className="h-6 w-6 text-[#2563EB]" />,
+      title: "Land parcel",
+      body: "A plot or acreage with a mapped boundary and title documents.",
+      cta: "Upload land",
+      onClick: onLand,
+    },
+    {
+      icon: <Building2 className="h-6 w-6 text-[#2563EB]" />,
+      title: "Rental, BnB or home for sale",
+      body: "An apartment, house or short stay pinned to a single location.",
+      cta: "Post a property",
+      onClick: onProperty,
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <h1 className="text-xl font-semibold text-foreground md:text-2xl">What are you posting?</h1>
+      <p className="text-sm text-muted-foreground">Both go live once our team approves them.</p>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {options.map((o) => (
+          <button
+            key={o.title}
+            onClick={o.onClick}
+            className="flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-colors hover:border-[#2563EB] hover:bg-muted/40"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2563EB]/10">
+              {o.icon}
+            </div>
+            <div>
+              <div className="text-base font-semibold text-foreground">{o.title}</div>
+              <p className="mt-1 text-sm text-muted-foreground">{o.body}</p>
+            </div>
+            <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-[#2563EB]">
+              {o.cta} <ArrowRight className="h-4 w-4" />
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function UploadPage() {
   const { user, ready, addListing, fetchListing, updateListing } = useAuth();
   const { data: plans = [] } = usePlans();
@@ -246,6 +310,20 @@ function UploadPage() {
   }, [step, form, editId]);
 
   if (!user || user.role === "account_manager") return null;
+
+  if (!editId && search.type !== "land") {
+    return (
+      <DashboardShell active="upload" onChange={() => {}}>
+        <ListingTypeChooser
+          onLand={() =>
+            navigate({ to: "/dashboard/upload", search: { edit: undefined, type: "land" } })
+          }
+          onProperty={() => navigate({ to: "/dashboard/properties" })}
+        />
+      </DashboardShell>
+    );
+  }
+
   const plan = plans.find((p) => p.id === user.plan);
   const used = user.listings.length;
   const remaining = user.maxListings === Infinity ? Infinity : user.maxListings - used;
