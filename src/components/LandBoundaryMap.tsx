@@ -11,7 +11,7 @@ import {
 import L from "leaflet";
 import "leaflet-draw/dist/leaflet.draw.css";
 import type { DrawEvents } from "leaflet";
-import { MapPin } from "lucide-react";
+import { MapPin, HelpCircle, X, Info } from "lucide-react";
 import { toast } from "sonner";
 import {
   MapSearchBar,
@@ -20,6 +20,15 @@ import {
   OSM_TILES,
   SATELLITE_TILES,
 } from "@/components/MapSearchBar";
+
+const TUTORIAL_KEY = "lv_boundary_tutorial_seen";
+
+const TUTORIAL_STEPS: [string, string][] = [
+  ["Find your land", 'Search for a place, or tap "Satellite" to spot it from above.'],
+  ["Trace the outline", 'Tap "Trace boundary", then tap each corner along the edge of your land.'],
+  ["Finish the shape", 'Tap "Confirm plot" once you\'ve placed at least 3 corners.'],
+  ["Not sure of the shape?", "Just tap the map once to drop a single pin instead."],
+];
 
 const pinIcon = L.divIcon({
   className: "lv-marker",
@@ -50,19 +59,40 @@ function PinDropper({
 function PolygonDrawTrigger({
   trigger,
   cancelTrigger,
+  undoTrigger,
+  finishTrigger,
   color,
   onCreated,
   onTracingChange,
+  onPointCountChange,
 }: {
   trigger: number;
   cancelTrigger: number;
+  undoTrigger: number;
+  finishTrigger: number;
   color: string;
   onCreated: (boundary: { lat: number; lng: number }[]) => void;
   onTracingChange: (tracing: boolean) => void;
+  onPointCountChange: (n: number) => void;
 }) {
   const map = useMap();
   const [ready, setReady] = useState(false);
   const handlerRef = useRef<L.Draw.Polygon | null>(null);
+
+  // `onCreated`/`onTracingChange`/`onPointCountChange` are inline callbacks
+  // from the parent and get a new identity on every render. Reading them via
+  // refs (instead of putting them in the effect below's deps) keeps that
+  // effect's map.on(...) listeners registered for the component's whole
+  // lifetime — otherwise a re-render right when `trigger` fires would tear
+  // down and re-register the listeners in the same commit as handler.enable()
+  // synchronously firing DRAWSTART, and the very first DRAWSTART would fire
+  // into a momentarily-unlistened map.
+  const onCreatedRef = useRef(onCreated);
+  onCreatedRef.current = onCreated;
+  const onTracingChangeRef = useRef(onTracingChange);
+  onTracingChangeRef.current = onTracingChange;
+  const onPointCountChangeRef = useRef(onPointCountChange);
+  onPointCountChangeRef.current = onPointCountChange;
 
   // leaflet-draw touches `window` at import time, so it must never load during SSR.
   useEffect(() => {
@@ -92,24 +122,47 @@ function PolygonDrawTrigger({
   }, [ready, cancelTrigger]);
 
   useEffect(() => {
+    if (!ready || undoTrigger === 0) return;
+    handlerRef.current?.deleteLastVertex();
+  }, [ready, undoTrigger]);
+
+  useEffect(() => {
+    if (!ready || finishTrigger === 0) return;
+    handlerRef.current?.completeShape();
+  }, [ready, finishTrigger]);
+
+  useEffect(() => {
     if (!ready) return;
-    const onDrawStart = () => onTracingChange(true);
-    const onDrawStop = () => onTracingChange(false);
+    const onDrawStart = () => {
+      map.doubleClickZoom.disable();
+      onPointCountChangeRef.current(0);
+      onTracingChangeRef.current(true);
+    };
+    const onDrawStop = () => {
+      map.doubleClickZoom.enable();
+      onTracingChangeRef.current(false);
+    };
     const onCreatedEvt = (e: L.LeafletEvent) => {
       const de = e as unknown as DrawEvents.Created;
       if (de.layerType !== "polygon" || !(de.layer instanceof L.Polygon)) return;
       const [ring] = de.layer.getLatLngs() as L.LatLng[][];
-      onCreated(ring.map((p) => ({ lat: p.lat, lng: p.lng })));
+      onCreatedRef.current(ring.map((p) => ({ lat: p.lat, lng: p.lng })));
+    };
+    const onDrawVertex = (e: L.LeafletEvent) => {
+      const de = e as unknown as DrawEvents.DrawVertex;
+      onPointCountChangeRef.current(de.layers.getLayers().length);
     };
     map.on(L.Draw.Event.DRAWSTART, onDrawStart);
     map.on(L.Draw.Event.DRAWSTOP, onDrawStop);
     map.on(L.Draw.Event.CREATED, onCreatedEvt);
+    map.on(L.Draw.Event.DRAWVERTEX, onDrawVertex);
     return () => {
       map.off(L.Draw.Event.DRAWSTART, onDrawStart);
       map.off(L.Draw.Event.DRAWSTOP, onDrawStop);
       map.off(L.Draw.Event.CREATED, onCreatedEvt);
+      map.off(L.Draw.Event.DRAWVERTEX, onDrawVertex);
     };
-  }, [ready, map, onCreated, onTracingChange]);
+  }, [ready, map]);
 
   return null;
 }
@@ -130,6 +183,13 @@ interface LandBoundaryMapProps {
    * pin drop or pan. Full-screen/dedicated map steps don't need this.
    */
   requireTapToActivate?: boolean;
+  /** Show the first-run walkthrough overlay (and the "How it works" button). */
+  tutorial?: boolean;
+  /**
+   * Drop the boundary-tracing controls entirely. A rental or a home for sale
+   * has an address, not a surveyed outline — a pin is all it needs.
+   */
+  pinOnly?: boolean;
 }
 
 export function LandBoundaryMap({
@@ -138,12 +198,25 @@ export function LandBoundaryMap({
   onPinChange,
   onBoundaryChange,
   initialCenter = [-1.286389, 36.817223],
-  hintText = 'Tap "Trace boundary", then click points around your land\'s edge on the satellite map — click the first point again to close the shape. Not sure of the exact shape? Just drop a pin instead.',
+  hintText = 'Tap "Trace boundary", then click points around your land\'s edge on the satellite map — tap "Confirm plot" once you\'ve placed at least 3 points. Not sure of the exact shape? Just drop a pin instead.',
   heightClassName = "h-[65vh] sm:h-80 lg:h-[28rem]",
   county,
   requireTapToActivate = false,
+  tutorial = true,
+  pinOnly = false,
 }: LandBoundaryMapProps) {
   const [activated, setActivated] = useState(!requireTapToActivate);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (!tutorial || typeof window === "undefined") return;
+    if (!localStorage.getItem(TUTORIAL_KEY)) setShowTutorial(true);
+  }, [tutorial]);
+
+  const dismissTutorial = () => {
+    setShowTutorial(false);
+    if (typeof window !== "undefined") localStorage.setItem(TUTORIAL_KEY, "1");
+  };
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Center on the chosen county before the seller has placed anything —
@@ -179,7 +252,11 @@ export function LandBoundaryMap({
       .then((r) => r.json())
       .then((data: { address?: Record<string, string> }) => {
         if (cancelled) return;
-        const detected = data.address?.county ?? data.address?.state;
+        // Nominatim's generic "county" address field maps to Kenya's
+        // sub-counties/constituencies (e.g. "Kikuyu"), not its 47 counties —
+        // "state" is the field that actually holds the Kenyan county (e.g.
+        // "Kiambu").
+        const detected = data.address?.state ?? data.address?.county;
         if (!detected) {
           setCountyMismatch(null);
           return;
@@ -201,9 +278,17 @@ export function LandBoundaryMap({
     };
   }, [pin, county]);
 
+  const controlsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (controlsRef.current) L.DomEvent.disableClickPropagation(controlsRef.current);
+  }, []);
+
   const [isSatellite, setIsSatellite] = useState(true);
   const [drawTrigger, setDrawTrigger] = useState(0);
   const [cancelTrigger, setCancelTrigger] = useState(0);
+  const [undoTrigger, setUndoTrigger] = useState(0);
+  const [finishTrigger, setFinishTrigger] = useState(0);
+  const [pointCount, setPointCount] = useState(0);
   const [tracing, setTracing] = useState(false);
   const [colorMode, setColorMode] = useState<"fresh" | "retrace">("fresh");
   const shapeColor = colorMode === "retrace" ? "#F97316" : "#2563EB";
@@ -222,10 +307,25 @@ export function LandBoundaryMap({
 
   return (
     <div>
-      {hintText && (
-        <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" /> {hintText}
-        </p>
+      {(hintText || tutorial) && (
+        <div className="mb-3 flex items-start justify-between gap-3">
+          {hintText ? (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 flex-shrink-0" /> {hintText}
+            </p>
+          ) : (
+            <span />
+          )}
+          {tutorial && (
+            <button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+            >
+              <HelpCircle className="h-3.5 w-3.5" /> How it works
+            </button>
+          )}
+        </div>
       )}
       <div className={`relative rounded-md border border-border ${heightClassName}`}>
         <div className="h-full overflow-hidden rounded-md">
@@ -244,9 +344,12 @@ export function LandBoundaryMap({
             <PolygonDrawTrigger
               trigger={drawTrigger}
               cancelTrigger={cancelTrigger}
+              undoTrigger={undoTrigger}
+              finishTrigger={finishTrigger}
               color={shapeColor}
               onCreated={handleBoundaryCreated}
               onTracingChange={setTracing}
+              onPointCountChange={setPointCount}
             />
             {boundary && (
               <Polygon
@@ -265,18 +368,39 @@ export function LandBoundaryMap({
           }}
         />
         <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
-        <div className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5">
-          {tracing ? (
+        <div
+          ref={controlsRef}
+          className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5"
+        >
+          {pinOnly ? null : tracing ? (
             <>
               <span className="rounded-md bg-background/95 px-2.5 py-2 text-xs text-muted-foreground shadow-sm sm:px-2 sm:py-1.5">
-                Click points on the map…
+                {pointCount === 0
+                  ? "Tap points around your land…"
+                  : `${pointCount} point${pointCount === 1 ? "" : "s"} placed`}
               </span>
+              <button
+                type="button"
+                onClick={() => setUndoTrigger((n) => n + 1)}
+                disabled={pointCount <= 1}
+                className="rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
+              >
+                Undo point
+              </button>
               <button
                 type="button"
                 onClick={() => setCancelTrigger((n) => n + 1)}
                 className="rounded-md border border-border bg-background/95 px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted sm:px-2.5 sm:py-1.5 sm:text-xs"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinishTrigger((n) => n + 1)}
+                disabled={pointCount < 3}
+                className="rounded-md bg-[#2563EB] px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
+              >
+                Confirm plot
               </button>
             </>
           ) : (
@@ -300,7 +424,7 @@ export function LandBoundaryMap({
                   setDrawTrigger((n) => n + 1);
                   toast("Trace your land's boundary", {
                     description:
-                      "Tap points around the edge of your land on the map. Tap the first point again to close the shape.",
+                      'Tap points around the edge of your land on the map, then tap "Confirm plot" when you\'re done.',
                   });
                 }}
                 className={
@@ -327,6 +451,43 @@ export function LandBoundaryMap({
             </span>
           </div>
         )}
+        {showTutorial && (
+          <div className="absolute inset-0 z-[1000] flex items-center justify-center rounded-md bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-lg bg-background p-5 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">How to mark your land</h3>
+                <button
+                  type="button"
+                  onClick={dismissTutorial}
+                  aria-label="Close"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <ol className="space-y-3">
+                {TUTORIAL_STEPS.map(([title, body], i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-xs font-semibold text-white">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <div className="text-xs font-semibold text-foreground">{title}</div>
+                      <div className="text-xs text-muted-foreground">{body}</div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={dismissTutorial}
+                className="mt-5 w-full rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {countyMismatch && (
         <p className="mt-2 text-xs font-medium text-[#D97706]">
@@ -334,6 +495,13 @@ export function LandBoundaryMap({
           Double-check the pin before continuing.
         </p>
       )}
+      <p className="mt-2 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+        <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+        <span>
+          Please trace only your own land — avoid including roads, neighbouring plots, or public
+          spaces. A clean, accurate outline helps your listing pass verification faster.
+        </span>
+      </p>
       <style>{`.leaflet-draw-tooltip{display:none!important}`}</style>
     </div>
   );

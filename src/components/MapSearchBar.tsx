@@ -79,6 +79,8 @@ export function MapSearchBar({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [open, setOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState("");
 
   useEffect(() => {
     const q = query.trim();
@@ -111,13 +113,26 @@ export function MapSearchBar({
   }, []);
 
   const handleNearMe = () => {
-    if (!navigator.geolocation) return;
+    setLocateError("");
+    if (!navigator.geolocation) {
+      setLocateError("Location isn't supported on this browser.");
+      return;
+    }
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        setLocating(false);
         onFly(coords.latitude, coords.longitude);
         onNearMe?.(coords.latitude, coords.longitude);
       },
-      () => {},
+      (err) => {
+        setLocating(false);
+        setLocateError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location access was denied — enable it in your browser settings to see what's near you."
+            : "Couldn't get your location. Try again.",
+        );
+      },
     );
   };
 
@@ -217,7 +232,8 @@ export function MapSearchBar({
         </div>
         <button
           onClick={handleNearMe}
-          title={onNearMe ? "Drop pin at my location" : "My location"}
+          disabled={locating}
+          title={onNearMe ? "Drop pin at my location" : "Show what's near me"}
           style={{
             height: 34,
             width: 34,
@@ -226,11 +242,12 @@ export function MapSearchBar({
             border: "1px solid #e2e8f0",
             background: "rgba(255,255,255,0.97)",
             boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-            cursor: "pointer",
+            cursor: locating ? "default" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#334155",
+            opacity: locating ? 0.6 : 1,
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
@@ -242,11 +259,32 @@ export function MapSearchBar({
             stroke="currentColor"
             strokeWidth={2}
             viewBox="0 0 24 24"
+            className={locating ? "animate-spin" : undefined}
           >
             <circle cx="12" cy="12" r="3" />
             <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
           </svg>
         </button>
+        {locateError && (
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: "calc(100% + 6px)",
+              zIndex: 801,
+              borderRadius: 6,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+              color: "#b91c1c",
+              fontSize: 11,
+              padding: "6px 8px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
+            }}
+          >
+            {locateError}
+          </div>
+        )}
       </div>
     </div>
   );

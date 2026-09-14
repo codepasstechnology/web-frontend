@@ -1,13 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Lock,
   Plus,
   Trash2,
   Pencil,
+  Tag,
   ArrowUpRight,
   BarChart3,
   Eye,
+  EyeOff,
   Inbox,
   ListChecks,
   TrendingUp,
@@ -48,6 +51,7 @@ import {
   MessageSquare,
   Clock,
   Send,
+  RefreshCw,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -64,7 +68,17 @@ import {
   Cell,
 } from "recharts";
 import { DashboardShell, type DashTab } from "@/components/DashboardShell";
+import {
+  useMyProperties,
+  useDeleteProperty,
+  useMarkPropertyTaken,
+  formatPrice,
+  INTENT_LABELS,
+  TYPE_LABELS,
+} from "@/lib/properties";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { CheckoutModal } from "@/components/CheckoutModal";
+import { BoostModal } from "@/components/BoostModal";
 import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { usePlans, addOns, type Plan } from "@/lib/plans";
@@ -83,10 +97,11 @@ export const Route = createFileRoute("/dashboard/")({
       "settings",
       "kyc",
     ];
+    // "properties" was its own tab before land and rentals were merged; keep
+    // old links and bookmarks landing on the combined list.
+    const raw = s.tab === "properties" ? "listings" : s.tab;
     const t =
-      typeof s.tab === "string" && (allowed as string[]).includes(s.tab)
-        ? (s.tab as DashTab)
-        : undefined;
+      typeof raw === "string" && (allowed as string[]).includes(raw) ? (raw as DashTab) : undefined;
     return { tab: t };
   },
   component: DashboardPage,
@@ -96,38 +111,32 @@ function DashboardPage() {
   const {
     user,
     ready,
-    removeListing,
-    bulkAddListings,
     setPlan,
     updateUser,
     deleteAccount,
     logout,
+    changePassword,
+    enableTwoFactor,
+    confirmTwoFactor,
+    disableTwoFactor,
   } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  const [checkoutCycle, setCheckoutCycle] = useState<"monthly" | "yearly" | undefined>(undefined);
 
-  const exportListings = async () => {
-    setExporting(true);
-    try {
-      const blob = await api.getBlob("/user/listings/export");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `listings_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // silent — export button stays available to retry
-    } finally {
-      setExporting(false);
+  const handleSelectPlan = (id: string, cycle?: "monthly" | "yearly") => {
+    const selected = plans.find((p) => p.id === id);
+    if (selected && selected.price > 0) {
+      setCheckoutCycle(cycle);
+      setCheckoutPlan(selected);
+    } else {
+      setPlan(id);
     }
   };
-
   useEffect(() => {
     if (search.tab && search.tab !== tab) setTab(search.tab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,177 +160,23 @@ function DashboardPage() {
         />
       )}
 
-      {tab === "listings" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold text-foreground">My Listings</h1>
-            <div className="flex items-center gap-2">
-              {user.customReports && (
-                <button
-                  onClick={exportListings}
-                  disabled={exporting}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
-                >
-                  <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
-                </button>
-              )}
-              {user.bulkUpload && (
-                <button
-                  onClick={() => setBulkOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-                >
-                  <Upload className="h-3.5 w-3.5" /> Bulk upload
-                </button>
-              )}
-              <button
-                onClick={() => navigate({ to: "/dashboard/upload" })}
-                className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
-              >
-                <Plus className="h-3.5 w-3.5" /> New
-              </button>
-            </div>
-          </div>
-          {user.listings.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-              <h3 className="text-base font-semibold text-foreground">No listings yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Once you upload land, it'll appear here for review.
-              </p>
-              <button
-                onClick={() => navigate({ to: "/dashboard/upload" })}
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
-              >
-                <Plus className="h-4 w-4" /> Upload Land
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2 md:hidden">
-                {user.listings.map((l) => (
-                  <div key={l.id} className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                    <div className="flex gap-3">
-                      {l.coverPhotoUrl ? (
-                        <img
-                          src={l.coverPhotoUrl}
-                          alt=""
-                          className="h-12 w-16 shrink-0 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-12 w-16 shrink-0 rounded bg-muted" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-foreground">{l.title}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {l.county} · KES {l.price.toLocaleString()}
-                            </div>
-                          </div>
-                          <StatusBadge status={l.status} />
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {l.views} views · {l.createdAt}
-                          </span>
-                          <div className="flex gap-1">
-                            <button
-                              className="rounded-md p-2 text-muted-foreground hover:bg-muted"
-                              title="Edit"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => removeListing(l.id).catch(() => {})}
-                              className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-sm md:block">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">Listing</th>
-                      <th className="px-4 py-3">Parcel</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Views</th>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {user.listings.map((l) => (
-                      <tr key={l.id}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            {l.coverPhotoUrl ? (
-                              <img
-                                src={l.coverPhotoUrl}
-                                alt=""
-                                className="h-9 w-12 shrink-0 rounded object-cover"
-                              />
-                            ) : (
-                              <div className="h-9 w-12 shrink-0 rounded bg-muted" />
-                            )}
-                            <div>
-                              <div className="font-medium text-foreground">{l.title}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {l.county} · KES {l.price.toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">{l.parcelNumber}</td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={l.status} />
-                        </td>
-                        <td className="px-4 py-3">{l.views}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{l.createdAt}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-1">
-                            <button
-                              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                              title="Edit"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => removeListing(l.id).catch(() => {})}
-                              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {tab === "listings" && <ListingsTab />}
 
       {tab === "analytics" && <AnalyticsTab onUpgrade={() => setUpgradeOpen(true)} />}
 
       {tab === "billing" && (
         <BillingTab
           plan={user.plan}
+          billingCycle={user.billingCycle}
+          planStatus={user.planStatus}
+          planEndsAt={user.planEndsAt}
+          planCancelledAt={user.planCancelledAt}
           plans={plans}
           maxListings={user.maxListings}
           usedListings={used}
           onUpgrade={() => setUpgradeOpen(true)}
           payments={user.payments}
-          onSelectPlan={(p) => setPlan(p)}
+          onSelectPlan={handleSelectPlan}
           manager={user.manager}
         />
       )}
@@ -338,6 +193,11 @@ function DashboardPage() {
             logout();
             navigate({ to: "/" });
           }}
+          onChangePassword={changePassword}
+          onSignedOut={() => navigate({ to: "/login" })}
+          onEnableTwoFactor={enableTwoFactor}
+          onConfirmTwoFactor={confirmTwoFactor}
+          onDisableTwoFactor={disableTwoFactor}
         />
       )}
 
@@ -347,90 +207,20 @@ function DashboardPage() {
         open={upgradeOpen}
         currentPlan={user.plan}
         onClose={() => setUpgradeOpen(false)}
-        onSelect={(p) => setPlan(p)}
+        onSelect={handleSelectPlan}
       />
 
-      <BulkUploadModal
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        onSubmit={bulkAddListings}
-      />
-    </DashboardShell>
-  );
-}
-
-function BulkUploadModal({
-  open,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (rows: { title: string; county: string; price: number }[]) => Promise<void>;
-}) {
-  const [text, setText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  if (!open) return null;
-
-  const rows = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [title, county, price] = line.split(",").map((v) => v.trim());
-      return { title: title ?? "", county: county ?? "", price: Number(price) || 0 };
-    });
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError("");
-    try {
-      await onSubmit(rows);
-      setText("");
-      onClose();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e?.message ?? "Bulk upload failed. Please check the format and try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-5 shadow-lg">
-        <h2 className="text-base font-semibold text-foreground">Bulk upload listings</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          One listing per line: <code>title, county, price</code>
-        </p>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={8}
-          placeholder={"5 Acre Parcel, Nakuru, 800000\n1/8 Acre Plot, Kiambu, 1200000"}
-          className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-[#2563EB]"
+      {checkoutPlan && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          initialCycle={checkoutCycle}
+          onClose={() => {
+            setCheckoutPlan(null);
+            setCheckoutCycle(undefined);
+          }}
         />
-        <p className="mt-1 text-xs text-muted-foreground">{rows.length} listing(s) detected</p>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={submitting || rows.length === 0}
-            className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
-          >
-            {submitting ? "Uploading…" : "Upload"}
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </DashboardShell>
   );
 }
 
@@ -472,6 +262,423 @@ interface ApiAnalytics {
   traffic_sources: { name: string; value: number; color: string }[];
 }
 
+type ListingRow = {
+  kind: "land" | "property";
+  id: string;
+  name: string;
+  sub: string;
+  status: string;
+  views: number;
+  createdAt: string;
+  coverPhotoUrl: string | null;
+};
+
+const PROPERTY_STATUS_STYLE: Record<string, string> = {
+  available: "bg-[#16A34A]/10 text-[#16A34A]",
+  pending: "bg-[#D97706]/10 text-[#D97706]",
+  taken: "bg-muted text-muted-foreground",
+  suspended: "bg-destructive/10 text-destructive",
+};
+
+function RowStatus({ row }: { row: ListingRow }) {
+  if (row.kind === "land") return <StatusBadge status={row.status} />;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${PROPERTY_STATUS_STYLE[row.status]}`}
+    >
+      {row.status}
+    </span>
+  );
+}
+
+function KindChip({ kind }: { kind: ListingRow["kind"] }) {
+  return (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      {kind === "land" ? "Land" : "Rental"}
+    </span>
+  );
+}
+
+export function ListingsTab() {
+  const navigate = useNavigate();
+  const { user, removeListing, markListingSold } = useAuth();
+  const { data: properties = [], isLoading, isError, refetch } = useMyProperties();
+  const removeProperty = useDeleteProperty();
+  const markTaken = useMarkPropertyTaken();
+
+  const [filter, setFilter] = useState<"all" | "land" | "property">("all");
+  const [deleteTarget, setDeleteTarget] = useState<ListingRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [takenTarget, setTakenTarget] = useState<ListingRow | null>(null);
+  const [taking, setTaking] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const userListings = user?.listings;
+
+  const rows = useMemo<ListingRow[]>(() => {
+    const land: ListingRow[] = (userListings ?? []).map((l) => ({
+      kind: "land",
+      id: l.id,
+      name: l.parcelNumber,
+      sub: `${l.county} · KES ${l.price.toLocaleString()}`,
+      status: l.status,
+      views: l.views,
+      createdAt: l.createdAt,
+      coverPhotoUrl: l.coverPhotoUrl,
+    }));
+    const rentals: ListingRow[] = properties.map((p) => ({
+      kind: "property",
+      id: p.id,
+      name: p.title,
+      sub: `${p.reference} · ${INTENT_LABELS[p.intent]} · ${TYPE_LABELS[p.type]} · ${formatPrice(p.price, p.pricePeriod)}`,
+      status: p.status,
+      views: p.views,
+      createdAt: p.createdAt,
+      coverPhotoUrl: p.coverPhotoUrl,
+    }));
+    // Both APIs emit created_at as a YYYY-MM-DD date string, so this sorts
+    // without parsing.
+    return [...land, ...rentals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [userListings, properties]);
+
+  const visible = filter === "all" ? rows : rows.filter((r) => r.kind === filter);
+  const counts = {
+    all: rows.length,
+    land: rows.filter((r) => r.kind === "land").length,
+    property: rows.filter((r) => r.kind === "property").length,
+  };
+
+  const exportListings = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob("/user/listings/export");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `listings_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — export button stays available to retry
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.kind === "land") await removeListing(deleteTarget.id);
+      else await removeProperty.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      // leave the dialog open so the seller can retry
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmTaken = async () => {
+    if (!takenTarget) return;
+    setTaking(true);
+    try {
+      if (takenTarget.kind === "land") await markListingSold(takenTarget.id);
+      else await markTaken.mutateAsync(takenTarget.id);
+      setTakenTarget(null);
+    } catch {
+      // leave the dialog open so the seller can retry
+    } finally {
+      setTaking(false);
+    }
+  };
+
+  const canClose = (r: ListingRow) =>
+    r.kind === "land" ? r.status === "active" : r.status === "available";
+
+  const rowActions = (r: ListingRow, size: "sm" | "md") => {
+    const icon = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
+    const pad = size === "md" ? "p-2" : "p-1.5";
+    return (
+      <div className="flex gap-1">
+        {canClose(r) && (
+          <button
+            onClick={() => setTakenTarget(r)}
+            className={`rounded-md ${pad} text-muted-foreground hover:bg-muted`}
+            title={r.kind === "land" ? "Mark as sold" : "Mark as taken"}
+          >
+            <Tag className={icon} />
+          </button>
+        )}
+        {r.kind === "land" && (
+          <button
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: r.id, type: undefined } })
+            }
+            className={`rounded-md ${pad} text-muted-foreground hover:bg-muted`}
+            title="Edit"
+          >
+            <Pencil className={icon} />
+          </button>
+        )}
+        <button
+          onClick={() => setDeleteTarget(r)}
+          aria-label={`Delete ${r.name}`}
+          className={`rounded-md ${pad} text-muted-foreground hover:bg-muted hover:text-destructive`}
+          title="Delete"
+        >
+          <Trash2 className={icon} />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-foreground">My Listings</h1>
+        <div className="flex items-center gap-2">
+          {user?.customReports && (
+            <button
+              onClick={exportListings}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
+            </button>
+          )}
+          <button
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+            }
+            className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+          >
+            <Plus className="h-3.5 w-3.5" /> New listing
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["all", "All"],
+            ["land", "Land"],
+            ["property", "Rentals"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setFilter(id)}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              filter === id
+                ? "bg-[#2563EB] text-white"
+                : "border border-border bg-card text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {label} {counts[id]}
+          </button>
+        ))}
+      </div>
+
+      {isError && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-sm text-destructive">Could not load your rentals.</p>
+          <button
+            onClick={() => refetch()}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {isLoading && rows.length === 0 ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">Loading listings…</p>
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
+          <h3 className="text-base font-semibold text-foreground">No listings yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Post a land parcel, rental, BnB or home for sale and it'll appear here for review.
+          </p>
+          <button
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+            }
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
+          >
+            <Plus className="h-4 w-4" /> New listing
+          </button>
+        </div>
+      ) : visible.length === 0 ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">
+          Nothing here under this filter.
+        </p>
+      ) : (
+        <>
+          {/* Mobile */}
+          <div className="space-y-2 md:hidden">
+            {visible.map((r) => (
+              <div
+                key={`${r.kind}-${r.id}`}
+                className="rounded-lg border border-border bg-card p-3 shadow-sm"
+              >
+                <div className="flex gap-3">
+                  {r.coverPhotoUrl ? (
+                    <img
+                      src={r.coverPhotoUrl}
+                      alt=""
+                      className="h-12 w-16 shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="h-12 w-16 shrink-0 rounded bg-muted" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-foreground">{r.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{r.sub}</div>
+                      </div>
+                      <RowStatus row={r} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <KindChip kind={r.kind} />
+                        {r.views} views · {r.createdAt}
+                      </span>
+                      {rowActions(r, "md")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop */}
+          <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-sm md:block">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">Listing</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Views</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {visible.map((r) => (
+                  <tr key={`${r.kind}-${r.id}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {r.coverPhotoUrl ? (
+                          <img
+                            src={r.coverPhotoUrl}
+                            alt=""
+                            className="h-9 w-12 shrink-0 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="h-9 w-12 shrink-0 rounded bg-muted" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground">{r.name}</div>
+                          <div className="text-xs text-muted-foreground">{r.sub}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <KindChip kind={r.kind} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <RowStatus row={r} />
+                    </td>
+                    <td className="px-4 py-3">{r.views}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.createdAt}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">{rowActions(r, "sm")}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+          >
+            <h2 className="text-base font-semibold text-foreground">
+              Delete {deleteTarget.kind === "land" ? "this listing" : "this property"}?
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This can&apos;t be undone. The listing and its photos will be removed.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {takenTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+          >
+            <h2 className="text-base font-semibold text-foreground">
+              Mark this listing as {takenTarget.kind === "land" ? "sold" : "taken"}?
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              It will be removed from the marketplace and buyers can no longer see it. This
+              can&apos;t be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setTakenTarget(null)}
+                disabled={taking}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmTaken}
+                disabled={taking}
+                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+              >
+                {taking
+                  ? "Marking…"
+                  : takenTarget.kind === "land"
+                    ? "Mark as sold"
+                    : "Mark as taken"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
   const { user } = useAuth();
   const locked = !user?.analyticsAccess;
@@ -497,7 +704,7 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
 
   const topListings = analytics?.top_listings.length
     ? analytics.top_listings
-    : (user?.listings.slice(0, 5).map((l) => ({ name: l.title, views: l.views })) ?? []);
+    : (user?.listings.slice(0, 5).map((l) => ({ name: l.parcelNumber, views: l.views })) ?? []);
 
   const countyBreakdown = analytics?.county_breakdown.length
     ? analytics.county_breakdown
@@ -527,8 +734,8 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
         time: l.createdAt,
         text:
           l.status === "pending"
-            ? `"${l.title}" is under review`
-            : `"${l.title}" · ${l.views} views`,
+            ? `"${l.parcelNumber}" is under review`
+            : `"${l.parcelNumber}" · ${l.views} views`,
         icon: <ListChecks className="h-3.5 w-3.5" />,
       })) ?? []);
 
@@ -989,8 +1196,19 @@ function SmallStat({ label, value, sub }: { label: string; value: string; sub: s
   );
 }
 
+function payStatusStyles(status: string) {
+  if (status === "Paid") return { badge: "bg-[#16A34A]/10 text-[#16A34A]", dot: "bg-[#16A34A]" };
+  if (status === "Failed" || status === "Refunded")
+    return { badge: "bg-[#DC2626]/10 text-[#DC2626]", dot: "bg-[#DC2626]" };
+  return { badge: "bg-[#D97706]/10 text-[#D97706]", dot: "bg-[#D97706]" };
+}
+
 function BillingTab({
   plan,
+  billingCycle,
+  planStatus,
+  planEndsAt,
+  planCancelledAt,
   plans,
   maxListings,
   usedListings,
@@ -1000,29 +1218,105 @@ function BillingTab({
   manager,
 }: {
   plan: string;
+  billingCycle: "monthly" | "yearly" | null;
+  planStatus: string | null;
+  planEndsAt: string | null;
+  planCancelledAt: string | null;
   plans: Plan[];
   maxListings: number;
   usedListings: number;
   onUpgrade: () => void;
-  payments: { date: string; amount: number; plan: string; status: string }[];
-  onSelectPlan: (p: string) => void;
+  payments: {
+    number: string;
+    date: string;
+    amount: number;
+    plan: string;
+    status: string;
+    downloadUrl: string;
+  }[];
+  onSelectPlan: (p: string, cycle?: "monthly" | "yearly") => void;
   manager: { name: string; email: string } | null;
 }) {
+  const { reloadUser, cancelSubscription, verifyCardPayment } = useAuth();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [boostAddOn, setBoostAddOn] = useState<(typeof addOns)[number] | null>(null);
+  const navigate = useNavigate();
+  useEffect(() => {
+    reloadUser();
+  }, [reloadUser]);
+
+  // Paystack redirects the browser back here with ?payment=paystack&reference=...
+  // after checkout. These aren't part of the route's validated search (adding
+  // them there would force every /dashboard navigation elsewhere in the app to
+  // supply them), so they're read directly off the URL, once, on mount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    if (params.get("payment") !== "paystack" || !reference) return;
+
+    let cancelled = false;
+    const startedAt = Date.now();
+
+    const poll = async () => {
+      const status = await verifyCardPayment(reference).catch(() => "pending");
+      if (cancelled) return;
+
+      if (status === "paid") {
+        await reloadUser();
+        toast("Payment received", { description: "Your plan is now active." });
+      } else if (status === "failed") {
+        toast("Payment failed", { description: "The card payment was not completed." });
+      } else if (Date.now() - startedAt < 60_000) {
+        setTimeout(poll, 3000);
+        return;
+      } else {
+        toast("Still processing", {
+          description: "This can take a moment — your plan updates automatically once confirmed.",
+        });
+      }
+
+      navigate({ to: "/dashboard", search: { tab: "billing" } });
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const p = plans.find((pl) => pl.id === plan);
   const limitNum = maxListings;
   const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
-  const pct =
-    limitNum === Infinity ? 8 : Math.min(100, Math.round((usedListings / limitNum) * 100));
+  const unlimited = limitNum === Infinity;
+  const pct = unlimited ? 100 : Math.min(100, Math.round((usedListings / limitNum) * 100));
 
   if (!p) {
     return <div className="text-sm text-muted-foreground">Loading plan details…</div>;
   }
-  const nextBillDate = new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const isYearly = billingCycle === "yearly";
+  const cycleLabel = isYearly ? "year" : "month";
+  const planAmount = isYearly ? (p.priceYearly ?? p.price * 12) : p.price;
+  const cancelled = Boolean(planCancelledAt);
+  const renewDate = planEndsAt
+    ? new Date(planEndsAt).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
   const totalPaid = payments.filter((x) => x.status === "Paid").reduce((a, b) => a + b.amount, 0);
+
+  const confirmCancel = async () => {
+    setCancelling(true);
+    try {
+      await cancelSubscription();
+      setCancelOpen(false);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1045,14 +1339,30 @@ function BillingTab({
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-semibold text-foreground">{p.name}</span>
               <span className="text-xs text-muted-foreground">
-                / {p.price === 0 ? "Free forever" : "month"}
+                / {p.price === 0 ? "Free forever" : cycleLabel}
               </span>
             </div>
             <div className="mt-1 text-lg font-semibold text-foreground">
-              {p.price === 0 ? "Ksh 0" : `Ksh ${p.price.toLocaleString()}`}
+              {p.price === 0 ? "Ksh 0" : `Ksh ${planAmount.toLocaleString()}`}
             </div>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#16A34A]" /> Active
+              {p.price === 0 || planStatus === "active" ? (
+                cancelled ? (
+                  <>
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#D97706]" /> Cancels
+                    on {renewDate}
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#16A34A]" /> Active
+                  </>
+                )
+              ) : (
+                <>
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#DC2626]" />{" "}
+                  {planStatus ?? "Inactive"}
+                </>
+              )}
             </div>
           </div>
 
@@ -1064,14 +1374,16 @@ function BillingTab({
               {usedListings}{" "}
               <span className="text-sm font-normal text-muted-foreground">of {limitText}</span>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-[#2563EB] transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            {!unlimited && (
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-[#2563EB] transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
             <div className="mt-2 text-[11px] text-muted-foreground">
-              {limitNum === Infinity
+              {unlimited
                 ? "Unlimited listings on Pro"
                 : `${Math.max(0, limitNum - usedListings)} listing slots remaining`}
             </div>
@@ -1079,13 +1391,23 @@ function BillingTab({
 
           <div className="p-5">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {p.price === 0 ? "Upgrade for more" : "Next billing"}
+              {p.price === 0
+                ? "Upgrade for more"
+                : cancelled
+                  ? "Subscription ends"
+                  : "Next billing"}
             </div>
             <div className="mt-2 text-2xl font-semibold text-foreground">
-              {p.price === 0 ? "—" : `Ksh ${p.price.toLocaleString()}`}
+              {p.price === 0 ? "—" : `Ksh ${planAmount.toLocaleString()}`}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {p.price === 0 ? "You are on the free tier" : `on ${nextBillDate}`}
+              {p.price === 0
+                ? "You are on the free tier"
+                : cancelled
+                  ? `Cancelled — access until ${renewDate ?? "the period end"}`
+                  : renewDate
+                    ? `Renews on ${renewDate}`
+                    : "—"}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {plan !== "pro" && (
@@ -1098,7 +1420,15 @@ function BillingTab({
               )}
               {plan !== "free" && (
                 <button
-                  onClick={() => onSelectPlan("free")}
+                  onClick={() => onSelectPlan(plan, billingCycle ?? undefined)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#2563EB] px-3 py-1.5 text-xs font-medium text-[#2563EB] hover:bg-[#2563EB]/10"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> {cancelled ? "Resume" : "Renew"}
+                </button>
+              )}
+              {plan !== "free" && !cancelled && (
+                <button
+                  onClick={() => setCancelOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   Cancel plan
@@ -1153,6 +1483,11 @@ function BillingTab({
                   </span>
                   <span className="text-xs text-muted-foreground">/ mo</span>
                 </div>
+                {pl.priceYearly != null && pl.priceYearly > 0 && (
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    or Ksh {pl.priceYearly.toLocaleString()} / yr
+                  </div>
+                )}
                 <ul className="mt-4 space-y-1.5 text-xs text-foreground">
                   {pl.features.slice(0, 5).map((f) => (
                     <li key={f} className="flex items-start gap-2">
@@ -1162,7 +1497,7 @@ function BillingTab({
                 </ul>
                 <button
                   disabled={isCurrent}
-                  onClick={() => onSelectPlan(pl.id)}
+                  onClick={() => (pl.id === "free" ? setCancelOpen(true) : onSelectPlan(pl.id))}
                   className={`mt-5 inline-flex items-center justify-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                     isCurrent
                       ? "cursor-default bg-muted text-muted-foreground"
@@ -1205,7 +1540,10 @@ function BillingTab({
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold text-foreground">Ksh {a.price}</div>
-                  <button className="mt-1 text-[11px] font-medium text-[#2563EB] hover:underline">
+                  <button
+                    onClick={() => setBoostAddOn(a)}
+                    className="mt-1 text-[11px] font-medium text-[#2563EB] hover:underline"
+                  >
                     Buy
                   </button>
                 </div>
@@ -1217,13 +1555,12 @@ function BillingTab({
         <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Payment method</h3>
+            <h3 className="text-sm font-semibold text-foreground">How you pay</h3>
           </div>
           <div className="mt-4 rounded-lg border border-dashed border-border p-4 text-center">
-            <p className="text-xs text-muted-foreground">No payment method on file</p>
-            <button className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted">
-              <Plus className="h-3.5 w-3.5" /> Add M-Pesa or card
-            </button>
+            <p className="text-xs text-muted-foreground">
+              Pay with M-Pesa (approve the charge on your phone) or by card at checkout.
+            </p>
           </div>
           <div className="mt-4 flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Total paid</span>
@@ -1257,9 +1594,7 @@ function BillingTab({
               {payments.map((pay, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 px-5 py-3">
                   <div className="min-w-0">
-                    <div className="font-mono text-xs text-foreground">
-                      INV-{String(payments.length - i).padStart(4, "0")}
-                    </div>
+                    <div className="font-mono text-xs text-foreground">{pay.number}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {pay.plan} · {pay.date}
                     </div>
@@ -1270,20 +1605,23 @@ function BillingTab({
                         Ksh {pay.amount.toLocaleString()}
                       </div>
                       <span
-                        className={`mt-0.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
+                        className={`mt-0.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${payStatusStyles(pay.status).badge}`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${pay.status === "Paid" ? "bg-[#16A34A]" : "bg-[#D97706]"}`}
+                          className={`h-1.5 w-1.5 rounded-full ${payStatusStyles(pay.status).dot}`}
                         />
                         {pay.status}
                       </span>
                     </div>
-                    <button
+                    <a
+                      href={pay.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title="Download PDF"
+                      title="Download invoice"
                     >
                       <Download className="h-4 w-4" />
-                    </button>
+                    </a>
                   </div>
                 </div>
               ))}
@@ -1303,9 +1641,7 @@ function BillingTab({
                 <tbody className="divide-y divide-border">
                   {payments.map((pay, i) => (
                     <tr key={i} className="hover:bg-muted/30">
-                      <td className="px-5 py-3 font-mono text-xs text-foreground">
-                        INV-{String(payments.length - i).padStart(4, "0")}
-                      </td>
+                      <td className="px-5 py-3 font-mono text-xs text-foreground">{pay.number}</td>
                       <td className="px-5 py-3 text-muted-foreground">{pay.date}</td>
                       <td className="px-5 py-3">{pay.plan}</td>
                       <td className="px-5 py-3 font-medium text-foreground">
@@ -1313,18 +1649,23 @@ function BillingTab({
                       </td>
                       <td className="px-5 py-3">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${pay.status === "Paid" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#D97706]/10 text-[#D97706]"}`}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${payStatusStyles(pay.status).badge}`}
                         >
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${pay.status === "Paid" ? "bg-[#16A34A]" : "bg-[#D97706]"}`}
+                            className={`h-1.5 w-1.5 rounded-full ${payStatusStyles(pay.status).dot}`}
                           />
                           {pay.status}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <button className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline">
+                        <a
+                          href={pay.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline"
+                        >
                           <Download className="h-3 w-3" /> PDF
-                        </button>
+                        </a>
                       </td>
                     </tr>
                   ))}
@@ -1334,6 +1675,37 @@ function BillingTab({
           </>
         )}
       </div>
+
+      {boostAddOn && <BoostModal addOn={boostAddOn} onClose={() => setBoostAddOn(null)} />}
+
+      {cancelOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
+            <h2 className="text-base font-semibold text-foreground">Cancel your subscription?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your {p.name} plan stays active until {renewDate ?? "the end of your billing period"}.
+              It won&apos;t renew after that, and you&apos;ll move to the Free plan. You can resume
+              anytime before then.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setCancelOpen(false)}
+                disabled={cancelling}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-60"
+              >
+                Keep plan
+              </button>
+              <button
+                onClick={confirmCancel}
+                disabled={cancelling}
+                className="rounded-md bg-[#DC2626] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#b91c1c] disabled:opacity-60"
+              >
+                {cancelling ? "Cancelling…" : "Cancel subscription"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1381,7 +1753,8 @@ function OverviewTab({
       key: "listing",
       label: "Upload your first listing",
       done: used > 0,
-      action: () => navigate({ to: "/dashboard/upload" }),
+      action: () =>
+        navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } }),
     },
     {
       key: "verify",
@@ -1429,7 +1802,9 @@ function OverviewTab({
             <BarChart3 className="h-3.5 w-3.5" /> View analytics
           </button>
           <button
-            onClick={() => navigate({ to: "/dashboard/upload" })}
+            onClick={() =>
+              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+            }
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-2 text-xs font-medium text-white hover:bg-[#1d4ed8] sm:flex-none sm:py-1.5"
           >
             <Plus className="h-3.5 w-3.5" /> New listing
@@ -1565,7 +1940,12 @@ function OverviewTab({
             <div className="px-5 py-10 text-center">
               <p className="text-sm text-muted-foreground">No listings yet.</p>
               <button
-                onClick={() => navigate({ to: "/dashboard/upload" })}
+                onClick={() =>
+                  navigate({
+                    to: "/dashboard/upload",
+                    search: { edit: undefined, type: undefined },
+                  })
+                }
                 className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
               >
                 <Plus className="h-3.5 w-3.5" /> Upload your first listing
@@ -1585,7 +1965,9 @@ function OverviewTab({
                     <div className="h-10 w-12 shrink-0 rounded bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">{l.title}</div>
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {l.parcelNumber}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">
                       {l.county} · KES {l.price.toLocaleString()}
                     </div>
@@ -1668,11 +2050,21 @@ function SettingsTab({
   onUpdate,
   onDelete,
   onLogout,
+  onChangePassword,
+  onSignedOut,
+  onEnableTwoFactor,
+  onConfirmTwoFactor,
+  onDisableTwoFactor,
 }: {
   user: AppUser;
   onUpdate: (patch: Partial<AppUser>) => Promise<void>;
   onDelete: () => Promise<void>;
   onLogout: () => void;
+  onChangePassword: (current: string, next: string) => Promise<void>;
+  onSignedOut: () => void;
+  onEnableTwoFactor: () => Promise<void>;
+  onConfirmTwoFactor: (code: string) => Promise<void>;
+  onDisableTwoFactor: (password: string) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     fullName: user.fullName,
@@ -1692,10 +2084,15 @@ function SettingsTab({
       marketing: false,
     },
   );
-  const [twoFactor, setTwoFactor] = useState(Boolean(user.twoFactor));
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
   const [pwdMsg, setPwdMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [pwdBusy, setPwdBusy] = useState(false);
+  const [tfaStep, setTfaStep] = useState<"idle" | "confirm" | "disable">("idle");
+  const [tfaCode, setTfaCode] = useState("");
+  const [tfaPassword, setTfaPassword] = useState("");
+  const [tfaBusy, setTfaBusy] = useState(false);
+  const [tfaMsg, setTfaMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [confirmDel, setConfirmDel] = useState("");
   const [section, setSection] = useState<
     "profile" | "security" | "notifications" | "preferences" | "danger"
@@ -1726,17 +2123,73 @@ function SettingsTab({
     await onUpdate({ notifications: notif });
     setSavedAt(new Date().toLocaleTimeString());
   };
-  const saveSecurity = async () => {
-    await onUpdate({ twoFactor });
-    setSavedAt(new Date().toLocaleTimeString());
+  const startTwoFactor = async () => {
+    setTfaMsg(null);
+    setTfaBusy(true);
+    try {
+      await onEnableTwoFactor();
+      setTfaStep("confirm");
+    } catch (e) {
+      setTfaMsg({ type: "err", text: (e as { message: string }).message });
+    } finally {
+      setTfaBusy(false);
+    }
   };
-  const changePassword = () => {
+
+  const confirmTwoFactorCode = async () => {
+    setTfaMsg(null);
+    setTfaBusy(true);
+    try {
+      await onConfirmTwoFactor(tfaCode);
+      setTfaStep("idle");
+      setTfaCode("");
+      setTfaMsg({ type: "ok", text: "Two-factor authentication is on." });
+    } catch (e) {
+      const err = e as { message: string; errors?: Record<string, string[]> };
+      setTfaMsg({ type: "err", text: err.errors?.code?.[0] ?? err.message });
+    } finally {
+      setTfaBusy(false);
+    }
+  };
+
+  const turnOffTwoFactor = async () => {
+    setTfaMsg(null);
+    setTfaBusy(true);
+    try {
+      await onDisableTwoFactor(tfaPassword);
+      setTfaStep("idle");
+      setTfaPassword("");
+      setTfaMsg({ type: "ok", text: "Two-factor authentication is off." });
+    } catch (e) {
+      const err = e as { message: string; errors?: Record<string, string[]> };
+      setTfaMsg({ type: "err", text: err.errors?.password?.[0] ?? err.message });
+    } finally {
+      setTfaBusy(false);
+    }
+  };
+  const changePassword = async () => {
     if (pwd.next.length < 8)
       return setPwdMsg({ type: "err", text: "Password must be at least 8 characters." });
     if (pwd.next !== pwd.confirm)
       return setPwdMsg({ type: "err", text: "Passwords do not match." });
-    setPwd({ current: "", next: "", confirm: "" });
-    setPwdMsg({ type: "ok", text: "Password updated successfully." });
+
+    setPwdBusy(true);
+    try {
+      await onChangePassword(pwd.current, pwd.next);
+      setPwd({ current: "", next: "", confirm: "" });
+      setPwdMsg({
+        type: "ok",
+        text: "Password updated. Signing you out on all devices…",
+      });
+      setTimeout(onSignedOut, 1500);
+    } catch (e) {
+      const err = e as { message: string; errors?: Record<string, string[]> };
+      setPwdMsg({
+        type: "err",
+        text: err.errors?.current_password?.[0] ?? err.errors?.password?.[0] ?? err.message,
+      });
+      setPwdBusy(false);
+    }
   };
 
   const sections: { id: typeof section; label: string; icon: React.ReactNode }[] = [
@@ -1956,9 +2409,10 @@ function SettingsTab({
             <div className="mt-4 flex justify-end">
               <button
                 onClick={changePassword}
-                className="rounded-md bg-[#0F172A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1e293b]"
+                disabled={pwdBusy}
+                className="rounded-md bg-[#0F172A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Update password
+                {pwdBusy ? "Updating…" : "Update password"}
               </button>
             </div>
           </div>
@@ -1968,19 +2422,92 @@ function SettingsTab({
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Two-factor authentication</h3>
                 <p className="text-xs text-muted-foreground">
-                  Add an extra layer via SMS to your registered number.
+                  Require a code sent to {user.email} each time you sign in.
                 </p>
               </div>
-              <Toggle checked={twoFactor} onChange={setTwoFactor} />
+              <Toggle
+                checked={Boolean(user.twoFactor)}
+                onChange={(next) => {
+                  setTfaMsg(null);
+                  setTfaCode("");
+                  setTfaPassword("");
+                  if (next) {
+                    startTwoFactor();
+                  } else {
+                    setTfaStep("disable");
+                  }
+                }}
+              />
             </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={saveSecurity}
-                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+
+            {tfaStep === "confirm" && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Enter the 6-digit code we just emailed you to finish turning this on.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    value={tfaCode}
+                    onChange={(e) => setTfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    inputMode="numeric"
+                    maxLength={6}
+                    className="h-9 w-32 rounded-md border border-border bg-background px-3 text-center text-sm font-semibold tracking-[0.25em] text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                  />
+                  <button
+                    onClick={confirmTwoFactorCode}
+                    disabled={tfaBusy || tfaCode.length !== 6}
+                    className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {tfaBusy ? "Confirming…" : "Confirm"}
+                  </button>
+                  <button
+                    onClick={() => setTfaStep("idle")}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tfaStep === "disable" && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Enter your password to turn off two-factor authentication.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    type="password"
+                    value={tfaPassword}
+                    onChange={(e) => setTfaPassword(e.target.value)}
+                    placeholder="Your password"
+                    className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                  />
+                  <button
+                    onClick={turnOffTwoFactor}
+                    disabled={tfaBusy || !tfaPassword}
+                    className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {tfaBusy ? "Turning off…" : "Turn off"}
+                  </button>
+                  <button
+                    onClick={() => setTfaStep("idle")}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tfaMsg && (
+              <p
+                className={`mt-3 text-xs font-medium ${tfaMsg.type === "ok" ? "text-[#16A34A]" : "text-destructive"}`}
               >
-                Save security settings
-              </button>
-            </div>
+                {tfaMsg.text}
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
@@ -2169,19 +2696,36 @@ function Field({
   placeholder?: string;
   icon?: React.ReactNode;
 }) {
+  const [reveal, setReveal] = useState(false);
+  const revealable = type === "password";
   return (
     <div>
       <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {icon}
         {label}
       </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="mt-1 h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
-      />
+      <div className="relative mt-1">
+        <input
+          type={revealable && reveal ? "text" : type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 ${
+            revealable ? "pr-9 [&::-ms-reveal]:hidden" : ""
+          }`}
+        />
+        {revealable && (
+          <button
+            type="button"
+            onClick={() => setReveal((v) => !v)}
+            tabIndex={-1}
+            aria-label={reveal ? "Hide password" : "Show password"}
+            className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -2853,6 +3397,7 @@ interface UserParcel {
 
 const DOC_TYPES = [
   { value: "title_deed", label: "Title Deed" },
+  { value: "mutation", label: "Mutation Form" },
   { value: "lease_agreement", label: "Lease Agreement" },
   { value: "certificate_of_occupancy", label: "Certificate of Occupancy" },
   { value: "survey_map", label: "Survey Map" },
@@ -2875,7 +3420,7 @@ function KycTab() {
   const [loadingParcels, setLoadingParcels] = useState(false);
   const [submitParcel, setSubmitParcel] = useState("");
   const [submitDocType, setSubmitDocType] = useState("title_deed");
-  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitDocuments, setSubmitDocuments] = useState<{ type: string; file: File }[]>([]);
   const [submitError, setSubmitError] = useState("");
   const [submittingKyc, setSubmittingKyc] = useState(false);
   const submitFileRef = useRef<HTMLInputElement | null>(null);
@@ -2968,7 +3513,7 @@ function KycTab() {
     setShowSubmit(true);
     setSubmitParcel("");
     setSubmitDocType("title_deed");
-    setSubmitFile(null);
+    setSubmitDocuments([]);
     setSubmitError("");
     if (parcels.length === 0) {
       setLoadingParcels(true);
@@ -2984,8 +3529,8 @@ function KycTab() {
   };
 
   const handleSubmitKyc = async () => {
-    if (!submitParcel || !submitFile) {
-      setSubmitError("Please select a parcel and upload a document.");
+    if (!submitParcel || submitDocuments.length === 0) {
+      setSubmitError("Please select a parcel and add at least one document.");
       return;
     }
     setSubmittingKyc(true);
@@ -2993,8 +3538,10 @@ function KycTab() {
     try {
       const fd = new FormData();
       fd.append("parcel_id", submitParcel);
-      fd.append("document_type", submitDocType);
-      fd.append("document", submitFile);
+      submitDocuments.forEach((d, i) => {
+        fd.append(`documents[${i}][type]`, d.type);
+        fd.append(`documents[${i}][file]`, d.file);
+      });
       const res = await api.post<{ data: KycApplication }>("/user/kyc", fd);
       setApplications((prev) => [res.data, ...prev]);
       setShowSubmit(false);
@@ -3097,8 +3644,7 @@ function KycTab() {
                     <option value="">Select a parcel…</option>
                     {parcels.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.title}
-                        {p.parcel_number ? ` · ${p.parcel_number}` : ""}
+                        {p.parcel_number ?? p.title}
                       </option>
                     ))}
                   </select>
@@ -3106,56 +3652,70 @@ function KycTab() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-foreground">
-                  Document type
+                  Add a document
                 </label>
-                <select
-                  value={submitDocType}
-                  onChange={(e) => setSubmitDocType(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                >
-                  {DOC_TYPES.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-foreground">
-                  Document file
-                </label>
-                <input
-                  ref={submitFileRef}
-                  type="file"
-                  accept="image/jpeg,image/png,application/pdf"
-                  className="hidden"
-                  onChange={(e) => setSubmitFile(e.target.files?.[0] ?? null)}
-                />
                 <div className="flex items-center gap-2">
+                  <select
+                    value={submitDocType}
+                    onChange={(e) => setSubmitDocType(e.target.value)}
+                    className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                  >
+                    {DOC_TYPES.map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    ref={submitFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      if (submitFileRef.current) submitFileRef.current.value = "";
+                      if (!file) return;
+                      setSubmitDocuments((prev) => [...prev, { type: submitDocType, file }]);
+                    }}
+                  />
                   <button
                     type="button"
                     onClick={() => submitFileRef.current?.click()}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
                   >
                     <Upload className="h-3.5 w-3.5" />
-                    {submitFile ? submitFile.name : "Choose file"}
+                    Choose file
                   </button>
-                  {submitFile && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSubmitFile(null);
-                        if (submitFileRef.current) submitFileRef.current.value = "";
-                      }}
-                      className="text-[11px] text-muted-foreground hover:text-destructive"
-                    >
-                      Remove
-                    </button>
-                  )}
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  JPG, PNG or PDF · max 10 MB
+                  JPG, PNG or PDF · max 10 MB per document
                 </p>
+                {submitDocuments.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {submitDocuments.map((d, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-1.5 text-xs"
+                      >
+                        <span>
+                          <span className="font-medium text-foreground">
+                            {DOC_TYPES.find((t) => t.value === d.type)?.label}:
+                          </span>{" "}
+                          <span className="text-muted-foreground">{d.file.name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSubmitDocuments((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               {submitError && (
                 <p className="rounded-md bg-[#FEE2E2] px-3 py-2 text-xs font-medium text-[#DC2626]">
@@ -3173,7 +3733,7 @@ function KycTab() {
               </button>
               <button
                 onClick={handleSubmitKyc}
-                disabled={submittingKyc || !submitParcel || !submitFile}
+                disabled={submittingKyc || !submitParcel || submitDocuments.length === 0}
                 className="rounded-md bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submittingKyc ? "Submitting…" : "Submit application"}

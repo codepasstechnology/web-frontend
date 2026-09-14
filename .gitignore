@@ -21,9 +21,8 @@ dist-cpanel
 # Archives
 *.zip
 
-# TanStack Router generated files
+# TanStack Router generated files (src/routeTree.gen.ts is committed so CI can type-check without a build)
 .tanstack/**
-src/routeTree.gen.ts
 
 # Environment variables — never commit secrets
 .env

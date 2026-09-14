@@ -15,8 +15,12 @@ import {
   ChevronRight,
   FileCheck,
   Heart,
+  Star,
+  MessageCircle,
+  Copy,
 } from "lucide-react";
-import { statusMeta, type LandParcel, type Rental } from "@/lib/landData";
+import { statusMeta, type LandParcel } from "@/lib/landData";
+import { formatPrice, INTENT_LABELS, TYPE_LABELS, type Property } from "@/lib/properties";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -125,6 +129,29 @@ function ShareButton({ title, text }: { title: string; text: string }) {
   );
 }
 
+function whatsappUrl(phone: string, message: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 9) return null;
+  const withCountryCode = digits.startsWith("0") ? `254${digits.slice(1)}` : digits;
+  return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
+}
+
+function WhatsAppButton({ phone, message }: { phone: string; message: string }) {
+  const url = whatsappUrl(phone, message);
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+    >
+      <MessageCircle className="h-3.5 w-3.5 text-[var(--success)]" />
+      WhatsApp
+    </a>
+  );
+}
+
 function VerificationRequestButton({ parcelId }: { parcelId: string }) {
   const { user } = useAuth();
   const [state, setState] = useState<"idle" | "loading" | "sent" | "error">("idle");
@@ -201,6 +228,32 @@ function SaveButton({ saved, onToggle }: { saved: boolean; onToggle: () => void 
   );
 }
 
+function CoordinatesRow({ lat, lng }: { lat: number; lng: number }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <button
+      onClick={onCopy}
+      className="mb-4 inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-[var(--success)]" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+      {copied ? "Copied" : "Copy coordinates"}
+    </button>
+  );
+}
+
 function PhotoGallery({ photos }: { photos: string[] }) {
   const [index, setIndex] = useState(0);
   if (photos.length === 0) return null;
@@ -272,11 +325,14 @@ export function ParcelPanel({
                 <ShieldCheck className="h-3 w-3" /> Verified
               </span>
             )}
+            {parcel.featured && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-[#D97706] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                <Star className="h-3 w-3" /> Featured
+              </span>
+            )}
           </div>
           <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{parcel.title}</h2>
-          <p className="text-xs text-muted-foreground">
-            {parcel.parcelNumber} · {parcel.county}
-          </p>
+          <p className="text-xs text-muted-foreground">{parcel.county}</p>
         </div>
         <div className="ml-2 flex shrink-0 items-center gap-1.5">
           <SaveButton saved={saved} onToggle={onToggleSaved} />
@@ -296,6 +352,10 @@ export function ParcelPanel({
           <Stat label="Size" value={parcel.size} />
           <Stat label={priceLabel} value={`KES ${parcel.price.toLocaleString()}`} />
         </div>
+
+        {parcel.latitude != null && parcel.longitude != null && (
+          <CoordinatesRow lat={parcel.latitude} lng={parcel.longitude} />
+        )}
 
         <div className="mb-4 rounded-md border border-border bg-background p-3">
           <div className="mb-1 flex items-center justify-between">
@@ -374,6 +434,10 @@ export function ParcelPanel({
 
       <div className="flex items-center gap-2 border-t border-border p-4">
         <VerificationRequestButton parcelId={parcel.id} />
+        <WhatsAppButton
+          phone={parcel.seller.phone}
+          message={`Hi, I'm interested in ${parcel.title} listed on Geo Properties.`}
+        />
         <ShareButton
           title={parcel.title}
           text={`${parcel.parcelNumber} · ${parcel.size} · KES ${parcel.price.toLocaleString()}`}
@@ -383,9 +447,16 @@ export function ParcelPanel({
   );
 }
 
-export function RentalPanel({ rental, onClose }: { rental: Rental; onClose: () => void }) {
+export function RentalPanel({ property, onClose }: { property: Property; onClose: () => void }) {
   const isMobile = useIsMobile();
   const { heightVh, onPointerDown, onPointerMove, onPointerUp } = useDraggableSheetHeight();
+  const priceLabel =
+    property.pricePeriod === "month"
+      ? "Rent / month"
+      : property.pricePeriod === "night"
+        ? "Rate / night"
+        : "Asking price";
+
   return (
     <aside className={panelClass} style={isMobile ? { maxHeight: `${heightVh}vh` } : undefined}>
       <DragHandle
@@ -397,13 +468,22 @@ export function RentalPanel({ rental, onClose }: { rental: Rental; onClose: () =
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="inline-flex items-center rounded-sm bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
-              {rental.type}
+              {TYPE_LABELS[property.type]}
             </span>
-            <PostedByBadge postedBy={rental.postedBy} />
+            <span className="inline-flex items-center rounded-sm border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+              {INTENT_LABELS[property.intent]}
+            </span>
+            <PostedByBadge postedBy={property.postedBy} />
+            {property.featured && (
+              <span className="inline-flex items-center rounded-sm bg-[#D97706] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                Featured
+              </span>
+            )}
           </div>
-          <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{rental.title}</h2>
+          <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{property.title}</h2>
           <p className="text-xs text-muted-foreground">
-            {rental.area}, {rental.county}
+            {property.area ? `${property.area}, ` : ""}
+            {property.county}
           </p>
         </div>
         <button
@@ -413,29 +493,90 @@ export function RentalPanel({ rental, onClose }: { rental: Rental; onClose: () =
           <X className="h-4 w-4" />
         </button>
       </div>
+
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {property.photos.length > 0 && (
+          <div className="mb-4 flex gap-2 overflow-x-auto">
+            {property.photos.map((url) => (
+              <img
+                key={url}
+                src={url}
+                alt=""
+                className="h-28 w-40 flex-shrink-0 rounded-md object-cover"
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )}
+
         <div className="mb-4 grid grid-cols-2 gap-3">
-          <Stat label="Rent / month" value={`KES ${rental.price.toLocaleString()}`} />
-          <Stat label="Bedrooms" value={rental.bedrooms === 0 ? "—" : String(rental.bedrooms)} />
+          <Stat label={priceLabel} value={formatPrice(property.price, property.pricePeriod)} />
+          <Stat
+            label="Bedrooms"
+            value={property.bedrooms === 0 ? "—" : String(property.bedrooms)}
+          />
+          <Stat
+            label="Bathrooms"
+            value={property.bathrooms === 0 ? "—" : String(property.bathrooms)}
+          />
+          <Stat label="Furnished" value={property.furnished ? "Yes" : "No"} />
         </div>
-        <Section title={rental.postedBy === "owner" ? "Listed by Owner" : "Listed by Broker"}>
-          <p className="text-sm text-foreground">{rental.agent.name}</p>
+
+        <CoordinatesRow lat={property.position[0]} lng={property.position[1]} />
+
+        {property.intent === "bnb" && (property.minNights || property.cleaningFee) && (
+          <Section title="BnB terms">
+            {property.minNights && (
+              <p className="text-sm text-foreground">Minimum stay: {property.minNights} nights</p>
+            )}
+            {property.cleaningFee != null && (
+              <p className="text-sm text-foreground">
+                Cleaning fee: KES {property.cleaningFee.toLocaleString()}
+              </p>
+            )}
+          </Section>
+        )}
+
+        {property.description && (
+          <Section title="About this property">
+            <p className="text-sm text-muted-foreground">{property.description}</p>
+          </Section>
+        )}
+
+        {property.amenities.length > 0 && (
+          <Section title="Amenities">
+            <div className="flex flex-wrap gap-1.5">
+              {property.amenities.map((a) => (
+                <span
+                  key={a}
+                  className="rounded-sm border border-border bg-background px-2 py-0.5 text-[11px] text-foreground"
+                >
+                  {a}
+                </span>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        <Section title={property.postedBy === "owner" ? "Listed by Owner" : "Listed by Broker"}>
+          <p className="text-sm text-foreground">{property.agent.name}</p>
+          {property.agent.agency && (
+            <p className="text-xs text-muted-foreground">{property.agent.agency}</p>
+          )}
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-foreground">
-            <Phone className="h-3 w-3" /> {rental.agent.phone}
+            <Phone className="h-3 w-3" /> {property.agent.phone}
           </p>
         </Section>
-        <p className="text-sm text-muted-foreground">
-          Verified rental listing within the Geo Properties network. Schedule a viewing or request a
-          tenancy report.
-        </p>
       </div>
+
       <div className="flex items-center gap-2 border-t border-border p-4">
-        <button className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-secondary">
-          Schedule Viewing
-        </button>
+        <WhatsAppButton
+          phone={property.agent.phone}
+          message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on Geo Properties.`}
+        />
         <ShareButton
-          title={rental.title}
-          text={`${rental.type} · ${rental.area} · KES ${rental.price.toLocaleString()}/mo`}
+          title={property.title}
+          text={`${TYPE_LABELS[property.type]} · ${property.county} · ${formatPrice(property.price, property.pricePeriod)}`}
         />
       </div>
     </aside>
