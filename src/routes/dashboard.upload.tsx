@@ -51,6 +51,7 @@ const DRAFT_KEY = "lv_upload_draft_v1";
 interface UploadDraft {
   step: number;
   parcelNumber: string;
+  phone: string;
   county: string;
   area: string;
   sizeUnit: SizeUnit;
@@ -239,6 +240,7 @@ function UploadPage() {
 
   const [form, setForm] = useState({
     parcelNumber: draft?.parcelNumber ?? "",
+    phone: draft?.phone ?? "",
     county: draft?.county ?? "",
     area: draft?.area ?? "",
     sizeUnit: draft?.sizeUnit ?? ("acres" as SizeUnit),
@@ -279,6 +281,7 @@ function UploadPage() {
         setForm((f) => ({
           ...f,
           parcelNumber: d.parcelNumber,
+          phone: d.phone ?? "",
           county: d.county,
           area: d.area ?? "",
           sizeUnit: "acres",
@@ -396,6 +399,7 @@ function UploadPage() {
     const payload: NewListingInput = {
       title: form.parcelNumber,
       parcelNumber: form.parcelNumber,
+      phone: form.phone || undefined,
       county: form.county,
       area: form.area || undefined,
       size: sizeDisplay || undefined,
@@ -581,6 +585,7 @@ function UploadPage() {
                     setStep(0);
                     setForm({
                       parcelNumber: "",
+                      phone: "",
                       county: "",
                       area: "",
                       sizeUnit: "acres",
@@ -720,6 +725,15 @@ function UploadPage() {
                     placeholder="e.g. 1,850,000"
                     value={formatThousands(form.price)}
                     onChange={(e) => set("price", toDigits(e.target.value))}
+                  />
+                </Field>
+                <Field label="Contact phone">
+                  <input
+                    className="lv-input"
+                    type="tel"
+                    placeholder="+254 7XX XXX XXX"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
                   />
                 </Field>
                 <Field label="Listing type">
@@ -1043,6 +1057,7 @@ function UploadPage() {
                   label="Price"
                   value={form.price ? `Ksh ${Number(form.price).toLocaleString()}` : "—"}
                 />
+                <Summary label="Contact phone" value={form.phone || "—"} />
                 <Summary
                   label="Listing type"
                   value={form.listingType === "sale" ? "For Sale" : "For Lease"}
