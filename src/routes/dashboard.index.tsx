@@ -15,7 +15,6 @@ import {
   ListChecks,
   TrendingUp,
   TrendingDown,
-  MousePointerClick,
   Bookmark,
   Globe,
   Check,
@@ -52,6 +51,11 @@ import {
   Clock,
   Send,
   RefreshCw,
+  Calendar as CalendarIcon,
+  Printer,
+  Smartphone,
+  Monitor,
+  Tablet,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -61,12 +65,17 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Marker,
+  Tooltip as LeafletTooltip,
+} from "react-leaflet";
+import L from "leaflet";
+import { format, differenceInCalendarDays } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import {
   useMyProperties,
@@ -83,9 +92,22 @@ import { useAuth, type AppUser } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { usePlans, addOns, type Plan } from "@/lib/plans";
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/dashboard/")({
-  head: () => ({ meta: [{ title: "Dashboard — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — GeoPin Properties Kenya" }] }),
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => {
     const allowed: DashTab[] = [
@@ -162,7 +184,12 @@ function DashboardPage() {
 
       {tab === "listings" && <ListingsTab />}
 
-      {tab === "analytics" && <AnalyticsTab onUpgrade={() => setUpgradeOpen(true)} />}
+      {tab === "analytics" && (
+        <AnalyticsTab
+          onUpgrade={() => setUpgradeOpen(true)}
+          onGoTab={(t) => navigate({ to: "/dashboard", search: { tab: t } })}
+        />
+      )}
 
       {tab === "billing" && (
         <BillingTab
@@ -238,28 +265,43 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
+const LAND_STATUS_VARIANT: Record<string, "success" | "warning" | "secondary"> = {
+  pending: "warning",
+  active: "success",
+  sold: "secondary",
+};
+
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pending: "bg-[#D97706]/10 text-[#D97706]",
-    active: "bg-[#16A34A]/10 text-[#16A34A]",
-    sold: "bg-muted text-muted-foreground",
-  };
   return (
-    <span
-      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium capitalize ${map[status]}`}
-    >
+    <Badge variant={LAND_STATUS_VARIANT[status] ?? "secondary"} className="capitalize">
       {status}
-    </span>
+    </Badge>
   );
 }
 
 interface ApiAnalytics {
   total_views: number;
-  top_listings: { name: string; views: number }[];
+  total_saves: number;
+  total_inquiries: number;
+  top_listings: { id: string; name: string; views: number; saves: number; inquiries: number }[];
+  listing_points: {
+    title: string;
+    county: string;
+    latitude: number;
+    longitude: number;
+    views: number;
+  }[];
   county_breakdown: { county: string; views: number }[];
   recent_activity: { title: string; status: string; views: number; created_at: string }[];
   daily_views: { date: string; views: number }[];
+  daily_saves: { date: string; saves: number }[];
+  daily_inquiries: { date: string; inquiries: number }[];
   traffic_sources: { name: string; value: number; color: string }[];
+  device_breakdown: { name: string; value: number }[];
+  peak_activity: { day: string; views: number }[];
+  county_avg_prices: { county: string; avg_price: number }[];
+  avg_days_on_market: number | null;
+  county_percentile: { county: string; percentile: number } | null;
 }
 
 type ListingRow = {
@@ -273,21 +315,20 @@ type ListingRow = {
   coverPhotoUrl: string | null;
 };
 
-const PROPERTY_STATUS_STYLE: Record<string, string> = {
-  available: "bg-[#16A34A]/10 text-[#16A34A]",
-  pending: "bg-[#D97706]/10 text-[#D97706]",
-  taken: "bg-muted text-muted-foreground",
-  suspended: "bg-destructive/10 text-destructive",
-};
+const PROPERTY_STATUS_VARIANT: Record<string, "success" | "warning" | "secondary" | "destructive"> =
+  {
+    available: "success",
+    pending: "warning",
+    taken: "secondary",
+    suspended: "destructive",
+  };
 
 function RowStatus({ row }: { row: ListingRow }) {
   if (row.kind === "land") return <StatusBadge status={row.status} />;
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${PROPERTY_STATUS_STYLE[row.status]}`}
-    >
+    <Badge variant={PROPERTY_STATUS_VARIANT[row.status] ?? "secondary"} className="capitalize">
       {row.status}
-    </span>
+    </Badge>
   );
 }
 
@@ -451,7 +492,7 @@ export function ListingsTab() {
             onClick={() =>
               navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
             }
-            className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+            className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
           >
             <Plus className="h-3.5 w-3.5" /> New listing
           </button>
@@ -471,7 +512,7 @@ export function ListingsTab() {
             onClick={() => setFilter(id)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
               filter === id
-                ? "bg-[#2563EB] text-white"
+                ? "bg-[#15803D] text-white"
                 : "border border-border bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -481,11 +522,11 @@ export function ListingsTab() {
       </div>
 
       {isError && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-          <p className="text-sm text-destructive">Could not load your rentals.</p>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive-subtle px-4 py-3">
+          <p className="text-sm text-destructive-subtle-foreground">Could not load your rentals.</p>
           <button
             onClick={() => refetch()}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Try again
           </button>
@@ -493,22 +534,25 @@ export function ListingsTab() {
       )}
 
       {isLoading && rows.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">Loading listings…</p>
-      ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-          <h3 className="text-base font-semibold text-foreground">No listings yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Post a land parcel, rental, BnB or home for sale and it'll appear here for review.
-          </p>
-          <button
-            onClick={() =>
-              navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
-            }
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
-          >
-            <Plus className="h-4 w-4" /> New listing
-          </button>
+        <div className="flex flex-col items-center gap-3 py-16">
+          <Spinner size="lg" />
+          <p className="text-sm text-muted-foreground">Loading listings…</p>
         </div>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          title="No listings yet"
+          description="Post a land parcel, rental, BnB or home for sale and it'll appear here for review."
+          action={
+            <button
+              onClick={() =>
+                navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+              }
+              className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-brand-hover"
+            >
+              <Plus className="h-4 w-4" /> New listing
+            </button>
+          }
+        />
       ) : visible.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted-foreground">
           Nothing here under this filter.
@@ -663,7 +707,7 @@ export function ListingsTab() {
               <button
                 onClick={confirmTaken}
                 disabled={taking}
-                className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+                className="rounded-md bg-[#15803D] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-60"
               >
                 {taking
                   ? "Marking…"
@@ -679,38 +723,74 @@ export function ListingsTab() {
   );
 }
 
-function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
+function AnalyticsTab({
+  onUpgrade,
+  onGoTab,
+}: {
+  onUpgrade: () => void;
+  onGoTab: (t: DashTab) => void;
+}) {
   const { user } = useAuth();
   const locked = !user?.analyticsAccess;
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
+  const [selectedListingId, setSelectedListingId] = useState<string>("all");
   const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const hasCustomRange = Boolean(customRange?.from && customRange?.to);
+  const days = hasCustomRange
+    ? differenceInCalendarDays(customRange!.to!, customRange!.from!) + 1
+    : range === "7d"
+      ? 7
+      : range === "30d"
+        ? 30
+        : 90;
 
   useEffect(() => {
     if (locked) return;
     setLoading(true);
+    const params = new URLSearchParams();
+    if (customRange?.from && customRange?.to) {
+      params.set("from", format(customRange.from, "yyyy-MM-dd"));
+      params.set("to", format(customRange.to, "yyyy-MM-dd"));
+    } else {
+      params.set("range", range);
+    }
+    if (selectedListingId !== "all") params.set("parcel_id", selectedListingId);
+
     api
-      .get<ApiAnalytics>(`/user/analytics?range=${range}`)
+      .get<ApiAnalytics>(`/user/analytics?${params.toString()}`)
       .then(setAnalytics)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [range, locked]);
+  }, [range, customRange, selectedListingId, locked]);
 
   // Real totals — from API when available, fall back to user listings in context
   const realTotalViews =
     analytics?.total_views ?? user?.listings.reduce((a, b) => a + b.views, 0) ?? 0;
 
-  const topListings = analytics?.top_listings.length
-    ? analytics.top_listings
-    : (user?.listings.slice(0, 5).map((l) => ({ name: l.parcelNumber, views: l.views })) ?? []);
+  // Scoped to the "All Properties" filter — every list/table below derives
+  // from this instead of the raw user.listings array.
+  const visibleListings = (user?.listings ?? []).filter(
+    (l) => selectedListingId === "all" || l.id === selectedListingId,
+  );
+
+  // Real per-listing rows (thumbnail, price, county) — richer than the
+  // aggregate `top_listings` API field, which only has name + views. Saves
+  // and inquiries per listing come from `top_listings` and are merged in by
+  // id below.
+  const topListingRows = [...visibleListings].sort((a, b) => b.views - a.views).slice(0, 5);
+  const savesByListingId = new Map((analytics?.top_listings ?? []).map((t) => [t.id, t.saves]));
+  const inquiriesByListingId = new Map(
+    (analytics?.top_listings ?? []).map((t) => [t.id, t.inquiries]),
+  );
 
   const countyBreakdown = analytics?.county_breakdown.length
     ? analytics.county_breakdown
     : (() => {
         const byCounty: Record<string, number> = {};
-        user?.listings.forEach((l) => {
+        visibleListings.forEach((l) => {
           byCounty[l.county] = (byCounty[l.county] || 0) + l.views;
         });
         return Object.entries(byCounty)
@@ -730,33 +810,46 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
               : `"${a.title}" — ${a.status}`,
         icon: <ListChecks className="h-3.5 w-3.5" />,
       }))
-    : (user?.listings.slice(0, 4).map((l) => ({
+    : visibleListings.slice(0, 4).map((l) => ({
         time: l.createdAt,
         text:
           l.status === "pending"
             ? `"${l.parcelNumber}" is under review`
             : `"${l.parcelNumber}" · ${l.views} views`,
         icon: <ListChecks className="h-3.5 w-3.5" />,
-      })) ?? []);
+      }));
 
-  // Build the time series: use real daily_views from the API when available,
-  // fall back to proportional distribution only if no log data exists yet.
+  // Build the time series: use real daily_views/daily_saves/daily_inquiries
+  // from the API when available, fall back to a proportional estimate for
+  // views only while the request is still in flight.
   const series = useMemo(() => {
-    const today = new Date();
-    const realByDate: Record<string, number> = {};
+    const endDate = customRange?.to ?? new Date();
+    const realViewsByDate: Record<string, number> = {};
     (analytics?.daily_views ?? []).forEach((r) => {
-      realByDate[r.date] = r.views;
+      realViewsByDate[r.date] = r.views;
     });
-    const hasRealData = Object.keys(realByDate).length > 0;
+    const hasRealViews = Object.keys(realViewsByDate).length > 0;
+
+    const realSavesByDate: Record<string, number> = {};
+    (analytics?.daily_saves ?? []).forEach((r) => {
+      realSavesByDate[r.date] = r.saves;
+    });
+
+    const realInquiriesByDate: Record<string, number> = {};
+    (analytics?.daily_inquiries ?? []).forEach((r) => {
+      realInquiriesByDate[r.date] = r.inquiries;
+    });
+
+    const hasRealData = analytics != null;
 
     return Array.from({ length: days }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() - (days - 1 - i));
+      const d = new Date(endDate);
+      d.setDate(endDate.getDate() - (days - 1 - i));
       const isoDate = d.toISOString().slice(0, 10); // YYYY-MM-DD (matches DB DATE())
       const displayDate = d.toISOString().slice(5, 10); // MM-DD (x-axis label)
 
-      const views = hasRealData
-        ? (realByDate[isoDate] ?? 0)
+      const views = hasRealViews
+        ? (realViewsByDate[isoDate] ?? 0)
         : Math.max(
             0,
             Math.round((realTotalViews / days) * (0.6 + Math.sin(i / 3) * 0.25 + (i / days) * 0.3)),
@@ -765,23 +858,21 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
       return {
         date: displayDate,
         views,
-        clicks: Math.round(views * 0.22),
-        inquiries: Math.round(views * 0.06),
-        saves: Math.round(views * 0.1),
+        inquiries: hasRealData ? (realInquiriesByDate[isoDate] ?? 0) : 0,
+        saves: hasRealData ? (realSavesByDate[isoDate] ?? 0) : 0,
       };
     });
-  }, [days, realTotalViews, analytics]);
+  }, [days, realTotalViews, analytics, customRange]);
 
   const totals = useMemo(
     () =>
       series.reduce(
         (a, b) => ({
           views: a.views + b.views,
-          clicks: a.clicks + b.clicks,
           inquiries: a.inquiries + b.inquiries,
           saves: a.saves + b.saves,
         }),
-        { views: 0, clicks: 0, inquiries: 0, saves: 0 },
+        { views: 0, inquiries: 0, saves: 0 },
       ),
     [series],
   );
@@ -790,215 +881,236 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
   const prev = series.slice(0, half).reduce((a, b) => a + b.views, 0);
   const curr = series.slice(half).reduce((a, b) => a + b.views, 0);
   const delta = prev === 0 ? 0 : Math.round(((curr - prev) / prev) * 100);
-  const ctr = totals.views ? ((totals.clicks / totals.views) * 100).toFixed(1) : "0";
+  const savesPrev = series.slice(0, half).reduce((a, b) => a + b.saves, 0);
+  const savesCurr = series.slice(half).reduce((a, b) => a + b.saves, 0);
+  const savesDelta = savesPrev === 0 ? 0 : Math.round(((savesCurr - savesPrev) / savesPrev) * 100);
+  const inquiriesPrev = series.slice(0, half).reduce((a, b) => a + b.inquiries, 0);
+  const inquiriesCurr = series.slice(half).reduce((a, b) => a + b.inquiries, 0);
+  const inquiriesDelta =
+    inquiriesPrev === 0 ? 0 : Math.round(((inquiriesCurr - inquiriesPrev) / inquiriesPrev) * 100);
   const convRate = totals.views ? ((totals.inquiries / totals.views) * 100).toFixed(1) : "0";
+  const periodLabel = hasCustomRange
+    ? "the previous period"
+    : range === "7d"
+      ? "previous 7 days"
+      : range === "30d"
+        ? "previous 30 days"
+        : "previous 90 days";
+
+  // Sparklines for the KPI tiles — a tiny visual trend under each number.
+  const viewsSparkline = series.map((s) => s.views);
+  const savesSparkline = series.map((s) => s.saves);
+  const inquiriesSparkline = series.map((s) => s.inquiries);
+  const conversionSparkline = series.map((s) => (s.views ? (s.inquiries / s.views) * 100 : 0));
 
   const sources = analytics?.traffic_sources ?? [];
+  const deviceBreakdown = analytics?.device_breakdown ?? [];
+  const avgDaysOnMarket = analytics?.avg_days_on_market ?? null;
+  const countyPercentile = analytics?.county_percentile ?? null;
+  const countyTotalViews = countyBreakdown.reduce((a, b) => a + b.views, 0);
+  const topCounty = countyBreakdown[0];
+  const mapPoints = analytics?.listing_points ?? [];
+  const peakActivity = analytics?.peak_activity ?? [];
+  const peakDay = peakActivity.length
+    ? peakActivity.reduce((a, b) => (b.views > a.views ? b : a))
+    : null;
+  const avgPriceByCounty = new Map(
+    (analytics?.county_avg_prices ?? []).map((c) => [c.county, c.avg_price]),
+  );
+  const pricePositionRows = topListingRows
+    .filter((l) => avgPriceByCounty.get(l.county))
+    .map((l) => ({
+      label: l.parcelNumber,
+      price: l.price,
+      avgPrice: avgPriceByCounty.get(l.county) as number,
+    }));
+
+  const funnelStages = [
+    { label: "Property views", value: totals.views },
+    { label: "Saves", value: totals.saves },
+    { label: "Inquiries", value: totals.inquiries },
+  ].map((s) => ({ ...s, pct: totals.views ? (s.value / totals.views) * 100 : 0 }));
+
+  const rangeLabel = hasCustomRange
+    ? `${format(customRange!.from!, "yyyy-MM-dd")}_${format(customRange!.to!, "yyyy-MM-dd")}`
+    : range;
+
+  const handleExport = () => {
+    const header = "Date,Views,Saves,Inquiries";
+    const rows = series.map((s) => `${s.date},${s.views},${s.saves},${s.inquiries}`);
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `geopin-analytics-${rangeLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => window.print();
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Performance across all your listings.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+            Analytics
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track performance, understand your audience, and grow your property business.
+          </p>
         </div>
-        <div className="inline-flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {loading && <span className="text-[11px] text-muted-foreground">Updating…</span>}
-          <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs font-medium">
-            {(["7d", "30d", "90d"] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-3 py-1.5 rounded-[5px] transition-colors ${range === r ? "bg-[#0F172A] text-white" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {r === "7d" ? "Last 7 days" : r === "30d" ? "Last 30 days" : "Last 90 days"}
+
+          <Select value={selectedListingId} onValueChange={setSelectedListingId}>
+            <SelectTrigger className="h-[34px] w-[160px] text-xs">
+              <SelectValue placeholder="All Properties" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Properties</SelectItem>
+              {(user?.listings ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.parcelNumber}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="inline-flex h-[34px] items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {hasCustomRange
+                  ? `${format(customRange!.from!, "d MMM")} – ${format(customRange!.to!, "d MMM yyyy")}`
+                  : range === "7d"
+                    ? "Last 7 days"
+                    : range === "30d"
+                      ? "Last 30 days"
+                      : "Last 90 days"}
               </button>
-            ))}
-          </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3" align="end">
+              <div className="mb-3 flex gap-1.5">
+                {(["7d", "30d", "90d"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setRange(r);
+                      setCustomRange(undefined);
+                    }}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${!hasCustomRange && range === r ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {r === "7d" ? "7 days" : r === "30d" ? "30 days" : "90 days"}
+                  </button>
+                ))}
+              </div>
+              <Calendar
+                mode="range"
+                selected={customRange}
+                onSelect={setCustomRange}
+                numberOfMonths={1}
+                disabled={{ after: new Date() }}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <button
+            onClick={handleExport}
+            className="inline-flex h-[34px] items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Download className="h-3.5 w-3.5" /> Export
+          </button>
+          <button
+            onClick={handlePrint}
+            className="inline-flex h-[34px] items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print / PDF
+          </button>
         </div>
       </div>
 
       <div className="relative">
         <div className={`space-y-6 ${locked ? "pointer-events-none select-none blur-sm" : ""}`}>
-          {/* KPI tiles — views is real; clicks/inquiries/saves are proportional estimates */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiTile
-              icon={<Eye className="h-4 w-4" />}
-              label="Total views"
-              value={realTotalViews.toLocaleString()}
-              delta={delta}
-            />
-            <KpiTile
-              icon={<MousePointerClick className="h-4 w-4" />}
-              label="Clicks (est.)"
-              value={totals.clicks.toLocaleString()}
-              delta={Math.round(delta * 0.8)}
-              sub={`${ctr}% CTR`}
-            />
-            <KpiTile
-              icon={<Inbox className="h-4 w-4" />}
-              label="Inquiries (est.)"
-              value={totals.inquiries.toLocaleString()}
-              delta={Math.round(delta * 1.2)}
-              sub={`${convRate}% conv.`}
-            />
-            <KpiTile
-              icon={<Bookmark className="h-4 w-4" />}
-              label="Saves (est.)"
-              value={totals.saves.toLocaleString()}
-              delta={Math.round(delta * 0.6)}
-            />
-          </div>
-
-          {/* Main engagement chart */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Listing engagement</h3>
-                <p className="text-xs text-muted-foreground">
-                  Views, clicks and inquiries over time
-                </p>
+          {loading && !analytics ? (
+            <AnalyticsSkeleton />
+          ) : (
+            <>
+              {/* KPI tiles — views, saves, inquiries and conversion are all real */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <KpiTile
+                  icon={<Eye className="h-4 w-4" />}
+                  iconClassName="bg-brand-subtle text-brand-subtle-foreground"
+                  label="Views"
+                  value={realTotalViews.toLocaleString()}
+                  delta={delta}
+                  periodLabel={periodLabel}
+                  sparkline={viewsSparkline}
+                  sparklineColor="#0F172A"
+                />
+                <KpiTile
+                  icon={<Bookmark className="h-4 w-4" />}
+                  iconClassName="bg-success-subtle text-success-subtle-foreground"
+                  label="Saves"
+                  value={totals.saves.toLocaleString()}
+                  delta={savesDelta}
+                  periodLabel={periodLabel}
+                  sparkline={savesSparkline}
+                  sparklineColor="#15803D"
+                />
+                <KpiTile
+                  icon={<Inbox className="h-4 w-4" />}
+                  iconClassName="bg-muted text-secondary"
+                  label="Inquiries"
+                  value={totals.inquiries.toLocaleString()}
+                  delta={inquiriesDelta}
+                  periodLabel={periodLabel}
+                  sparkline={inquiriesSparkline}
+                  sparklineColor="#0D9488"
+                />
+                <KpiTile
+                  icon={<Target className="h-4 w-4" />}
+                  iconClassName="bg-warning-subtle text-warning-subtle-foreground"
+                  label="Conversion"
+                  value={`${convRate}%`}
+                  delta={Math.round(delta * 0.4)}
+                  periodLabel={periodLabel}
+                  sparkline={conversionSparkline}
+                  sparklineColor="#D97706"
+                />
               </div>
-              <div className="hidden gap-3 sm:flex">
-                <Legendish color="#2563EB" label="Views" />
-                <Legendish color="#0F172A" label="Clicks" />
-                <Legendish color="#16A34A" label="Inquiries" />
-              </div>
-            </div>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={series} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563EB" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#E2E8F0" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: "#64748B", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "#E2E8F0" }}
-                    minTickGap={20}
-                  />
-                  <YAxis
-                    tick={{ fill: "#64748B", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#fff",
-                      border: "1px solid #E2E8F0",
-                      borderRadius: 6,
-                      fontSize: 12,
-                    }}
-                    cursor={{ stroke: "#E2E8F0" }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="views"
-                    stroke="#2563EB"
-                    strokeWidth={2}
-                    fill="url(#gv)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="clicks"
-                    stroke="#0F172A"
-                    strokeWidth={1.5}
-                    fill="transparent"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="inquiries"
-                    stroke="#16A34A"
-                    strokeWidth={1.5}
-                    fill="transparent"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            {/* Top listings — real data */}
-            <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-2">
-              <h3 className="text-sm font-semibold text-foreground">Top performing listings</h3>
-              <p className="text-xs text-muted-foreground">By total views</p>
-              {topListings.length === 0 ? (
-                <div className="mt-10 text-center text-sm text-muted-foreground">
-                  No listings yet.
-                </div>
-              ) : (
-                <div className="mt-4 h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={topListings}
-                      layout="vertical"
-                      margin={{ top: 0, right: 8, left: 10, bottom: 0 }}
-                    >
-                      <CartesianGrid stroke="#E2E8F0" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        tick={{ fill: "#64748B", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tick={{ fill: "#0F172A", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={140}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          background: "#fff",
-                          border: "1px solid #E2E8F0",
-                          borderRadius: 6,
-                          fontSize: 12,
-                        }}
-                        cursor={{ fill: "#F1F5F9" }}
-                      />
-                      <Bar dataKey="views" fill="#2563EB" radius={[0, 4, 4, 0]} barSize={18} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
-
-            {/* Traffic sources — real once view logs with source data exist */}
-            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-foreground">Traffic sources</h3>
-              <p className="text-xs text-muted-foreground">Where viewers came from</p>
-              {sources.length === 0 ? (
-                <div className="flex h-48 flex-col items-center justify-center text-center">
-                  <Globe className="h-6 w-6 text-muted-foreground/40" />
-                  <p className="mt-2 text-sm text-muted-foreground">No traffic data yet.</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    Sources appear once viewers open your listings on the map.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="h-48">
+              {/* Engagement trend + conversion funnel */}
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-2">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-foreground">Engagement trend</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Views, saves and inquiries over time
+                    </p>
+                  </div>
+                  <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={sources}
-                          dataKey="value"
-                          innerRadius={48}
-                          outerRadius={72}
-                          paddingAngle={2}
-                          stroke="none"
-                        >
-                          {sources.map((s) => (
-                            <Cell key={s.name} fill={s.color} />
-                          ))}
-                        </Pie>
+                      <AreaChart data={series} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#0F172A" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="#0F172A" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="#E2E8F0" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: "#64748B", fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={{ stroke: "#E2E8F0" }}
+                          minTickGap={20}
+                        />
+                        <YAxis
+                          tick={{ fill: "#64748B", fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
                         <Tooltip
                           contentStyle={{
                             background: "#fff",
@@ -1006,117 +1118,328 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
                             borderRadius: 6,
                             fontSize: 12,
                           }}
+                          cursor={{ stroke: "#E2E8F0" }}
                         />
-                      </PieChart>
+                        <Area
+                          type="monotone"
+                          dataKey="views"
+                          stroke="#0F172A"
+                          strokeWidth={2}
+                          fill="url(#gv)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="saves"
+                          stroke="#15803D"
+                          strokeWidth={1.5}
+                          fill="transparent"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="inquiries"
+                          stroke="#0D9488"
+                          strokeWidth={1.5}
+                          fill="transparent"
+                        />
+                      </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                  <ul className="mt-2 space-y-1.5">
-                    {sources.map((s) => (
-                      <li key={s.name} className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-2 text-foreground">
-                          <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />{" "}
-                          {s.name}
-                        </span>
-                        <span className="font-medium text-foreground">{s.value}%</span>
+                  <div className="mt-3 flex justify-center gap-4 border-t border-border pt-3">
+                    <Legendish color="#0F172A" label="Views" />
+                    <Legendish color="#15803D" label="Saves" />
+                    <Legendish color="#0D9488" label="Inquiries" />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground">Conversion funnel</h3>
+                  <p className="mb-4 text-xs text-muted-foreground">Views → saves → inquiries</p>
+                  <Funnel stages={funnelStages} />
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                {/* Peak activity — real, from view-log timestamps */}
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground">Peak activity</h3>
+                  <p className="mb-4 text-xs text-muted-foreground">Views by day of the week</p>
+                  {peakActivity.length === 0 || !peakDay || peakDay.views === 0 ? (
+                    <div className="flex h-32 items-center justify-center text-center text-sm text-muted-foreground">
+                      No activity yet.
+                    </div>
+                  ) : (
+                    <>
+                      <PeakActivityChart data={peakActivity} peakDay={peakDay.day} />
+                      <p className="mt-4 rounded-md bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                        Most views happen on {DAY_FULL_NAMES[peakDay.day] ?? peakDay.day}s.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Price positioning — your listings vs the county's average asking price */}
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground">Price positioning</h3>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    Your top listings vs the county average
+                  </p>
+                  {pricePositionRows.length === 0 ? (
+                    <div className="flex h-32 items-center justify-center text-center text-sm text-muted-foreground">
+                      Not enough market data yet.
+                    </div>
+                  ) : (
+                    <PricePositionList items={pricePositionRows} />
+                  )}
+                </div>
+
+                {/* Device breakdown — real, from the user-agent captured at view time */}
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground">Devices</h3>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    How viewers browse your listings
+                  </p>
+                  {deviceBreakdown.length === 0 ? (
+                    <div className="flex h-32 items-center justify-center text-center text-sm text-muted-foreground">
+                      No activity yet.
+                    </div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {deviceBreakdown.map((d) => (
+                        <li key={d.name} className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            {d.name === "Mobile" ? (
+                              <Smartphone className="h-4 w-4" />
+                            ) : d.name === "Tablet" ? (
+                              <Tablet className="h-4 w-4" />
+                            ) : (
+                              <Monitor className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-medium text-foreground">{d.name}</span>
+                              <span className="text-muted-foreground">{d.value}%</span>
+                            </div>
+                            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out"
+                                style={{ width: `${d.value}%` }}
+                              />
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-4">
+                {/* Top listings — real data */}
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Top performing listings
+                      </h3>
+                      <p className="text-xs text-muted-foreground">By total views</p>
+                    </div>
+                    <button
+                      onClick={() => onGoTab("listings")}
+                      className="rounded-sm text-[11px] font-medium text-brand transition-colors hover:text-brand-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  {topListingRows.length === 0 ? (
+                    <div className="mt-10 text-center text-sm text-muted-foreground">
+                      No listings yet.
+                    </div>
+                  ) : (
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="w-8 py-2 font-medium">#</th>
+                            <th className="py-2 font-medium">Property</th>
+                            <th className="py-2 font-medium">Location</th>
+                            <th className="py-2 text-right font-medium">Views</th>
+                            <th className="py-2 text-right font-medium">Saves</th>
+                            <th className="py-2 text-right font-medium">Inquiries</th>
+                            <th className="py-2 text-right font-medium">Conv.</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {topListingRows.map((l, i) => {
+                            const rowSaves = savesByListingId.get(l.id) ?? 0;
+                            const rowInquiries = inquiriesByListingId.get(l.id) ?? 0;
+                            const rowConv = l.views
+                              ? ((rowInquiries / l.views) * 100).toFixed(1)
+                              : "0";
+                            return (
+                              <tr key={l.id}>
+                                <td className="py-2.5 text-xs text-muted-foreground">{i + 1}</td>
+                                <td className="py-2.5">
+                                  <div className="flex items-center gap-3">
+                                    {l.coverPhotoUrl ? (
+                                      <img
+                                        src={l.coverPhotoUrl}
+                                        alt=""
+                                        className="h-9 w-12 shrink-0 rounded object-cover"
+                                      />
+                                    ) : (
+                                      <div className="h-9 w-12 shrink-0 rounded bg-muted" />
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="truncate font-medium text-foreground">
+                                        {l.parcelNumber}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        KES {l.price.toLocaleString()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 text-xs text-muted-foreground">{l.county}</td>
+                                <td className="py-2.5 text-right text-xs font-medium text-foreground">
+                                  {l.views.toLocaleString()}
+                                </td>
+                                <td className="py-2.5 text-right text-xs font-medium text-foreground">
+                                  {rowSaves.toLocaleString()}
+                                </td>
+                                <td className="py-2.5 text-right text-xs text-muted-foreground">
+                                  {rowInquiries.toLocaleString()}
+                                </td>
+                                <td className="py-2.5 text-right text-xs text-muted-foreground">
+                                  {rowConv}%
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Traffic sources — real once view logs with source data exist */}
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground">Traffic sources</h3>
+                  <p className="mb-4 text-xs text-muted-foreground">Where viewers came from</p>
+                  {sources.length === 0 ? (
+                    <div className="flex h-48 flex-col items-center justify-center text-center">
+                      <Globe className="h-6 w-6 text-muted-foreground/40" />
+                      <p className="mt-2 text-sm text-muted-foreground">No traffic data yet.</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Sources appear once viewers open your listings on the map.
+                      </p>
+                    </div>
+                  ) : (
+                    <RankedList
+                      items={sources.map((s) => ({ label: s.name, pct: s.value, colorClass: "" }))}
+                    />
+                  )}
+                </div>
+
+                {/* Geographic interest — real data */}
+                <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Geographic interest</h3>
+                      <p className="text-xs text-muted-foreground">Views by county</p>
+                    </div>
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  {countyBreakdown.length === 0 ? (
+                    <div className="mt-10 text-center text-sm text-muted-foreground">
+                      No data yet.
+                    </div>
+                  ) : (
+                    <>
+                      {mapPoints.length > 0 && (
+                        <GeoMiniMap points={mapPoints} topCounty={topCounty?.county} />
+                      )}
+                      <div className="mt-4">
+                        <RankedList
+                          showRank
+                          items={countyBreakdown.map((c) => ({
+                            label: c.county,
+                            pct: countyTotalViews ? (c.views / countyTotalViews) * 100 : 0,
+                            colorClass: "",
+                          }))}
+                        />
+                      </div>
+                      {topCounty && countyTotalViews > 0 && (
+                        <p className="mt-4 rounded-md bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                          {Math.round((topCounty.views / countyTotalViews) * 100)}% of your views
+                          are from {topCounty.county}
+                          {countyBreakdown[1] && `, followed by ${countyBreakdown[1].county}`}.
+                        </p>
+                      )}
+                      {countyPercentile && (
+                        <p className="mt-2 rounded-md bg-brand-subtle px-3 py-2 text-[11px] text-brand-subtle-foreground">
+                          Your top listing is in the top {100 - countyPercentile.percentile}% for
+                          views in {countyPercentile.county}.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent activity — real listing events */}
+              <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground">Recent activity</h3>
+                <p className="text-xs text-muted-foreground">Latest events on your listings</p>
+                {recentActivity.length === 0 ? (
+                  <div className="mt-10 text-center text-sm text-muted-foreground">
+                    No activity yet.
+                  </div>
+                ) : (
+                  <ul className="mt-4 divide-y divide-border sm:grid sm:grid-cols-2 sm:gap-x-6 sm:divide-y-0">
+                    {recentActivity.map((a, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-3 py-3 sm:border-b sm:border-border"
+                      >
+                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                          {a.icon}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-foreground">{a.text}</p>
+                          <p className="text-[11px] text-muted-foreground">{a.time}</p>
+                        </div>
                       </li>
                     ))}
                   </ul>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Views by county — real data */}
-            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Views by county</h3>
-                  <p className="text-xs text-muted-foreground">Geographic distribution</p>
-                </div>
-                <Globe className="h-4 w-4 text-muted-foreground" />
+                )}
               </div>
-              {countyBreakdown.length === 0 ? (
-                <div className="mt-10 text-center text-sm text-muted-foreground">No data yet.</div>
-              ) : (
-                <div className="mt-4 h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={countyBreakdown}
-                      margin={{ top: 0, right: 8, left: -20, bottom: 0 }}
-                    >
-                      <CartesianGrid stroke="#E2E8F0" vertical={false} />
-                      <XAxis
-                        dataKey="county"
-                        tick={{ fill: "#64748B", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={{ stroke: "#E2E8F0" }}
-                      />
-                      <YAxis
-                        tick={{ fill: "#64748B", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          background: "#fff",
-                          border: "1px solid #E2E8F0",
-                          borderRadius: 6,
-                          fontSize: 12,
-                        }}
-                        cursor={{ fill: "#F1F5F9" }}
-                      />
-                      <Bar dataKey="views" fill="#0F172A" radius={[4, 4, 0, 0]} barSize={36} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
 
-            {/* Recent activity — real listing events */}
-            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-foreground">Recent activity</h3>
-              <p className="text-xs text-muted-foreground">Latest events on your listings</p>
-              {recentActivity.length === 0 ? (
-                <div className="mt-10 text-center text-sm text-muted-foreground">
-                  No activity yet.
-                </div>
-              ) : (
-                <ul className="mt-4 divide-y divide-border">
-                  {recentActivity.map((a, i) => (
-                    <li key={i} className="flex items-start gap-3 py-3">
-                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
-                        {a.icon}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-foreground">{a.text}</p>
-                        <p className="text-[11px] text-muted-foreground">{a.time}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {/* Summary stats — real */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <SmallStat
-              label="Total listings"
-              value={String(user?.listings.length ?? 0)}
-              sub={`${user?.listings.filter((l) => l.status === "active").length ?? 0} active`}
-            />
-            <SmallStat
-              label="Avg views / listing"
-              value={
-                user?.listings.length
-                  ? String(Math.round(realTotalViews / user.listings.length))
-                  : "0"
-              }
-              sub="Per published listing"
-            />
-            <SmallStat label="Inquiry rate (est.)" value={`${convRate}%`} sub="Views → inquiries" />
-          </div>
+              {/* Summary stats — real */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <SmallStat
+                  label="Total listings"
+                  value={String(user?.listings.length ?? 0)}
+                  sub={`${user?.listings.filter((l) => l.status === "active").length ?? 0} active`}
+                />
+                <SmallStat
+                  label="Avg views / listing"
+                  value={
+                    user?.listings.length
+                      ? String(Math.round(realTotalViews / user.listings.length))
+                      : "0"
+                  }
+                  sub="Per published listing"
+                />
+                <SmallStat label="Inquiry rate" value={`${convRate}%`} sub="Views → inquiries" />
+                <SmallStat
+                  label="Avg. days on market"
+                  value={avgDaysOnMarket !== null ? String(avgDaysOnMarket) : "—"}
+                  sub={avgDaysOnMarket !== null ? "Listing to sale" : "No sales yet"}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {locked && (
@@ -1129,7 +1452,7 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
               </p>
               <button
                 onClick={onUpgrade}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-all duration-150 active:scale-[0.98] hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Upgrade to Pro <ArrowUpRight className="h-3.5 w-3.5" />
               </button>
@@ -1143,37 +1466,109 @@ function AnalyticsTab({ onUpgrade }: { onUpgrade: () => void }) {
 
 function KpiTile({
   icon,
+  iconClassName,
   label,
   value,
   delta,
+  periodLabel,
   sub,
+  sparkline,
+  sparklineColor,
 }: {
   icon: React.ReactNode;
+  iconClassName: string;
   label: string;
   value: string;
   delta: number;
+  periodLabel: string;
   sub?: string;
+  sparkline?: number[];
+  sparklineColor?: string;
 }) {
   const up = delta >= 0;
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-foreground">
-            {icon}
-          </div>
-          {label}
-        </div>
-        <span
-          className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${up ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-destructive/10 text-destructive"}`}
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-2.5">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClassName}`}
         >
-          {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-          {up ? "+" : ""}
-          {delta}%
-        </span>
+          {icon}
+        </div>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <div className="mt-3 text-2xl font-semibold text-foreground">{value}</div>
-      {sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>}
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <div>
+          <div className="text-2xl font-semibold text-foreground">{value}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px]">
+            <span
+              className={`inline-flex items-center gap-0.5 font-semibold ${up ? "text-success" : "text-destructive"}`}
+            >
+              {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {up ? "+" : ""}
+              {delta}%
+            </span>
+            <span className="text-muted-foreground">vs {periodLabel}</span>
+          </div>
+          {sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>}
+        </div>
+        {sparkline && sparkline.length > 1 && (
+          <Sparkline data={sparkline} color={sparklineColor ?? "#15803D"} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A minimal inline SVG trend line — no need for a full chart library for a
+// KPI tile's tiny "shape of the trend" indicator.
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const w = 64;
+  const h = 28;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((v - min) / range) * h;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" aria-hidden="true">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function AnalyticsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <Skeleton className="h-9 w-9 rounded-full" />
+            <Skeleton className="mt-3 h-7 w-20" />
+            <Skeleton className="mt-2 h-3 w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Skeleton className="h-80 rounded-lg lg:col-span-2" />
+        <Skeleton className="h-80 rounded-lg" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-4">
+        <Skeleton className="h-64 rounded-lg lg:col-span-2" />
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-64 rounded-lg" />
+      </div>
     </div>
   );
 }
@@ -1183,6 +1578,214 @@ function Legendish({ color, label }: { color: string; label: string }) {
     <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
       <span className="h-2 w-2 rounded-sm" style={{ background: color }} /> {label}
     </span>
+  );
+}
+
+// Views -> saves -> inquiries, drawn as decreasing-width centered bars so it
+// reads as a funnel without needing SVG polygon paths for the taper.
+// Each stage is drawn as a trapezoid via clip-path (wide top, narrower
+// bottom) rather than resizing the box, so the taper reads as one shape
+// without the layout width jumping around.
+function Funnel({ stages }: { stages: { label: string; value: number; pct: number }[] }) {
+  const max = stages[0]?.value || 1;
+  const toneClasses = ["bg-primary", "bg-brand", "bg-[#0D9488]"];
+  return (
+    <div className="space-y-2">
+      {stages.map((s, i) => {
+        const topPct = Math.max(30, Math.round((s.value / max) * 100));
+        const bottomPct = Math.max(20, Math.round(topPct * 0.8));
+        const inset = (100 - topPct) / 2;
+        const insetBottom = (100 - bottomPct) / 2;
+        return (
+          <div key={s.label} className="flex items-center gap-3">
+            <div
+              className={`flex h-12 w-full items-center justify-center text-sm font-semibold text-white transition-[clip-path] duration-500 ease-out ${toneClasses[i % toneClasses.length]}`}
+              style={{
+                clipPath: `polygon(${inset}% 0%, ${100 - inset}% 0%, ${100 - insetBottom}% 100%, ${insetBottom}% 100%)`,
+              }}
+            >
+              {s.value.toLocaleString()}
+            </div>
+            <div className="w-24 shrink-0 text-right">
+              <div className="truncate text-xs font-medium text-foreground">{s.label}</div>
+              <div className="text-[11px] text-muted-foreground">{s.pct.toFixed(1)}%</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const DAY_FULL_NAMES: Record<string, string> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+  Sun: "Sunday",
+};
+
+function PeakActivityChart({
+  data,
+  peakDay,
+}: {
+  data: { day: string; views: number }[];
+  peakDay: string;
+}) {
+  const max = Math.max(1, ...data.map((d) => d.views));
+  return (
+    <div className="flex h-32 items-end justify-between gap-2">
+      {data.map((d) => {
+        const heightPct = Math.max(4, Math.round((d.views / max) * 100));
+        const isPeak = d.day === peakDay;
+        return (
+          <div key={d.day} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
+            <div
+              className={`w-full rounded-t-sm transition-[height] duration-500 ease-out ${isPeak ? "bg-brand" : "bg-muted"}`}
+              style={{ height: `${heightPct}%` }}
+              title={`${d.day}: ${d.views.toLocaleString()} views`}
+            />
+            <span
+              className={`text-[10px] ${isPeak ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+            >
+              {d.day}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PricePositionList({
+  items,
+}: {
+  items: { label: string; price: number; avgPrice: number }[];
+}) {
+  return (
+    <ul className="space-y-3.5">
+      {items.map((it) => {
+        const delta = Math.round(((it.price - it.avgPrice) / it.avgPrice) * 100);
+        const above = delta >= 0;
+        return (
+          <li key={it.label}>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="truncate font-medium text-foreground">{it.label}</span>
+              <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-foreground">
+                {above ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {above ? "+" : ""}
+                {delta}%
+              </span>
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              KES {it.price.toLocaleString()} vs county avg KES{" "}
+              {Math.round(it.avgPrice).toLocaleString()}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const RANKED_LIST_TONES = ["bg-primary", "bg-brand", "bg-[#0D9488]", "bg-warning", "bg-[#9333EA]"];
+
+function RankedList({
+  items,
+  showRank,
+}: {
+  items: { label: string; pct: number; colorClass: string }[];
+  showRank?: boolean;
+}) {
+  return (
+    <ul className="space-y-3">
+      {items.map((it, i) => (
+        <li key={it.label}>
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2 font-medium text-foreground">
+              {showRank && <span className="text-muted-foreground">{i + 1}</span>}
+              {it.label}
+            </span>
+            <span className="text-muted-foreground">{Math.round(it.pct)}%</span>
+          </div>
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 ease-out ${it.colorClass || RANKED_LIST_TONES[i % RANKED_LIST_TONES.length]}`}
+              style={{ width: `${Math.min(100, it.pct)}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Light, low-clutter basemap — reads closer to an illustrative map than a
+// full street map, which suits a small decorative "where your interest is
+// coming from" card better than the app's main OSM tiles do.
+const GEO_TILES = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+const GEO_HIGHLIGHT_ICON = L.divIcon({
+  className: "lv-geo-pin",
+  html: `<svg width="22" height="28" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 2H16A6 6 0 0 1 22 8V16A6 6 0 0 1 16 22H15L12 29L9 22H8A6 6 0 0 1 2 16V8A6 6 0 0 1 8 2Z" fill="#15803D" stroke="#fff" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="3.5" fill="#fff"/>
+  </svg>`,
+  iconSize: [22, 28],
+  iconAnchor: [11, 27],
+});
+
+function GeoMiniMap({
+  points,
+  topCounty,
+}: {
+  points: { title: string; county: string; latitude: number; longitude: number; views: number }[];
+  topCounty?: string;
+}) {
+  const maxViews = Math.max(1, ...points.map((p) => p.views));
+  const highlightPoints = topCounty ? points.filter((p) => p.county === topCounty) : [];
+  const centerSource = highlightPoints.length > 0 ? highlightPoints : points;
+  const center: [number, number] = [
+    centerSource.reduce((a, p) => a + p.latitude, 0) / centerSource.length,
+    centerSource.reduce((a, p) => a + p.longitude, 0) / centerSource.length,
+  ];
+
+  return (
+    <div className="mt-4 h-40 overflow-hidden rounded-md border border-border">
+      <MapContainer
+        center={center}
+        zoom={points.length > 1 ? 7 : 9}
+        zoomControl={false}
+        dragging={false}
+        scrollWheelZoom={false}
+        doubleClickZoom={false}
+        touchZoom={false}
+        className="h-full w-full"
+      >
+        <TileLayer url={GEO_TILES} attribution="&copy; OpenStreetMap, &copy; CARTO" />
+        {points.map((p, i) => (
+          <CircleMarker
+            key={i}
+            center={[p.latitude, p.longitude]}
+            radius={4 + (p.views / maxViews) * 6}
+            pathOptions={{ color: "#15803D", weight: 1, fillColor: "#15803D", fillOpacity: 0.35 }}
+          >
+            <LeafletTooltip direction="top" offset={[0, -4]}>
+              {p.title} · {p.views.toLocaleString()} views
+            </LeafletTooltip>
+          </CircleMarker>
+        ))}
+        {highlightPoints.length > 0 && topCounty && (
+          <Marker position={center} icon={GEO_HIGHLIGHT_ICON}>
+            <LeafletTooltip permanent direction="right" offset={[4, -14]}>
+              {topCounty}
+            </LeafletTooltip>
+          </Marker>
+        )}
+      </MapContainer>
+    </div>
   );
 }
 
@@ -1334,7 +1937,7 @@ function BillingTab({
         <div className="grid gap-0 md:grid-cols-3">
           <div className="border-b border-border p-5 md:border-b-0 md:border-r">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <Crown className="h-3.5 w-3.5 text-[#2563EB]" /> Current plan
+              <Crown className="h-3.5 w-3.5 text-[#15803D]" /> Current plan
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-semibold text-foreground">{p.name}</span>
@@ -1377,7 +1980,7 @@ function BillingTab({
             {!unlimited && (
               <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-[#2563EB] transition-all"
+                  className="h-full rounded-full bg-[#15803D] transition-all"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -1413,7 +2016,7 @@ function BillingTab({
               {plan !== "pro" && (
                 <button
                   onClick={() => onSelectPlan("pro")}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Upgrade
                 </button>
@@ -1421,7 +2024,7 @@ function BillingTab({
               {plan !== "free" && (
                 <button
                   onClick={() => onSelectPlan(plan, billingCycle ?? undefined)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-[#2563EB] px-3 py-1.5 text-xs font-medium text-[#2563EB] hover:bg-[#2563EB]/10"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#15803D] px-3 py-1.5 text-xs font-medium text-[#15803D] hover:bg-[#15803D]/10"
                 >
                   <RefreshCw className="h-3.5 w-3.5" /> {cancelled ? "Resume" : "Renew"}
                 </button>
@@ -1462,14 +2065,12 @@ function BillingTab({
               <div
                 key={pl.id}
                 className={`relative flex flex-col rounded-xl border bg-card p-5 shadow-sm transition-shadow ${
-                  isCurrent
-                    ? "border-[#2563EB] ring-1 ring-[#2563EB]/30"
-                    : "border-border hover:shadow-md"
+                  isCurrent ? "border-brand ring-1 ring-brand/30" : "border-border hover:shadow-md"
                 }`}
               >
                 {pl.badge && (
                   <span
-                    className={`absolute -top-2 right-4 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${pl.badge.color === "accent" ? "bg-[#2563EB] text-white" : "bg-[#0F172A] text-white"}`}
+                    className={`absolute -top-2 right-4 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${pl.badge.color === "accent" ? "bg-brand text-brand-foreground" : "bg-primary text-primary-foreground"}`}
                   >
                     {pl.badge.label}
                   </span>
@@ -1503,7 +2104,7 @@ function BillingTab({
                       ? "cursor-default bg-muted text-muted-foreground"
                       : pl.id === "pro"
                         ? "bg-[#0F172A] text-white hover:bg-[#1e293b]"
-                        : "bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
+                        : "bg-[#15803D] text-white hover:bg-[#166534]"
                   }`}
                 >
                   {isCurrent
@@ -1542,7 +2143,7 @@ function BillingTab({
                   <div className="text-sm font-semibold text-foreground">Ksh {a.price}</div>
                   <button
                     onClick={() => setBoostAddOn(a)}
-                    className="mt-1 text-[11px] font-medium text-[#2563EB] hover:underline"
+                    className="mt-1 text-[11px] font-medium text-[#15803D] hover:underline"
                   >
                     Buy
                   </button>
@@ -1662,7 +2263,7 @@ function BillingTab({
                           href={pay.downloadUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2563EB] hover:underline"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#15803D] hover:underline"
                         >
                           <Download className="h-3 w-3" /> PDF
                         </a>
@@ -1783,21 +2384,21 @@ function OverviewTab({
     greetingHour < 12 ? "Good morning" : greetingHour < 18 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="space-y-6">
+    <div className="lv-fade-up space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
             {greeting}, {user.fullName.split(" ")[0]}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Here's a snapshot of your account activity.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onGoTab("analytics")}
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted sm:flex-none sm:py-1.5"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none sm:py-1.5"
           >
             <BarChart3 className="h-3.5 w-3.5" /> View analytics
           </button>
@@ -1805,7 +2406,7 @@ function OverviewTab({
             onClick={() =>
               navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
             }
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-2 text-xs font-medium text-white hover:bg-[#1d4ed8] sm:flex-none sm:py-1.5"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-brand px-3 py-2 text-xs font-medium text-brand-foreground transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none sm:py-1.5 hover:bg-brand-hover"
           >
             <Plus className="h-3.5 w-3.5" /> New listing
           </button>
@@ -1842,7 +2443,7 @@ function OverviewTab({
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Crown className="h-3.5 w-3.5 text-[#2563EB]" /> Current plan
+                <Crown className="h-3.5 w-3.5 text-brand" /> Current plan
               </div>
               <div className="mt-1 text-xl font-semibold text-foreground">
                 {plan?.name ?? user.plan}
@@ -1856,14 +2457,14 @@ function OverviewTab({
                 <AreaChart data={spark} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="sparkG" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563EB" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#15803D" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#15803D" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <Area
                     type="monotone"
                     dataKey="v"
-                    stroke="#2563EB"
+                    stroke="#15803D"
                     strokeWidth={2}
                     fill="url(#sparkG)"
                   />
@@ -1872,7 +2473,10 @@ function OverviewTab({
             </div>
           </div>
           <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-[#2563EB]" style={{ width: `${pct}%` }} />
+            <div
+              className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out"
+              style={{ width: `${pct}%` }}
+            />
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
             <span>
@@ -1881,7 +2485,10 @@ function OverviewTab({
                 : `${Math.max(0, limitNum - used)} slots remaining`}
             </span>
             {user.plan !== "pro" && (
-              <button onClick={onUpgrade} className="font-medium text-[#2563EB] hover:underline">
+              <button
+                onClick={onUpgrade}
+                className="rounded-sm font-medium text-brand transition-colors hover:text-brand-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 Upgrade to Pro →
               </button>
             )}
@@ -1898,7 +2505,7 @@ function OverviewTab({
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-[#16A34A]"
+              className="h-full rounded-full bg-success transition-[width] duration-500 ease-out"
               style={{ width: `${(completed / checklist.length) * 100}%` }}
             />
           </div>
@@ -1907,10 +2514,10 @@ function OverviewTab({
               <li key={c.key}>
                 <button
                   onClick={c.action}
-                  className="flex w-full items-center gap-2 text-left text-xs text-foreground hover:text-[#2563EB]"
+                  className="flex w-full items-center gap-2 rounded-sm text-left text-xs text-foreground transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {c.done ? (
-                    <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   ) : (
                     <span className="h-4 w-4 rounded-full border-2 border-border" />
                   )}
@@ -1931,26 +2538,30 @@ function OverviewTab({
             <h3 className="text-sm font-semibold text-foreground">Recent listings</h3>
             <button
               onClick={() => onGoTab("listings")}
-              className="text-[11px] font-medium text-[#2563EB] hover:underline"
+              className="rounded-sm text-[11px] font-medium text-brand transition-colors hover:text-brand-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               View all →
             </button>
           </div>
           {recent.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <p className="text-sm text-muted-foreground">No listings yet.</p>
-              <button
-                onClick={() =>
-                  navigate({
-                    to: "/dashboard/upload",
-                    search: { edit: undefined, type: undefined },
-                  })
-                }
-                className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
-              >
-                <Plus className="h-3.5 w-3.5" /> Upload your first listing
-              </button>
-            </div>
+            <EmptyState
+              className="rounded-none border-0 p-10"
+              title="No listings yet"
+              description="Upload your first parcel or property to see it here."
+              action={
+                <button
+                  onClick={() =>
+                    navigate({
+                      to: "/dashboard/upload",
+                      search: { edit: undefined, type: undefined },
+                    })
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-brand-foreground transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-brand-hover"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Upload your first listing
+                </button>
+              }
+            />
           ) : (
             <ul className="divide-y divide-border">
               {recent.map((l) => (
@@ -1989,13 +2600,13 @@ function OverviewTab({
           </div>
           <ul className="mt-3 divide-y divide-border">
             {[
-              { t: "Just now", text: "Welcome to Geo Properties" },
+              { t: "Just now", text: "Welcome to GeoPin Properties" },
               { t: "2h ago", text: "Map updated with 14 new parcels" },
               { t: "1d ago", text: "Verification team reviewed your area" },
               { t: "3d ago", text: "Account created" },
             ].map((a, i) => (
               <li key={i} className="flex items-start gap-3 py-2.5">
-                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
+                <div className="mt-1 h-1.5 w-1.5 rounded-full bg-brand" />
                 <div className="flex-1">
                   <p className="text-xs text-foreground">{a.text}</p>
                   <p className="text-[10px] text-muted-foreground">{a.t}</p>
@@ -2010,7 +2621,7 @@ function OverviewTab({
       <div className="grid gap-4 lg:grid-cols-3">
         {tips.map((t) => (
           <div key={t.title} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#D97706]">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-warning">
               <TUp className="h-3.5 w-3.5" /> Pro tip
             </div>
             <h4 className="mt-2 text-sm font-semibold text-foreground">{t.title}</h4>
@@ -2035,7 +2646,7 @@ function OverviewTab({
         </div>
         <button
           onClick={() => onGoTab("billing")}
-          className="text-[11px] font-medium text-[#2563EB] hover:underline"
+          className="text-[11px] font-medium text-[#15803D] hover:underline"
         >
           Manage billing →
         </button>
@@ -2104,7 +2715,7 @@ function SettingsTab({
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const avatarColor = user.avatarColor || "#2563EB";
+  const avatarColor = user.avatarColor || "#15803D";
 
   const saveProfile = async () => {
     await onUpdate({
@@ -2230,7 +2841,7 @@ function SettingsTab({
               title="Change avatar"
               className="absolute -bottom-1 -right-1 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-muted"
               onClick={() => {
-                const colors = ["#2563EB", "#16A34A", "#D97706", "#0F172A", "#9333EA", "#DB2777"];
+                const colors = ["#0D9488", "#16A34A", "#D97706", "#0F172A", "#9333EA", "#DB2777"];
                 const next = colors[(colors.indexOf(avatarColor) + 1) % colors.length];
                 onUpdate({ avatarColor: next });
               }}
@@ -2245,7 +2856,7 @@ function SettingsTab({
               <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] capitalize">
                 {user.role}
               </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#2563EB] capitalize">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#15803D]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#15803D] capitalize">
                 {user.plan} plan
               </span>
             </div>
@@ -2338,7 +2949,7 @@ function SettingsTab({
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
               rows={3}
               placeholder="Short bio shown on your public profile."
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#15803D]/30"
             />
           </div>
           <div className="mt-5 flex justify-end gap-2">
@@ -2361,7 +2972,7 @@ function SettingsTab({
             </button>
             <button
               onClick={saveProfile}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
             >
               <Save className="h-3.5 w-3.5" /> Save changes
             </button>
@@ -2452,12 +3063,12 @@ function SettingsTab({
                     placeholder="000000"
                     inputMode="numeric"
                     maxLength={6}
-                    className="h-9 w-32 rounded-md border border-border bg-background px-3 text-center text-sm font-semibold tracking-[0.25em] text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                    className="h-9 w-32 rounded-md border border-border bg-background px-3 text-center text-sm font-semibold tracking-[0.25em] text-foreground focus:outline-none focus:ring-2 focus:ring-[#15803D]/30"
                   />
                   <button
                     onClick={confirmTwoFactorCode}
                     disabled={tfaBusy || tfaCode.length !== 6}
-                    className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {tfaBusy ? "Confirming…" : "Confirm"}
                   </button>
@@ -2482,7 +3093,7 @@ function SettingsTab({
                     value={tfaPassword}
                     onChange={(e) => setTfaPassword(e.target.value)}
                     placeholder="Your password"
-                    className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                    className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#15803D]/30"
                   />
                   <button
                     onClick={turnOffTwoFactor}
@@ -2574,7 +3185,7 @@ function SettingsTab({
           <div className="mt-4 flex justify-end">
             <button
               onClick={saveNotif}
-              className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+              className="rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
             >
               Save preferences
             </button>
@@ -2628,7 +3239,7 @@ function SettingsTab({
           <div className="mt-5 flex justify-end">
             <button
               onClick={saveProfile}
-              className="rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+              className="rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
             >
               Save preferences
             </button>
@@ -2710,7 +3321,7 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 ${
+          className={`h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#15803D]/30 ${
             revealable ? "pr-9 [&::-ms-reveal]:hidden" : ""
           }`}
         />
@@ -2749,7 +3360,7 @@ function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+        className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#15803D]/30"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -2767,7 +3378,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-[#2563EB]" : "bg-muted"}`}
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-[#15803D]" : "bg-muted"}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : "translate-x-0.5"}`}
@@ -2853,9 +3464,9 @@ const kycStatusConfig: Record<
   },
   under_review: {
     label: "Under Review",
-    bg: "#DBEAFE",
-    fg: "#1D4ED8",
-    border: "#3B82F6",
+    bg: "#F1F5F9",
+    fg: "#1E293B",
+    border: "#64748B",
     icon: <ShieldCheck className="h-3.5 w-3.5" />,
     step: 2,
   },
@@ -2997,7 +3608,7 @@ function KycCard({
                 </span>
               )}
               {isInfo && alreadyReplied && acknowledged && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#DBEAFE] px-2 py-0.5 text-[10px] font-semibold text-[#1D4ED8]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#166534]">
                   <Check className="h-2.5 w-2.5" /> Acknowledged
                 </span>
               )}
@@ -3178,7 +3789,7 @@ function KycCard({
                           href={`${import.meta.env.VITE_API_URL ?? "http://localhost/Landconnect/backend/public/api"}/user/kyc/${kyc.id}/reply-document`}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#2563EB] hover:underline"
+                          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#15803D] hover:underline"
                         >
                           <Download className="h-3.5 w-3.5" />
                           {kyc.user_reply_document_name}
@@ -3188,10 +3799,10 @@ function KycCard({
 
                     {/* Reviewer acknowledgment */}
                     {kyc.admin_acknowledgment && (
-                      <div className="rounded-lg border border-[#3B82F6]/30 bg-[#EFF6FF] p-4">
+                      <div className="rounded-lg border border-[#22C55E]/30 bg-[#F0FDF4] p-4">
                         <div className="flex items-center gap-2 mb-1">
-                          <CheckCircle2 className="h-4 w-4 text-[#2563EB]" />
-                          <p className="text-xs font-semibold text-[#1D4ED8]">
+                          <CheckCircle2 className="h-4 w-4 text-[#15803D]" />
+                          <p className="text-xs font-semibold text-[#166534]">
                             Message from reviewer
                           </p>
                           {kyc.admin_acknowledged_at && (
@@ -3203,7 +3814,7 @@ function KycCard({
                         <p className="text-sm text-foreground whitespace-pre-wrap">
                           {kyc.admin_acknowledgment}
                         </p>
-                        <p className="mt-2 text-xs font-medium text-[#2563EB]">
+                        <p className="mt-2 text-xs font-medium text-[#15803D]">
                           No further action needed from you.
                         </p>
                       </div>
@@ -3219,7 +3830,7 @@ function KycCard({
                       }
                       placeholder="Provide the requested information or explain what you've uploaded…"
                       rows={4}
-                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#15803D]/30"
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <input
@@ -3266,7 +3877,7 @@ function KycCard({
                           (!replyText[kyc.id]?.trim() && !replyFile[kyc.id]) ||
                           submitting === kyc.id
                         }
-                        className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                        className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#15803D] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                       >
                         <Send className="h-3.5 w-3.5" />
                         {submitting === kyc.id ? "Sending…" : "Send reply"}
@@ -3364,7 +3975,7 @@ function KycCard({
                     <button
                       onClick={() => handleViewDoc(doc.id)}
                       disabled={viewingDoc === doc.id}
-                      className="flex-shrink-0 text-[11px] font-medium text-[#2563EB] hover:underline disabled:opacity-50"
+                      className="flex-shrink-0 text-[11px] font-medium text-[#15803D] hover:underline disabled:opacity-50"
                     >
                       {viewingDoc === doc.id ? "Loading…" : "View"}
                     </button>
@@ -3559,7 +4170,7 @@ function KycTab() {
   if (loading) {
     return (
       <div className="flex h-40 items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#2563EB] border-t-transparent" />
+        <Spinner />
       </div>
     );
   }
@@ -3605,7 +4216,7 @@ function KycTab() {
             className="absolute inset-0 bg-black/50"
             onClick={() => !submittingKyc && setShowSubmit(false)}
           />
-          <div className="relative w-full max-w-md rounded-xl border border-border bg-background shadow-2xl">
+          <div className="relative w-full max-w-md rounded-lg border border-border bg-background shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <h2 className="text-sm font-semibold text-foreground">Submit KYC Application</h2>
               <button
@@ -3639,7 +4250,7 @@ function KycTab() {
                   <select
                     value={submitParcel}
                     onChange={(e) => setSubmitParcel(e.target.value)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#15803D]"
                   >
                     <option value="">Select a parcel…</option>
                     {parcels.map((p) => (
@@ -3658,7 +4269,7 @@ function KycTab() {
                   <select
                     value={submitDocType}
                     onChange={(e) => setSubmitDocType(e.target.value)}
-                    className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                    className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-[#15803D]"
                   >
                     {DOC_TYPES.map((d) => (
                       <option key={d.value} value={d.value}>
@@ -3734,7 +4345,7 @@ function KycTab() {
               <button
                 onClick={handleSubmitKyc}
                 disabled={submittingKyc || !submitParcel || submitDocuments.length === 0}
-                className="rounded-md bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-[#15803D] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submittingKyc ? "Submitting…" : "Submit application"}
               </button>
@@ -3752,7 +4363,7 @@ function KycTab() {
         </div>
         <button
           onClick={openSubmitModal}
-          className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#15803D] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
         >
           <svg
             className="h-3.5 w-3.5"
@@ -3768,38 +4379,28 @@ function KycTab() {
       </div>
 
       {fetchError ? (
-        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
-          <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h3 className="mt-4 text-base font-semibold text-foreground">
-            Unable to load applications
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Something went wrong. Please refresh the page or try again later.
-          </p>
-        </div>
+        <EmptyState
+          className="p-12"
+          icon={<ShieldCheck className="mx-auto h-10 w-10" />}
+          title="Unable to load applications"
+          description="Something went wrong. Please refresh the page or try again later."
+        />
       ) : applications.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
-          <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h3 className="mt-4 text-base font-semibold text-foreground">No KYC applications yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Submit your first application to get started.
-          </p>
-          <button
-            onClick={openSubmitModal}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
-          >
-            <svg
-              className="h-3.5 w-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              viewBox="0 0 24 24"
+        <EmptyState
+          className="p-12"
+          icon={<ShieldCheck className="mx-auto h-10 w-10" />}
+          title="No KYC applications yet"
+          description="Submit your first application to get started."
+          action={
+            <button
+              onClick={openSubmitModal}
+              className="inline-flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-xs font-semibold text-brand-foreground transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-brand-hover"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Submit KYC application
-          </button>
-        </div>
+              <Plus className="h-3.5 w-3.5" />
+              Submit KYC application
+            </button>
+          }
+        />
       ) : (
         <>
           {/* Summary strip */}
