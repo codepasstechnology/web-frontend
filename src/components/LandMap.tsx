@@ -18,7 +18,7 @@ import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/Map
 // Fix default marker icons in bundlers
 const icon = L.divIcon({
   className: "lv-marker",
-  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#2563EB;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
+  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#15803D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
@@ -59,7 +59,7 @@ const pinIconFor = (color: string, status: string, selected: boolean) => {
 // Property pins are coloured by what the listing is for, the way land pins are
 // coloured by parcel status.
 const intentColors: Record<Property["intent"], string> = {
-  rent: "#2563EB",
+  rent: "#1E293B",
   bnb: "#7C3AED",
   sale: "#16A34A",
 };

@@ -59,7 +59,7 @@ function mapApiParcel(p: ApiParcel): ParcelSummary {
 const testimonials = [
   {
     quote:
-      "We verified three parcels in Kajiado before committing. Geo Properties flagged a boundary dispute the seller never disclosed. Saved us millions.",
+      "We verified three parcels in Kajiado before committing. GeoPin Properties flagged a boundary dispute the seller never disclosed. Saved us millions.",
     name: "James Mwangi",
     role: "Property Investor · Nairobi",
     initials: "JM",
@@ -68,7 +68,7 @@ const testimonials = [
   },
   {
     quote:
-      "The development score alone is worth it. We cross-reference every site acquisition with Geo Properties before presenting to our board.",
+      "The development score alone is worth it. We cross-reference every site acquisition with GeoPin Properties before presenting to our board.",
     name: "Aisha Odhiambo",
     role: "Real Estate Analyst · Mombasa",
     initials: "AO",
@@ -108,7 +108,7 @@ function Index() {
           fetchPriority="high"
           draggable={false}
         />
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-black/60" />
 
         <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-4 py-20 md:grid-cols-2 md:py-28">
           <div className="flex flex-col justify-center">
@@ -122,13 +122,13 @@ function Index() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/land"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-hover"
               >
                 Explore Land Map <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/rentals"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20 active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-md border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
               >
                 Browse Rentals <ArrowRight className="h-4 w-4" />
               </Link>
@@ -143,13 +143,13 @@ function Index() {
 
           {featured.length > 0 && (
             <div className="relative flex items-center">
-              <div className="w-full rounded-2xl border border-white/20 bg-white/10 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+              <div className="w-full rounded-lg border border-white/10 bg-primary shadow-md">
                 <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-white">
-                    <MapPinned className="h-3.5 w-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-2 text-xs font-semibold text-primary-foreground">
+                    <MapPinned className="h-3.5 w-3.5 text-[#4ADE80]" />
                     Live Parcel Index
                   </div>
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-sm">
+                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary-foreground/60">
                     Live
                   </span>
                 </div>
@@ -166,10 +166,14 @@ function Index() {
                           style={{ backgroundColor: m.color }}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-white">{p.title}</p>
-                          <p className="truncate text-[11px] text-white/50">{p.county}</p>
+                          <p className="truncate text-sm font-medium text-primary-foreground">
+                            {p.title}
+                          </p>
+                          <p className="truncate text-[11px] text-primary-foreground/60">
+                            {p.county}
+                          </p>
                         </div>
-                        <span className="text-[11px] font-semibold text-emerald-300">
+                        <span className="text-[11px] font-semibold text-[#4ADE80]">
                           KES {(p.price / 1_000_000).toFixed(1)}M
                         </span>
                       </li>
@@ -222,7 +226,7 @@ function Index() {
                   },
                 ].map(({ icon: Icon, title, body }) => (
                   <div key={title} className="flex gap-3">
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F0FDF4] text-[#15803D]">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div>
@@ -235,14 +239,14 @@ function Index() {
 
               <Link
                 to="/land"
-                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#15803D] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#166534]"
               >
                 Explore the platform <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
             {/* Right: parcel report mockup */}
-            <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 shadow-sm">
+            <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
                   Parcel Report
@@ -255,7 +259,7 @@ function Index() {
               {/* Map mock */}
               <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
                 <svg viewBox="0 0 400 180" className="w-full">
-                  <rect width="400" height="180" fill="#EFF6FF" />
+                  <rect width="400" height="180" fill="#F0FDF4" />
                   {[50, 100, 150, 200, 250, 300, 350].map((x) => (
                     <line
                       key={x}
@@ -281,12 +285,12 @@ function Index() {
                   <polygon
                     points="110,38 270,32 288,125 242,150 105,140"
                     fill="#BFDBFE"
-                    stroke="#2563EB"
+                    stroke="#15803D"
                     strokeWidth="2"
                     fillOpacity="0.6"
                   />
-                  <circle cx="192" cy="90" r="6" fill="#2563EB" />
-                  <circle cx="192" cy="90" r="14" fill="#2563EB" fillOpacity="0.12" />
+                  <circle cx="192" cy="90" r="6" fill="#15803D" />
+                  <circle cx="192" cy="90" r="14" fill="#15803D" fillOpacity="0.12" />
                   {/* Adjacent flagged parcel */}
                   <polygon
                     points="292,38 368,44 362,115 288,118"
@@ -372,7 +376,7 @@ function Index() {
                   <div className="relative mb-5 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#E2E8F0] bg-white shadow-sm">
                     <span className="text-xs font-bold text-[#0F172A]">{n}</span>
                   </div>
-                  <Icon className="mb-2.5 h-5 w-5 text-[#2563EB]" />
+                  <Icon className="mb-2.5 h-5 w-5 text-[#15803D]" />
                   <h3 className="text-sm font-bold text-[#0F172A]">{title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-[#475569]">{body}</p>
                 </div>
@@ -452,7 +456,7 @@ function Index() {
               },
             ].map(({ tag, headline, points, cta, to }) => (
               <div key={tag} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-6">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#15803D]">
                   {tag}
                 </span>
                 <p className="mt-2 text-base font-semibold text-[#0F172A]">{headline}</p>
@@ -466,7 +470,7 @@ function Index() {
                 </ul>
                 <Link
                   to={to}
-                  className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#2563EB] hover:underline"
+                  className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#15803D] hover:underline"
                 >
                   {cta} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
@@ -479,18 +483,18 @@ function Index() {
       {/* ── Testimonials ── */}
       <section className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-20">
         <div className="mx-auto max-w-7xl">
-          <p className="mb-10 text-xs font-bold uppercase tracking-widest text-[#2563EB]">
+          <p className="mb-10 text-xs font-bold uppercase tracking-widest text-[#15803D]">
             Trusted by buyers & investors
           </p>
 
           {/* Featured */}
-          <div className="mb-5 rounded-2xl border border-[#E2E8F0] bg-white p-8 md:p-10 lg:flex lg:items-start lg:gap-12">
+          <div className="mb-5 rounded-lg border border-[#E2E8F0] bg-white p-8 md:p-10 lg:flex lg:items-start lg:gap-12">
             <div className="flex-1">
               <p className="text-xl font-semibold leading-relaxed text-[#0F172A] md:text-2xl">
                 "{testimonials[0].quote}"
               </p>
               <div className="mt-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2563EB] text-xs font-bold text-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#15803D] text-xs font-bold text-white">
                   {testimonials[0].initials}
                 </div>
                 <div>
@@ -499,8 +503,8 @@ function Index() {
                 </div>
               </div>
             </div>
-            <div className="mt-6 rounded-xl bg-[#EFF6FF] px-6 py-5 text-center lg:mt-0 lg:w-44 lg:shrink-0">
-              <p className="text-3xl font-bold text-[#2563EB]">{testimonials[0].stat}</p>
+            <div className="mt-6 rounded-xl bg-[#F0FDF4] px-6 py-5 text-center lg:mt-0 lg:w-44 lg:shrink-0">
+              <p className="text-3xl font-bold text-[#15803D]">{testimonials[0].stat}</p>
               <p className="mt-1 text-xs leading-snug text-[#475569]">{testimonials[0].statNote}</p>
             </div>
           </div>
@@ -526,24 +530,24 @@ function Index() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="bg-[#2563EB] px-4 py-20">
+      <section className="bg-[#15803D] px-4 py-20">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-2xl font-bold text-white md:text-3xl">
             Kenya's most trusted land intelligence platform.
           </h2>
-          <p className="mt-4 text-sm text-blue-100">
+          <p className="mt-4 text-sm text-white/80">
             Join thousands of buyers, investors, and agencies who verify before they commit.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/land"
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#2563EB] shadow transition-all hover:bg-blue-50 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-md bg-white px-6 py-3 text-sm font-semibold text-[#15803D] shadow transition-colors hover:bg-[#F0FDF4]"
             >
               Explore the Map <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/rentals"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-white/10 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-md border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               Browse Rentals
             </Link>
@@ -551,8 +555,8 @@ function Index() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
             {["No credit card required", "Free tier available", "Cross-checked parcel data"].map(
               (item) => (
-                <span key={item} className="flex items-center gap-1.5 text-xs text-blue-100">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+                <span key={item} className="flex items-center gap-1.5 text-xs text-white/80">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                   {item}
                 </span>
               ),
@@ -567,10 +571,10 @@ function Index() {
           <div className="grid gap-10 md:grid-cols-5">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2563EB]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#15803D]">
                   <MapPinned className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-bold text-white">Geo Properties Kenya</span>
+                <span className="text-sm font-bold text-white">GeoPin Properties Kenya</span>
               </div>
               <p className="mt-4 max-w-xs text-xs leading-relaxed text-white/40">
                 GIS-powered land intelligence for buyers, sellers, and investors across Kenya.
@@ -645,7 +649,7 @@ function Index() {
 
           <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
             <p className="text-[11px] text-white/25">
-              © {new Date().getFullYear()} Geo Properties Kenya Ltd. All rights reserved.
+              © {new Date().getFullYear()} GeoPin Properties Kenya Ltd. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5 text-[11px] text-white/25">

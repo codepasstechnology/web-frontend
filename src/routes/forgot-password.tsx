@@ -4,7 +4,7 @@ import { MapPinned, Mail, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Reset Password — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Reset Password — GeoPin Properties Kenya" }] }),
   component: ForgotPasswordPage,
 });
 
@@ -43,16 +43,16 @@ function ForgotPasswordPage() {
       />
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* Logo — top left */}
       <div className="absolute left-6 top-6 z-20 sm:left-8 sm:top-8">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB] shadow-lg shadow-blue-900/60">
-            <MapPinned className="h-5 w-5 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-brand">
+            <MapPinned className="h-5 w-5 text-brand-foreground" />
           </div>
-          <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            Geo Properties
+          <span className="text-base font-semibold tracking-tight text-white">
+            GeoPin Properties
           </span>
         </Link>
       </div>
@@ -61,7 +61,7 @@ function ForgotPasswordPage() {
       <div className="absolute right-6 top-6 z-20 sm:right-8 sm:top-8">
         <Link
           to="/"
-          className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+          className="flex items-center gap-1.5 rounded-md border border-white/20 bg-black/40 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black/60"
         >
           <ArrowLeft className="h-4 w-4" />
           Home
@@ -70,27 +70,27 @@ function ForgotPasswordPage() {
 
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[400px] mx-4">
-        <div className="rounded-2xl bg-white/15 px-8 py-9 shadow-2xl shadow-black/50 ring-1 ring-white/25 backdrop-blur-2xl">
+        <div className="rounded-lg border border-border bg-card px-8 py-9 shadow-md">
           {!submitted ? (
             <>
               {/* Icon */}
               <div className="mb-6 flex justify-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/25 ring-1 ring-blue-400/40">
-                  <Mail className="h-7 w-7 text-blue-300" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-brand-subtle">
+                  <Mail className="h-7 w-7 text-brand-subtle-foreground" />
                 </div>
               </div>
 
               {/* Heading */}
               <div className="mb-7 text-center">
-                <h1 className="text-2xl font-bold text-white drop-shadow">Forgot your password?</h1>
-                <p className="mt-2 text-sm text-white/70">
+                <h1 className="text-2xl font-bold text-foreground">Forgot your password?</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
                   Enter your registered email and we'll send you a link to reset your password.
                 </p>
               </div>
 
               {err && (
-                <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/40 bg-red-500/20 px-4 py-3 text-sm font-medium text-red-200">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500/40 text-xs font-bold text-red-200 ring-1 ring-red-400/50">
+                <div className="mb-5 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive-subtle px-4 py-3 text-sm font-medium text-destructive-subtle-foreground">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive/20 text-xs font-bold text-destructive">
                     !
                   </span>
                   {err}
@@ -99,9 +99,11 @@ function ForgotPasswordPage() {
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-white">Email address</label>
+                  <label className="block text-sm font-semibold text-foreground">
+                    Email address
+                  </label>
                   <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="email"
                       value={email}
@@ -116,7 +118,7 @@ function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98] disabled:opacity-60"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-60"
                 >
                   {loading ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -130,16 +132,16 @@ function ForgotPasswordPage() {
             /* ── Success state ── */
             <>
               <div className="mb-6 flex justify-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/25 ring-1 ring-emerald-400/40">
-                  <Mail className="h-7 w-7 text-emerald-300" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success-subtle">
+                  <Mail className="h-7 w-7 text-success" />
                 </div>
               </div>
               <div className="mb-7 text-center">
-                <h1 className="text-2xl font-bold text-white drop-shadow">Check your inbox</h1>
-                <p className="mt-2 text-sm text-white/70">
+                <h1 className="text-2xl font-bold text-foreground">Check your inbox</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
                   We've sent a password reset link to{" "}
-                  <span className="font-semibold text-white">{email}</span>. Check your spam folder
-                  if you don't see it.
+                  <span className="font-semibold text-foreground">{email}</span>. Check your spam
+                  folder if you don't see it.
                 </p>
               </div>
               <button
@@ -147,7 +149,7 @@ function ForgotPasswordPage() {
                   setSubmitted(false);
                   setEmail("");
                 }}
-                className="w-full rounded-xl border border-white/25 bg-white/10 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20"
+                className="w-full rounded-md border border-border py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
               >
                 Try a different email
               </button>
@@ -158,7 +160,7 @@ function ForgotPasswordPage() {
           <div className="mt-6 flex justify-center">
             <Link
               to="/login"
-              className="flex items-center gap-1.5 text-sm font-semibold text-white/70 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to sign in
@@ -171,14 +173,14 @@ function ForgotPasswordPage() {
         .fp-input {
           display: block; width: 100%; height: 44px;
           padding: 0 14px; font-size: 14px;
-          color: #fff; background: rgba(255,255,255,0.15);
-          border: 1.5px solid rgba(255,255,255,0.25); border-radius: 10px;
-          outline: none; transition: border-color .15s, box-shadow .15s, background .15s;
+          color: var(--foreground); background: var(--background);
+          border: 1.5px solid var(--border); border-radius: var(--radius-md);
+          outline: none; transition: border-color .15s, box-shadow .15s;
         }
         .fp-input.has-icon { padding-left: 2.75rem; }
-        .fp-input:hover  { border-color: rgba(255,255,255,0.4); }
-        .fp-input:focus  { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.25); background: rgba(255,255,255,0.2); }
-        .fp-input::placeholder { color: rgba(255,255,255,0.4); }
+        .fp-input:hover  { border-color: var(--muted-foreground); }
+        .fp-input:focus  { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand) 20%, transparent); }
+        .fp-input::placeholder { color: var(--muted-foreground); }
       `}</style>
     </div>
   );

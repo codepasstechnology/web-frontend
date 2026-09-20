@@ -18,7 +18,7 @@ import {
 export const Route = createFileRoute("/dashboard/properties")({
   component: PostPropertyPage,
   ssr: false,
-  head: () => ({ meta: [{ title: "Post a Property — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Post a Property — GeoPin Properties Kenya" }] }),
 });
 
 const steps = ["Property Details", "Location", "Photos", "Review & Submit"];
@@ -162,14 +162,14 @@ function PostPropertyPage() {
           </p>
 
           {feeDue && (
-            <p className="mt-5 text-sm font-medium text-[#2563EB]">
+            <p className="mt-5 text-sm font-medium text-[#15803D]">
               Posting fee due: KES {feeDue.amount.toLocaleString()}
             </p>
           )}
 
           <button
             onClick={() => navigate({ to: "/dashboard", search: { tab: "listings" } })}
-            className="mt-6 w-full rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+            className="mt-6 w-full rounded-md bg-[#15803D] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#166534]"
           >
             Go to my listings
           </button>
@@ -203,9 +203,9 @@ function PostPropertyPage() {
               key={label}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 i === step
-                  ? "bg-[#2563EB] text-white"
+                  ? "bg-[#15803D] text-white"
                   : i < step
-                    ? "bg-[#2563EB]/10 text-[#2563EB]"
+                    ? "bg-[#15803D]/10 text-[#15803D]"
                     : "bg-muted text-muted-foreground"
               }`}
             >
@@ -371,7 +371,7 @@ function PostPropertyPage() {
                         }
                         className={`rounded-full border px-3 py-1 text-xs font-medium ${
                           on
-                            ? "border-[#2563EB] bg-[#2563EB]/10 text-[#2563EB]"
+                            ? "border-[#15803D] bg-[#15803D]/10 text-[#15803D]"
                             : "border-border text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -542,7 +542,7 @@ function PostPropertyPage() {
               type="button"
               onClick={() => setStep((s) => s + 1)}
               disabled={!canNext}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
             >
               Next <ArrowRight className="h-4 w-4" />
             </button>
@@ -551,7 +551,7 @@ function PostPropertyPage() {
               type="button"
               onClick={submit}
               disabled={create.isPending}
-              className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+              className="rounded-md bg-[#15803D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
             >
               {create.isPending ? "Submitting…" : "Submit listing"}
             </button>
@@ -567,7 +567,7 @@ function PostPropertyPage() {
           border: 1px solid var(--border); border-radius: 6px; outline: none;
         }
         textarea.dp-input { height: auto; padding: 8px 10px; }
-        .dp-input:focus { border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,.2); }
+        .dp-input:focus { border-color: #15803D; box-shadow: 0 0 0 2px rgba(21,128,61,.2); }
       `}</style>
     </DashboardShell>
   );
