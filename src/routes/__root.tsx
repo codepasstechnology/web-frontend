@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Geo Properties Kenya — Verified Land & Property Intelligence" },
+      { title: "GeoPin Properties Kenya — Verified Land & Property Intelligence" },
       {
         name: "description",
         content:
@@ -90,7 +90,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:title",
-        content: "Geo Properties Kenya — Verified Land & Property Intelligence",
+        content: "GeoPin Properties Kenya — Verified Land & Property Intelligence",
       },
       {
         property: "og:description",

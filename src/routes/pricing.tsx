@@ -7,13 +7,13 @@ import { Zap, Star } from "lucide-react";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing — Geo Properties Kenya" },
+      { title: "Pricing — GeoPin Properties Kenya" },
       {
         name: "description",
         content:
           "Simple, transparent pricing for land sellers, agents and developers across Kenya.",
       },
-      { property: "og:title", content: "Pricing — Geo Properties Kenya" },
+      { property: "og:title", content: "Pricing — GeoPin Properties Kenya" },
       {
         property: "og:description",
         content: "Free, Basic and Pro plans for listing verified land in Kenya.",
@@ -85,7 +85,7 @@ function PricingPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-base font-semibold text-foreground">Ksh {a.price}</div>
-                  <button className="mt-1 text-xs font-medium text-[#2563EB] hover:underline">
+                  <button className="mt-1 text-xs font-medium text-[#15803D] hover:underline">
                     Add to listing
                   </button>
                 </div>

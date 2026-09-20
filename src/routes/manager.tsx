@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
 
 export const Route = createFileRoute("/manager")({
-  head: () => ({ meta: [{ title: "My Clients — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "My Clients — GeoPin Properties Kenya" }] }),
   component: ManagerPage,
 });
 
@@ -68,7 +68,7 @@ function ManagerPage() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-[#2563EB]" />
+            <Users className="h-5 w-5 text-[#15803D]" />
             <div>
               <div className="text-sm font-semibold text-foreground">My Clients</div>
               <div className="text-xs text-muted-foreground">Signed in as {user.fullName}</div>
@@ -117,7 +117,7 @@ function ManagerPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search clients…"
-                  className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm focus:border-[#2563EB] focus:outline-none"
+                  className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm focus:border-[#15803D] focus:outline-none"
                 />
               </div>
             </div>
@@ -193,7 +193,7 @@ function ManagerPage() {
                             {c.plan} · {c.listings_count} listing
                             {c.listings_count === 1 ? "" : "s"}
                           </span>
-                          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB]">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#15803D]">
                             <Pencil className="h-3.5 w-3.5" /> Edit
                           </span>
                         </div>
@@ -256,7 +256,7 @@ function EditClientModal({
   };
 
   const inputCls =
-    "h-9 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#2563EB] focus:outline-none";
+    "h-9 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803D] focus:outline-none";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -293,7 +293,7 @@ function EditClientModal({
               value={form.bio}
               onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
               rows={3}
-              className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#2563EB] focus:outline-none"
+              className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#15803D] focus:outline-none"
             />
           </div>
         </div>
@@ -308,7 +308,7 @@ function EditClientModal({
           <button
             onClick={save}
             disabled={saving}
-            className="rounded-md bg-[#2563EB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+            className="rounded-md bg-[#15803D] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>

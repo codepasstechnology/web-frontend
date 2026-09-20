@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
+import { LocateFixed, Map as MapIcon, Satellite, Search } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 export const OSM_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 export const SATELLITE_TILES =
@@ -16,37 +18,21 @@ export function MapSatelliteToggle({
     <button
       onClick={onToggle}
       title={satellite ? "Switch to street map" : "Switch to satellite view"}
-      style={{
-        position: "absolute",
-        top: 90,
-        left: 10,
-        zIndex: 800,
-        height: 30,
-        padding: "0 10px",
-        borderRadius: 6,
-        border: "1px solid #e2e8f0",
-        background: satellite ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.97)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        fontSize: 11,
-        fontWeight: 600,
-        color: satellite ? "#f1f5f9" : "#334155",
-        letterSpacing: "0.02em",
-        pointerEvents: "auto",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = satellite ? "rgba(30,41,59,0.95)" : "#f1f5f9";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = satellite
-          ? "rgba(15,23,42,0.85)"
-          : "rgba(255,255,255,0.97)";
-      }}
+      className={`pointer-events-auto absolute left-2.5 top-[90px] z-[800] flex h-[30px] items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold tracking-wide shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        satellite
+          ? "border-white/15 bg-primary/90 text-primary-foreground hover:bg-primary"
+          : "border-border bg-card/95 text-foreground hover:bg-muted"
+      }`}
     >
-      {satellite ? "🗺 Map" : "🛰 Satellite"}
+      {satellite ? (
+        <>
+          <MapIcon className="h-3.5 w-3.5" /> Map
+        </>
+      ) : (
+        <>
+          <Satellite className="h-3.5 w-3.5" /> Satellite
+        </>
+      )}
     </button>
   );
 }
@@ -141,63 +127,19 @@ export function MapSearchBar({
       ref={wrapRef}
       className="pointer-events-auto absolute left-28 right-3 top-3 z-[800] md:left-1/2 md:right-auto md:top-2.5 md:w-[300px] md:max-w-[calc(100%-70px)] md:-translate-x-1/2"
     >
-      <div style={{ display: "flex", gap: 6 }}>
-        <div style={{ position: "relative", flex: 1 }}>
-          <svg
-            style={{
-              position: "absolute",
-              left: 9,
-              top: "50%",
-              transform: "translateY(-50%)",
-              pointerEvents: "none",
-              color: "#94a3b8",
-              width: 13,
-              height: 13,
-            }}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
+      <div className="flex gap-1.5">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search location in Kenya…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => results.length > 0 && setOpen(true)}
-            style={{
-              height: 34,
-              width: "100%",
-              borderRadius: 6,
-              border: "1px solid #e2e8f0",
-              background: "rgba(255,255,255,0.97)",
-              paddingLeft: 30,
-              paddingRight: 8,
-              fontSize: 12,
-              outline: "none",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-              boxSizing: "border-box",
-              color: "#0f172a",
-            }}
+            className="h-[34px] w-full rounded-md border border-border bg-card/95 pl-8 pr-2 text-xs text-foreground shadow-sm outline-none transition-colors hover:border-muted-foreground/40 focus:border-brand"
           />
           {open && results.length > 0 && (
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: "calc(100% + 4px)",
-                zIndex: 801,
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.14)",
-                overflow: "hidden",
-              }}
-            >
+            <div className="absolute inset-x-0 top-[calc(100%+4px)] z-[801] overflow-hidden rounded-md border border-border bg-card shadow-md">
               {results.map((r, i) => (
                 <button
                   key={i}
@@ -206,23 +148,7 @@ export function MapSearchBar({
                     setQuery(r.display_name.split(",")[0].trim());
                     setOpen(false);
                   }}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    padding: "7px 10px",
-                    textAlign: "left",
-                    fontSize: 12,
-                    color: "#0f172a",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    borderBottom: i < results.length - 1 ? "1px solid #f1f5f9" : "none",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  className="block w-full truncate border-b border-border px-2.5 py-1.5 text-left text-xs text-foreground transition-colors last:border-0 hover:bg-muted"
                 >
                   {r.display_name}
                 </button>
@@ -234,54 +160,12 @@ export function MapSearchBar({
           onClick={handleNearMe}
           disabled={locating}
           title={onNearMe ? "Drop pin at my location" : "Show what's near me"}
-          style={{
-            height: 34,
-            width: 34,
-            flexShrink: 0,
-            borderRadius: 6,
-            border: "1px solid #e2e8f0",
-            background: "rgba(255,255,255,0.97)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-            cursor: locating ? "default" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#334155",
-            opacity: locating ? 0.6 : 1,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.97)")}
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-md border border-border bg-card/95 text-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-default disabled:opacity-60"
         >
-          <svg
-            width="14"
-            height="14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-            className={locating ? "animate-spin" : undefined}
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
-          </svg>
+          {locating ? <Spinner size="sm" /> : <LocateFixed className="h-3.5 w-3.5" />}
         </button>
         {locateError && (
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: "calc(100% + 6px)",
-              zIndex: 801,
-              borderRadius: 6,
-              border: "1px solid #fecaca",
-              background: "#fef2f2",
-              color: "#b91c1c",
-              fontSize: 11,
-              padding: "6px 8px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
-            }}
-          >
+          <div className="absolute inset-x-0 top-[calc(100%+6px)] z-[801] rounded-md border border-destructive/30 bg-destructive-subtle px-2 py-1.5 text-[11px] text-destructive-subtle-foreground shadow-sm">
             {locateError}
           </div>
         )}
