@@ -193,6 +193,13 @@ export function LandMap({
         zoom={11}
         scrollWheelZoom
         zoomControl={false}
+        // leaflet-rotate's SVG/Canvas renderer desyncs from the tile pane mid
+        // zoom-animation while `rotate` is on (its own acknowledged bug), which
+        // reads as parcel boundaries drifting off their tiles as you pinch-zoom.
+        // Disabling the animated zoom transition removes the in-between frames
+        // where that drift is visible — zoom still works, it just snaps to the
+        // new level instead of easing into it. Rotation itself is unaffected.
+        zoomAnimation={false}
         rotate
         touchRotate
         rotateControl={{ position: "topleft", closeOnZeroBearing: false }}
