@@ -18,6 +18,7 @@ import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({ meta: [{ title: "Upload Land — GeoPin Properties Kenya" }] }),
@@ -80,6 +81,7 @@ function loadDraft(): UploadDraft | null {
 
 function clearDraft(): void {
   if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
+  clearDraftPhotos(DRAFT_KEY);
 }
 
 function sizeToAcres(
@@ -303,14 +305,41 @@ function UploadPage() {
   }, [editId]);
 
   // Autosave the wizard so an accidental refresh or nav-away doesn't lose
-  // progress. Photo/document files aren't serializable, so they're excluded —
-  // the seller re-attaches those if a draft is restored. Skipped while
-  // editing an existing listing so it doesn't clobber the create-flow draft.
+  // progress. Document files aren't restored — a title deed/ID re-attach is a
+  // deliberate act, not something to silently resurrect — so they're excluded
+  // here. Skipped while editing an existing listing so it doesn't clobber the
+  // create-flow draft.
   useEffect(() => {
     if (typeof window === "undefined" || editId) return;
     const { photos: _photos, documents: _documents, ...draftFields } = form;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, ...draftFields }));
   }, [step, form, editId]);
+
+  // Photos live in IndexedDB (File objects aren't JSON-serializable, unlike
+  // the fields above) so they're saved separately, in their own effect.
+  useEffect(() => {
+    if (typeof window === "undefined" || editId) return;
+    saveDraftPhotos(
+      DRAFT_KEY,
+      form.photos.map((p) => p.file),
+    );
+  }, [form.photos, editId]);
+
+  // Restoring photos is async (IndexedDB), so it arrives a tick after the
+  // synchronous localStorage-backed fields above already populated the form.
+  useEffect(() => {
+    if (!draft || editId) return;
+    let cancelled = false;
+    loadDraftPhotos(DRAFT_KEY).then((files) => {
+      if (cancelled || files.length === 0) return;
+      const mapped = files.map((f) => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
+      setForm((f) => ({ ...f, photos: [...f.photos, ...mapped] }));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!user || user.role === "account_manager") return null;
 
@@ -540,8 +569,8 @@ function UploadPage() {
         {showDraftNotice && !submitted && !editId && (
           <div className="mt-4 flex items-center justify-between rounded-md border border-[#15803D]/30 bg-[#15803D]/5 px-3 py-2 text-xs text-foreground">
             <span>
-              Restored your unsaved draft from earlier. Photos and documents aren't saved in drafts
-              — you'll need to re-attach them.
+              Restored your unsaved draft from earlier, including your photos. Documents aren't
+              saved in drafts — you'll need to re-attach those.
             </span>
             <button
               onClick={() => setShowDraftNotice(false)}
