@@ -99,7 +99,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: import.meta.env.VITE_CPANEL
       ? []
@@ -151,7 +150,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {showNavbar && <Navbar scrollAware />}
+        {showNavbar && <Navbar scrollAware overlay={pathname === "/"} />}
         <Outlet />
         <Toaster position="top-right" richColors />
       </AuthProvider>
