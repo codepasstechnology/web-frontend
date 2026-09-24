@@ -27,15 +27,19 @@ export function Navbar({
   transparent = false,
   translucent = false,
   scrollAware = false,
+  overlay = false,
 }: {
   compact?: boolean;
   transparent?: boolean;
   translucent?: boolean;
   scrollAware?: boolean;
+  /** Float over a full-bleed hero marked `data-nav-overlay`, transparent until it scrolls past. */
+  overlay?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [overHero, setOverHero] = useState(overlay);
   const moreRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -63,18 +67,49 @@ export function Navbar({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [scrollAware]);
+
+  useEffect(() => {
+    if (!overlay) {
+      setOverHero(false);
+      return;
+    }
+    // Negative top margin = the bar's height, so it turns solid as the hero's
+    // bottom edge slides under it rather than after it has fully left the viewport.
+    const io = new IntersectionObserver(([entry]) => setOverHero(entry.isIntersecting), {
+      rootMargin: "-64px 0px 0px 0px",
+    });
+    const attach = () => {
+      const hero = document.querySelector("[data-nav-overlay]");
+      if (hero) io.observe(hero);
+      return Boolean(hero);
+    };
+    // On client-side navigation the page (and its hero) can mount after the
+    // navbar re-renders, so wait for it to appear.
+    const mo = new MutationObserver(() => {
+      if (attach()) mo.disconnect();
+    });
+    if (!attach()) mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      io.disconnect();
+    };
+  }, [overlay]);
+
+  const dark = transparent || (overlay && overHero);
   return (
     <header
-      className={`sticky top-0 z-40 w-full transition-colors duration-300 ease-out ${
-        transparent
-          ? "border-b border-white/10 bg-black/30 backdrop-blur-md"
-          : scrollAware
-            ? scrolled
-              ? "border-b border-border/40 bg-white/80 backdrop-blur-md dark:bg-card/80"
-              : "border-b border-transparent bg-white"
-            : translucent
-              ? "border-b border-border/40 bg-white/70 backdrop-blur-md dark:bg-card/70"
-              : "border-b border-border bg-card"
+      className={`${overlay ? "fixed inset-x-0" : "sticky"} top-0 z-40 w-full transition-colors duration-300 ease-out ${
+        overlay && overHero
+          ? "border-b border-transparent bg-gradient-to-b from-black/50 to-transparent"
+          : transparent
+            ? "border-b border-white/10 bg-black/30 backdrop-blur-md"
+            : scrollAware
+              ? scrolled
+                ? "border-b border-border/40 bg-white/80 backdrop-blur-md dark:bg-card/80"
+                : "border-b border-transparent bg-white"
+              : translucent
+                ? "border-b border-border/40 bg-white/70 backdrop-blur-md dark:bg-card/70"
+                : "border-b border-border bg-card"
       }`}
     >
       <div
@@ -84,21 +119,17 @@ export function Navbar({
           to="/"
           className="flex shrink-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-md transition-transform duration-150 ${transparent ? "bg-brand text-brand-foreground" : "bg-primary text-primary-foreground"}`}
-          >
-            <MapPinned className="h-4 w-4" />
-          </div>
+          <LogoMark aria-hidden className="h-8" />
           <div className="flex flex-col leading-tight">
             <span
-              className={`text-sm font-extrabold tracking-tight ${transparent ? "text-white" : "text-foreground"}`}
+              className={`text-sm font-semibold tracking-tight ${dark ? "text-white" : "text-foreground"}`}
             >
               GeoPin Properties
             </span>
             <span
-              className={`text-[10px] font-medium uppercase tracking-widest ${transparent ? "text-white/50" : "text-muted-foreground"}`}
+              className={`text-[10px] font-medium uppercase tracking-widest ${dark ? "text-white/50" : "text-muted-foreground"}`}
             >
-              Properties
+              Kenya
             </span>
           </div>
         </Link>
@@ -107,27 +138,27 @@ export function Navbar({
           {/* Always-visible links */}
           <Link
             to="/land"
-            className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+            className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             activeProps={{
-              className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white" : "text-foreground"}`,
+              className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white" : "text-foreground"}`,
             }}
           >
             Land
           </Link>
           <Link
             to="/rentals"
-            className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+            className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             activeProps={{
-              className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white" : "text-foreground"}`,
+              className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white" : "text-foreground"}`,
             }}
           >
             Rentals
           </Link>
           <Link
             to="/pricing"
-            className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+            className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             activeProps={{
-              className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white" : "text-foreground"}`,
+              className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white" : "text-foreground"}`,
             }}
           >
             Pricing
@@ -138,9 +169,9 @@ export function Navbar({
             <Link
               key={to}
               to={to}
-              className={`hidden rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:inline ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              className={`hidden rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:inline ${dark ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
               activeProps={{
-                className: `hidden rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:inline ${transparent ? "text-white" : "text-foreground"}`,
+                className: `hidden rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:inline ${dark ? "text-white" : "text-foreground"}`,
               }}
             >
               {label}
@@ -151,7 +182,7 @@ export function Navbar({
           <div ref={moreRef} className="relative xl:hidden">
             <button
               onClick={() => setMoreOpen((v) => !v)}
-              className={`flex items-center gap-1 rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              className={`flex items-center gap-1 rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
             >
               More
               <ChevronDown
@@ -182,9 +213,9 @@ export function Navbar({
             <Link
               to="/dashboard"
               search={{ tab: undefined }}
-              className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"}`}
               activeProps={{
-                className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white" : "text-foreground"}`,
+                className: `rounded-sm text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white" : "text-foreground"}`,
               }}
             >
               Dashboard
@@ -196,12 +227,12 @@ export function Navbar({
           {/* Search — only at lg+ */}
           <div className="relative hidden lg:block">
             <Search
-              className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${transparent ? "text-white/40" : "text-muted-foreground"}`}
+              className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${dark ? "text-white/40" : "text-muted-foreground"}`}
             />
             <input
               placeholder="Search parcel, county…"
               className={`h-9 w-44 rounded-md border pl-9 pr-3 text-sm outline-none transition-colors xl:w-56 ${
-                transparent
+                dark
                   ? "border-white/15 bg-white/10 text-white placeholder:text-white/40 hover:border-white/25 focus:border-brand focus:bg-white/15"
                   : "border-border bg-background text-foreground placeholder:text-muted-foreground hover:border-muted-foreground/40 focus:border-brand"
               }`}
@@ -214,7 +245,7 @@ export function Navbar({
                 to="/dashboard"
                 search={{ tab: undefined }}
                 className={`hidden rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 active:scale-[0.97] sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  transparent
+                  dark
                     ? "bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm"
                     : "bg-primary text-primary-foreground hover:bg-secondary"
                 }`}
@@ -225,7 +256,7 @@ export function Navbar({
                 onClick={handleLogout}
                 title="Log out"
                 className={`hidden rounded-md border p-2 transition-colors sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  transparent
+                  dark
                     ? "border-white/20 text-white/80 hover:bg-white/10"
                     : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
@@ -238,7 +269,7 @@ export function Navbar({
               <Link
                 to="/login"
                 className={`hidden rounded-md border px-3 py-1.5 text-xs font-medium transition-colors sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  transparent
+                  dark
                     ? "border-white/20 text-white/80 hover:bg-white/10 backdrop-blur-sm"
                     : "border-border text-foreground hover:bg-muted"
                 }`}
@@ -248,7 +279,7 @@ export function Navbar({
               <Link
                 to="/register"
                 className={`hidden rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 active:scale-[0.97] sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  transparent
+                  dark
                     ? "bg-white text-slate-800 hover:bg-white/90"
                     : "bg-primary text-primary-foreground hover:bg-secondary"
                 }`}
@@ -259,7 +290,7 @@ export function Navbar({
           )}
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className={`rounded-md p-2 transition-colors md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+            className={`rounded-md p-2 transition-colors md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
           >
@@ -274,27 +305,27 @@ export function Navbar({
       >
         <div className="overflow-hidden">
           <div
-            className={`border-t ${transparent ? "border-white/10 bg-black/90" : "border-border bg-card"}`}
+            className={`border-t ${dark ? "border-white/10 bg-black/90" : "border-border bg-card"}`}
           >
             <nav className="flex flex-col px-3 py-2">
               <Link
                 to="/land"
                 onClick={() => setMenuOpen(false)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
               >
                 Land
               </Link>
               <Link
                 to="/rentals"
                 onClick={() => setMenuOpen(false)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
               >
                 Rentals
               </Link>
               <Link
                 to="/pricing"
                 onClick={() => setMenuOpen(false)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
               >
                 Pricing
               </Link>
@@ -303,7 +334,7 @@ export function Navbar({
                   key={to}
                   to={to}
                   onClick={() => setMenuOpen(false)}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
                 >
                   {label}
                 </Link>
@@ -313,13 +344,13 @@ export function Navbar({
                   to="/dashboard"
                   search={{ tab: undefined }}
                   onClick={() => setMenuOpen(false)}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
                 >
                   Dashboard
                 </Link>
               )}
               <div
-                className={`mt-2 flex gap-2 border-t pt-2 ${transparent ? "border-white/10" : "border-border"}`}
+                className={`mt-2 flex gap-2 border-t pt-2 ${dark ? "border-white/10" : "border-border"}`}
               >
                 {user ? (
                   <>
@@ -327,7 +358,7 @@ export function Navbar({
                       to="/dashboard"
                       search={{ tab: undefined }}
                       onClick={() => setMenuOpen(false)}
-                      className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "bg-white/15 text-white hover:bg-white/25" : "bg-primary text-primary-foreground hover:bg-secondary"}`}
+                      className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "bg-white/15 text-white hover:bg-white/25" : "bg-primary text-primary-foreground hover:bg-secondary"}`}
                     >
                       Dashboard
                     </Link>
@@ -336,7 +367,7 @@ export function Navbar({
                         setMenuOpen(false);
                         handleLogout();
                       }}
-                      className={`flex-1 rounded-md border px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "border-white/20 text-white/80 hover:bg-white/10" : "border-border text-foreground hover:bg-muted"}`}
+                      className={`flex-1 rounded-md border px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "border-white/20 text-white/80 hover:bg-white/10" : "border-border text-foreground hover:bg-muted"}`}
                     >
                       Log out
                     </button>
@@ -346,14 +377,14 @@ export function Navbar({
                     <Link
                       to="/login"
                       onClick={() => setMenuOpen(false)}
-                      className={`flex-1 rounded-md border px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "border-white/20 text-white/80 hover:bg-white/10" : "border-border text-foreground hover:bg-muted"}`}
+                      className={`flex-1 rounded-md border px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "border-white/20 text-white/80 hover:bg-white/10" : "border-border text-foreground hover:bg-muted"}`}
                     >
                       Login
                     </Link>
                     <Link
                       to="/register"
                       onClick={() => setMenuOpen(false)}
-                      className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${transparent ? "bg-white text-slate-800 hover:bg-white/90" : "bg-primary text-primary-foreground hover:bg-secondary"}`}
+                      className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "bg-white text-slate-800 hover:bg-white/90" : "bg-primary text-primary-foreground hover:bg-secondary"}`}
                     >
                       Register
                     </Link>

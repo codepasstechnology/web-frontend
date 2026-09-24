@@ -150,7 +150,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {showNavbar && <Navbar scrollAware />}
+        {showNavbar && <Navbar scrollAware overlay={pathname === "/"} />}
         <Outlet />
         <Toaster position="top-right" richColors />
       </AuthProvider>

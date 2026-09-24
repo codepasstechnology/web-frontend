@@ -16,6 +16,7 @@ export function HeroSection({ parcels }: { parcels: ParcelSummary[] }) {
 
   return (
     <section
+      data-nav-overlay
       aria-labelledby="hero-title"
       className="relative flex min-h-[90vh] items-center overflow-hidden bg-black"
     >
