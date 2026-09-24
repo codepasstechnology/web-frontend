@@ -13,5 +13,8 @@ export const WithLabel = () => (
 );
 
 export const Empty = () => (
-  <Textarea className="w-80" placeholder="Tell buyers about access roads, utilities and nearby schools…" />
+  <Textarea
+    className="w-80"
+    placeholder="Tell buyers about access roads, utilities and nearby schools…"
+  />
 );

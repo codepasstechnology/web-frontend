@@ -1,6 +1,23 @@
 import { ScrollArea, Separator } from "land-eye-kenya-frontend";
 
-const counties = ["Baringo", "Bomet", "Bungoma", "Busia", "Embu", "Garissa", "Homa Bay", "Isiolo", "Kajiado", "Kakamega", "Kericho", "Kiambu", "Kilifi", "Kirinyaga", "Kisii", "Kisumu"];
+const counties = [
+  "Baringo",
+  "Bomet",
+  "Bungoma",
+  "Busia",
+  "Embu",
+  "Garissa",
+  "Homa Bay",
+  "Isiolo",
+  "Kajiado",
+  "Kakamega",
+  "Kericho",
+  "Kiambu",
+  "Kilifi",
+  "Kirinyaga",
+  "Kisii",
+  "Kisumu",
+];
 
 export const CountyList = () => (
   <ScrollArea className="h-56 w-56 rounded-md border border-border">

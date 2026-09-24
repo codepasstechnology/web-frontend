@@ -1,4 +1,10 @@
-import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "land-eye-kenya-frontend";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "land-eye-kenya-frontend";
 import { ShieldCheck } from "lucide-react";
 
 export const VerifiedHint = () => (

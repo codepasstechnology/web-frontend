@@ -1,9 +1,4 @@
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "land-eye-kenya-frontend";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "land-eye-kenya-frontend";
 
 export const BetweenGroups = () => (
   <InputOTP maxLength={6} defaultValue="482913">

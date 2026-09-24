@@ -17,8 +17,12 @@ export const States = () => (
 
 export const Sizes = () => (
   <div className="flex items-center gap-2">
-    <Toggle size="sm" variant="outline">Small</Toggle>
+    <Toggle size="sm" variant="outline">
+      Small
+    </Toggle>
     <Toggle variant="outline">Default</Toggle>
-    <Toggle size="lg" variant="outline">Large</Toggle>
+    <Toggle size="lg" variant="outline">
+      Large
+    </Toggle>
   </div>
 );

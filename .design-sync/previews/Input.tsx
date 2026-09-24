@@ -22,6 +22,4 @@ export const Invalid = () => (
   </div>
 );
 
-export const Disabled = () => (
-  <Input className="w-72" disabled defaultValue="Kajiado County" />
-);
+export const Disabled = () => <Input className="w-72" disabled defaultValue="Kajiado County" />;

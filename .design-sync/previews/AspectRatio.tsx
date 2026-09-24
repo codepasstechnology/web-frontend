@@ -13,7 +13,9 @@ export const PhotoFrame = () => (
 export const Square = () => (
   <div className="w-40">
     <AspectRatio ratio={1} className="rounded-lg border border-dashed border-border bg-card">
-      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">1 : 1</div>
+      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+        1 : 1
+      </div>
     </AspectRatio>
   </div>
 );

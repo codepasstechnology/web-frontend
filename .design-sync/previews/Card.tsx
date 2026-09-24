@@ -55,9 +55,7 @@ export const Simple = () => (
       <CardDescription>List up to 50 parcels and unlock analytics.</CardDescription>
     </CardHeader>
     <CardFooter>
-      <Button className="w-full bg-brand text-brand-foreground hover:bg-brand/90">
-        See plans
-      </Button>
+      <Button className="w-full bg-brand text-brand-foreground hover:bg-brand/90">See plans</Button>
     </CardFooter>
   </Card>
 );

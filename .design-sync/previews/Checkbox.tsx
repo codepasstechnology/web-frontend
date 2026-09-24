@@ -12,7 +12,9 @@ export const States = () => (
     </div>
     <div className="flex items-center gap-2">
       <Checkbox id="c3" disabled />
-      <Label htmlFor="c3" className="opacity-50">Borehole (not available)</Label>
+      <Label htmlFor="c3" className="opacity-50">
+        Borehole (not available)
+      </Label>
     </div>
   </div>
 );

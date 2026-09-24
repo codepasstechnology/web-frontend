@@ -9,4 +9,3 @@ export const PriceRange = () => (
     <Slider defaultValue={[40]} max={100} step={1} />
   </div>
 );
-

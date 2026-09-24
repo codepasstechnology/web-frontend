@@ -29,7 +29,15 @@ export const TooltipContent = () => (
       <ChartTooltipContent
         active
         label="Saturday"
-        payload={[{ name: "views", dataKey: "views", value: 314, color: "var(--brand)", payload: { views: 314 } }]}
+        payload={[
+          {
+            name: "views",
+            dataKey: "views",
+            value: 314,
+            color: "var(--brand)",
+            payload: { views: 314 },
+          },
+        ]}
       />
     </ChartContainer>
   </div>

@@ -1,4 +1,10 @@
-import { Avatar, AvatarFallback, HoverCard, HoverCardContent, HoverCardTrigger } from "land-eye-kenya-frontend";
+import {
+  Avatar,
+  AvatarFallback,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "land-eye-kenya-frontend";
 
 export const SellerPreview = () => (
   <div className="h-48 w-80">

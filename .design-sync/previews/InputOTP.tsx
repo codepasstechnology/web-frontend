@@ -1,13 +1,10 @@
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "land-eye-kenya-frontend";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "land-eye-kenya-frontend";
 
 export const VerificationCode = () => (
   <div className="grid gap-2">
-    <p className="text-sm font-medium text-foreground">Enter the 6-digit code sent to 07•• ••• 214</p>
+    <p className="text-sm font-medium text-foreground">
+      Enter the 6-digit code sent to 07•• ••• 214
+    </p>
     <InputOTP maxLength={6} defaultValue="482913">
       <InputOTPGroup>
         <InputOTPSlot index={0} />

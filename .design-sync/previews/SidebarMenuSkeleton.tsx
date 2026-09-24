@@ -1,4 +1,12 @@
-import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuSkeleton, SidebarProvider } from "land-eye-kenya-frontend";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarProvider,
+} from "land-eye-kenya-frontend";
 
 export const Loading = () => (
   <SidebarProvider className="min-h-0 h-56 w-64">

@@ -22,7 +22,9 @@ export const States = () => (
     </div>
     <div className="flex items-center gap-2">
       <Switch id="s3" disabled />
-      <Label htmlFor="s3" className="opacity-50">Disabled</Label>
+      <Label htmlFor="s3" className="opacity-50">
+        Disabled
+      </Label>
     </div>
   </div>
 );

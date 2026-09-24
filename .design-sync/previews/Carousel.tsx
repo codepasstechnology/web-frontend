@@ -1,4 +1,10 @@
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "land-eye-kenya-frontend";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "land-eye-kenya-frontend";
 
 const shots = ["Front view", "Access road", "Boundary beacon", "Neighbourhood"];
 

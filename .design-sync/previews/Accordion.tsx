@@ -1,4 +1,9 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "land-eye-kenya-frontend";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "land-eye-kenya-frontend";
 
 export const Faq = () => (
   <Accordion type="single" collapsible defaultValue="verify" className="w-96">
@@ -11,7 +16,9 @@ export const Faq = () => (
     </AccordionItem>
     <AccordionItem value="fees">
       <AccordionTrigger>Are there listing fees?</AccordionTrigger>
-      <AccordionContent>Your first listing is free. Agent plans start at KES 2,500/month.</AccordionContent>
+      <AccordionContent>
+        Your first listing is free. Agent plans start at KES 2,500/month.
+      </AccordionContent>
     </AccordionItem>
     <AccordionItem value="visit">
       <AccordionTrigger>Can I visit a parcel before paying?</AccordionTrigger>

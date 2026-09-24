@@ -1,4 +1,11 @@
-import { Button, Input, Label, Popover, PopoverContent, PopoverTrigger } from "land-eye-kenya-frontend";
+import {
+  Button,
+  Input,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "land-eye-kenya-frontend";
 
 export const PriceFilter = () => (
   <div className="h-64 w-80">
