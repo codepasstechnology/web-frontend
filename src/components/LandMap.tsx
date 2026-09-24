@@ -18,7 +18,7 @@ import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/Map
 // Fix default marker icons in bundlers
 const icon = L.divIcon({
   className: "lv-marker",
-  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#2563EB;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
+  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#15803D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
@@ -59,7 +59,7 @@ const pinIconFor = (color: string, status: string, selected: boolean) => {
 // Property pins are coloured by what the listing is for, the way land pins are
 // coloured by parcel status.
 const intentColors: Record<Property["intent"], string> = {
-  rent: "#2563EB",
+  rent: "#1E293B",
   bnb: "#7C3AED",
   sale: "#16A34A",
 };
@@ -193,6 +193,13 @@ export function LandMap({
         zoom={11}
         scrollWheelZoom
         zoomControl={false}
+        // leaflet-rotate's SVG/Canvas renderer desyncs from the tile pane mid
+        // zoom-animation while `rotate` is on (its own acknowledged bug), which
+        // reads as parcel boundaries drifting off their tiles as you pinch-zoom.
+        // Disabling the animated zoom transition removes the in-between frames
+        // where that drift is visible — zoom still works, it just snaps to the
+        // new level instead of easing into it. Rotation itself is unaffected.
+        zoomAnimation={false}
         rotate
         touchRotate
         rotateControl={{ position: "topleft", closeOnZeroBearing: false }}

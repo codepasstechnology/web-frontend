@@ -4,7 +4,7 @@ import { BookOpen, ArrowRight, Calendar } from "lucide-react";
 import { api, type BlogPost, type Paginated } from "@/lib/api";
 
 export const Route = createFileRoute("/blog")({
-  head: () => ({ meta: [{ title: "Blog — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Blog — GeoPin Properties Kenya" }] }),
   component: BlogPage,
 });
 
@@ -41,7 +41,7 @@ function BlogPage() {
         <div className="mx-auto max-w-4xl px-4 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
             <BookOpen className="h-3.5 w-3.5" />
-            Geo Properties Blog
+            GeoPin Properties Blog
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">
             Land buying, demystified

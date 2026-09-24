@@ -18,9 +18,10 @@ import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
 
 export const Route = createFileRoute("/dashboard/upload")({
-  head: () => ({ meta: [{ title: "Upload Land — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Upload Land — GeoPin Properties Kenya" }] }),
   component: UploadPage,
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
@@ -51,6 +52,7 @@ const DRAFT_KEY = "lv_upload_draft_v1";
 interface UploadDraft {
   step: number;
   parcelNumber: string;
+  phone: string;
   county: string;
   area: string;
   sizeUnit: SizeUnit;
@@ -79,6 +81,7 @@ function loadDraft(): UploadDraft | null {
 
 function clearDraft(): void {
   if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
+  clearDraftPhotos(DRAFT_KEY);
 }
 
 function sizeToAcres(
@@ -166,14 +169,14 @@ function ListingTypeChooser({
 }) {
   const options = [
     {
-      icon: <MapIcon className="h-6 w-6 text-[#2563EB]" />,
+      icon: <MapIcon className="h-6 w-6 text-[#15803D]" />,
       title: "Land parcel",
       body: "A plot or acreage with a mapped boundary and title documents.",
       cta: "Upload land",
       onClick: onLand,
     },
     {
-      icon: <Building2 className="h-6 w-6 text-[#2563EB]" />,
+      icon: <Building2 className="h-6 w-6 text-[#15803D]" />,
       title: "Rental, BnB or home for sale",
       body: "An apartment, house or short stay pinned to a single location.",
       cta: "Post a property",
@@ -191,16 +194,16 @@ function ListingTypeChooser({
           <button
             key={o.title}
             onClick={o.onClick}
-            className="flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-colors hover:border-[#2563EB] hover:bg-muted/40"
+            className="flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-colors hover:border-[#15803D] hover:bg-muted/40"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2563EB]/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#15803D]/10">
               {o.icon}
             </div>
             <div>
               <div className="text-base font-semibold text-foreground">{o.title}</div>
               <p className="mt-1 text-sm text-muted-foreground">{o.body}</p>
             </div>
-            <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-[#2563EB]">
+            <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-[#15803D]">
               {o.cta} <ArrowRight className="h-4 w-4" />
             </span>
           </button>
@@ -239,6 +242,7 @@ function UploadPage() {
 
   const [form, setForm] = useState({
     parcelNumber: draft?.parcelNumber ?? "",
+    phone: draft?.phone ?? "",
     county: draft?.county ?? "",
     area: draft?.area ?? "",
     sizeUnit: draft?.sizeUnit ?? ("acres" as SizeUnit),
@@ -279,6 +283,7 @@ function UploadPage() {
         setForm((f) => ({
           ...f,
           parcelNumber: d.parcelNumber,
+          phone: d.phone ?? "",
           county: d.county,
           area: d.area ?? "",
           sizeUnit: "acres",
@@ -300,14 +305,41 @@ function UploadPage() {
   }, [editId]);
 
   // Autosave the wizard so an accidental refresh or nav-away doesn't lose
-  // progress. Photo/document files aren't serializable, so they're excluded —
-  // the seller re-attaches those if a draft is restored. Skipped while
-  // editing an existing listing so it doesn't clobber the create-flow draft.
+  // progress. Document files aren't restored — a title deed/ID re-attach is a
+  // deliberate act, not something to silently resurrect — so they're excluded
+  // here. Skipped while editing an existing listing so it doesn't clobber the
+  // create-flow draft.
   useEffect(() => {
     if (typeof window === "undefined" || editId) return;
     const { photos: _photos, documents: _documents, ...draftFields } = form;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, ...draftFields }));
   }, [step, form, editId]);
+
+  // Photos live in IndexedDB (File objects aren't JSON-serializable, unlike
+  // the fields above) so they're saved separately, in their own effect.
+  useEffect(() => {
+    if (typeof window === "undefined" || editId) return;
+    saveDraftPhotos(
+      DRAFT_KEY,
+      form.photos.map((p) => p.file),
+    );
+  }, [form.photos, editId]);
+
+  // Restoring photos is async (IndexedDB), so it arrives a tick after the
+  // synchronous localStorage-backed fields above already populated the form.
+  useEffect(() => {
+    if (!draft || editId) return;
+    let cancelled = false;
+    loadDraftPhotos(DRAFT_KEY).then((files) => {
+      if (cancelled || files.length === 0) return;
+      const mapped = files.map((f) => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
+      setForm((f) => ({ ...f, photos: [...f.photos, ...mapped] }));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!user || user.role === "account_manager") return null;
 
@@ -396,6 +428,7 @@ function UploadPage() {
     const payload: NewListingInput = {
       title: form.parcelNumber,
       parcelNumber: form.parcelNumber,
+      phone: form.phone || undefined,
       county: form.county,
       area: form.area || undefined,
       size: sizeDisplay || undefined,
@@ -487,7 +520,7 @@ function UploadPage() {
               type="button"
               onClick={() => setStep(2)}
               disabled={!canNext}
-              className="w-full rounded-md bg-[#2563EB] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+              className="w-full rounded-md bg-[#15803D] px-4 py-3 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
             >
               Confirm location
             </button>
@@ -517,9 +550,9 @@ function UploadPage() {
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                   i < step
-                    ? "bg-[#2563EB] text-white"
+                    ? "bg-[#15803D] text-white"
                     : i === step
-                      ? "border-2 border-[#2563EB] bg-card text-[#2563EB]"
+                      ? "border-2 border-[#15803D] bg-card text-[#15803D]"
                       : "border border-border bg-card text-muted-foreground"
                 }`}
               >
@@ -527,21 +560,21 @@ function UploadPage() {
               </div>
               <div className="hidden text-xs font-medium text-foreground sm:block">{s}</div>
               {i < steps.length - 1 && (
-                <div className={`h-px flex-1 ${i < step ? "bg-[#2563EB]" : "bg-border"}`} />
+                <div className={`h-px flex-1 ${i < step ? "bg-[#15803D]" : "bg-border"}`} />
               )}
             </div>
           ))}
         </div>
 
         {showDraftNotice && !submitted && !editId && (
-          <div className="mt-4 flex items-center justify-between rounded-md border border-[#2563EB]/30 bg-[#2563EB]/5 px-3 py-2 text-xs text-foreground">
+          <div className="mt-4 flex items-center justify-between rounded-md border border-[#15803D]/30 bg-[#15803D]/5 px-3 py-2 text-xs text-foreground">
             <span>
-              Restored your unsaved draft from earlier. Photos and documents aren't saved in drafts
-              — you'll need to re-attach them.
+              Restored your unsaved draft from earlier, including your photos. Documents aren't
+              saved in drafts — you'll need to re-attach those.
             </span>
             <button
               onClick={() => setShowDraftNotice(false)}
-              className="font-medium text-[#2563EB] hover:underline"
+              className="font-medium text-[#15803D] hover:underline"
             >
               Dismiss
             </button>
@@ -550,7 +583,7 @@ function UploadPage() {
 
         {loadingListing ? (
           <div className="mt-8 flex justify-center">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#2563EB] border-t-transparent" />
+            <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#15803D] border-t-transparent" />
           </div>
         ) : loadError ? (
           <div className="mt-8 rounded-lg border border-red-300 bg-red-50 p-6 text-center text-sm text-red-700">
@@ -581,6 +614,7 @@ function UploadPage() {
                     setStep(0);
                     setForm({
                       parcelNumber: "",
+                      phone: "",
                       county: "",
                       area: "",
                       sizeUnit: "acres",
@@ -599,7 +633,7 @@ function UploadPage() {
                       documents: [],
                     });
                   }}
-                  className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
+                  className="rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534]"
                 >
                   Upload another
                 </button>
@@ -722,6 +756,15 @@ function UploadPage() {
                     onChange={(e) => set("price", toDigits(e.target.value))}
                   />
                 </Field>
+                <Field label="Contact phone">
+                  <input
+                    className="lv-input"
+                    type="tel"
+                    placeholder="+254 7XX XXX XXX"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                  />
+                </Field>
                 <Field label="Listing type">
                   <select
                     className="lv-input"
@@ -815,7 +858,7 @@ function UploadPage() {
                         set("sizeUnit", "acres");
                         set("sizeAcres", tracedAreaAcres.toFixed(2));
                       }}
-                      className="font-medium text-[#2563EB] hover:underline"
+                      className="font-medium text-[#15803D] hover:underline"
                     >
                       Use this as land size
                     </button>
@@ -838,7 +881,7 @@ function UploadPage() {
                   {totalPhotoCount >= photoLimit && (
                     <button
                       onClick={() => setUpgradeOpen(true)}
-                      className="font-medium text-[#2563EB] hover:underline"
+                      className="font-medium text-[#15803D] hover:underline"
                     >
                       Upgrade to upload more
                     </button>
@@ -855,8 +898,8 @@ function UploadPage() {
                     setDragActive(false);
                     handlePhotos(e.dataTransfer.files);
                   }}
-                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed py-10 text-sm text-muted-foreground hover:border-[#2563EB] ${
-                    dragActive ? "border-[#2563EB] bg-[#2563EB]/5" : "border-border bg-background"
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed py-10 text-sm text-muted-foreground hover:border-[#15803D] ${
+                    dragActive ? "border-[#15803D] bg-[#15803D]/5" : "border-border bg-background"
                   }`}
                 >
                   <UploadCloud className="h-6 w-6" />
@@ -881,7 +924,7 @@ function UploadPage() {
                           title={coverPhotoId === p.id ? "Cover photo" : "Set as cover"}
                           className={`absolute left-1 top-1 rounded-full p-1 ${
                             coverPhotoId === p.id
-                              ? "bg-[#2563EB] text-white"
+                              ? "bg-[#15803D] text-white"
                               : "bg-black/60 text-white hover:bg-black/80"
                           }`}
                         >
@@ -947,7 +990,7 @@ function UploadPage() {
                     {propertyDocCount >= documentLimit && (
                       <button
                         onClick={() => setUpgradeOpen(true)}
-                        className="font-medium text-[#2563EB] hover:underline"
+                        className="font-medium text-[#15803D] hover:underline"
                       >
                         Upgrade to add more
                       </button>
@@ -1043,6 +1086,7 @@ function UploadPage() {
                   label="Price"
                   value={form.price ? `Ksh ${Number(form.price).toLocaleString()}` : "—"}
                 />
+                <Summary label="Contact phone" value={form.phone || "—"} />
                 <Summary
                   label="Listing type"
                   value={form.listingType === "sale" ? "For Sale" : "For Lease"}
@@ -1085,7 +1129,7 @@ function UploadPage() {
                   <div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-[#2563EB] transition-all"
+                        className="h-full rounded-full bg-[#15803D] transition-all"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
@@ -1121,7 +1165,7 @@ function UploadPage() {
                     </p>
                     <button
                       onClick={() => setUpgradeOpen(true)}
-                      className="mt-3 rounded-md bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8]"
+                      className="mt-3 rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
                     >
                       View plans
                     </button>
@@ -1142,7 +1186,7 @@ function UploadPage() {
                 <button
                   onClick={() => setStep((s) => s + 1)}
                   disabled={!canNext}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-50"
                 >
                   Next <ArrowRight className="h-3.5 w-3.5" />
                 </button>
@@ -1150,7 +1194,7 @@ function UploadPage() {
                 <button
                   onClick={submit}
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-60"
                 >
                   {submitting && (
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -1177,7 +1221,7 @@ function UploadPage() {
         reason="Upgrade to unlock more listings and photos."
       />
 
-      <style>{`.lv-input{display:block;height:40px;width:100%;border:1px solid #E2E8F0;border-radius:6px;padding:0 12px;font-size:14px;background:#fff;color:#0F172A;outline:none}.lv-input:focus{border-color:#2563EB}textarea.lv-input{height:auto;padding:8px 12px}`}</style>
+      <style>{`.lv-input{display:block;height:40px;width:100%;border:1px solid #E2E8F0;border-radius:6px;padding:0 12px;font-size:14px;background:#fff;color:#0F172A;outline:none}.lv-input:focus{border-color:#15803D}textarea.lv-input{height:auto;padding:8px 12px}`}</style>
     </DashboardShell>
   );
 }

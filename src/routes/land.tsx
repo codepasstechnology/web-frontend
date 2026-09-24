@@ -18,7 +18,7 @@ export const Route = createFileRoute("/land")({
   }),
   head: () => ({
     meta: [
-      { title: "Land Parcels Map — Geo Properties Kenya" },
+      { title: "Land Parcels Map — GeoPin Properties Kenya" },
       {
         name: "description",
         content: "Interactive GIS map of plotted, verified land parcels across Kenya.",
