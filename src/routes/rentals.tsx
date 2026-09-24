@@ -27,7 +27,7 @@ export const Route = createFileRoute("/rentals")({
   }),
   head: () => ({
     meta: [
-      { title: "Rentals Map — Geo Properties Kenya" },
+      { title: "Rentals Map — GeoPin Properties Kenya" },
       {
         name: "description",
         content: "Browse verified rental properties across Kenya on an interactive map.",

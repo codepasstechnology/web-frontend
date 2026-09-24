@@ -99,6 +99,7 @@ interface ApiListingDetail {
   title: string;
   parcel_number: string | null;
   county: string;
+  seller_phone: string | null;
   area: string | null;
   size: string | null;
   area_acres: number | null;
@@ -225,6 +226,7 @@ export interface NewListingInput {
   title: string;
   parcelNumber: string;
   county: string;
+  phone?: string;
   area?: string;
   size?: string;
   areaAcres?: number;
@@ -251,6 +253,7 @@ export interface ListingDetail {
   title: string;
   parcelNumber: string;
   county: string;
+  phone?: string;
   area?: string;
   size?: string;
   areaAcres?: number;
@@ -563,6 +566,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fd.append("listing_type", l.listingType ?? "sale");
       fd.append("land_type", l.landType ?? "residential");
       if (l.parcelNumber) fd.append("parcel_number", l.parcelNumber);
+      if (l.phone) fd.append("seller_phone", l.phone);
       if (l.area) fd.append("area", l.area);
       if (l.size) fd.append("size", l.size);
       if (l.areaAcres != null) fd.append("area_acres", String(l.areaAcres));
@@ -585,6 +589,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body = {
         title: l.title,
         parcel_number: l.parcelNumber || undefined,
+        seller_phone: l.phone || undefined,
         county: l.county,
         area: l.area || undefined,
         size: l.size || undefined,
@@ -628,6 +633,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: d.id,
       title: d.title,
       parcelNumber: d.parcel_number ?? "",
+      phone: d.seller_phone ?? undefined,
       county: d.county,
       area: d.area ?? undefined,
       size: d.size ?? undefined,
@@ -656,6 +662,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fd.append("listing_type", l.listingType ?? "sale");
       fd.append("land_type", l.landType ?? "residential");
       if (l.parcelNumber) fd.append("parcel_number", l.parcelNumber);
+      if (l.phone) fd.append("seller_phone", l.phone);
       if (l.area) fd.append("area", l.area);
       if (l.size) fd.append("size", l.size);
       if (l.areaAcres != null) fd.append("area_acres", String(l.areaAcres));

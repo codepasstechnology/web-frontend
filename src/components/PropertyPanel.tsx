@@ -28,7 +28,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 // Mobile: draggable bottom sheet (peek/default/full snap points, leaves the map visible
 // underneath). Desktop: right side panel, unaffected by the drag state.
 const panelClass =
-  "fixed inset-x-0 bottom-0 z-[1150] flex w-full flex-col rounded-t-xl border border-border bg-card shadow-2xl " +
+  "fixed inset-x-0 bottom-0 z-[1150] flex w-full flex-col rounded-t-lg border border-border bg-card shadow-lg " +
   "md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-0 md:h-full md:max-h-none md:w-full md:max-w-sm md:rounded-none md:border-0 md:border-l";
 
 const SHEET_PEEK_VH = 24;
@@ -136,7 +136,15 @@ function whatsappUrl(phone: string, message: string): string | null {
   return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
 }
 
-function WhatsAppButton({ phone, message }: { phone: string; message: string }) {
+function WhatsAppButton({
+  phone,
+  message,
+  parcelId,
+}: {
+  phone: string;
+  message: string;
+  parcelId?: string;
+}) {
   const url = whatsappUrl(phone, message);
   if (!url) return null;
   return (
@@ -144,6 +152,9 @@ function WhatsAppButton({ phone, message }: { phone: string; message: string }) 
       href={url}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => {
+        if (parcelId) api.post(`/parcels/${parcelId}/inquiry`).catch(() => {});
+      }}
       className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
     >
       <MessageCircle className="h-3.5 w-3.5 text-[var(--success)]" />
@@ -326,7 +337,7 @@ export function ParcelPanel({
               </span>
             )}
             {parcel.featured && (
-              <span className="inline-flex items-center gap-1 rounded-sm bg-[#D97706] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+              <span className="inline-flex items-center gap-1 rounded-sm bg-warning-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning-subtle-foreground">
                 <Star className="h-3 w-3" /> Featured
               </span>
             )}
@@ -372,7 +383,7 @@ export function ParcelPanel({
           </div>
           <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
             <div
-              className="h-1.5 rounded-full bg-[var(--accent)]"
+              className="h-1.5 rounded-full bg-brand"
               style={{ width: `${parcel.amenities.developmentScore}%` }}
             />
           </div>
@@ -436,7 +447,8 @@ export function ParcelPanel({
         <VerificationRequestButton parcelId={parcel.id} />
         <WhatsAppButton
           phone={parcel.seller.phone}
-          message={`Hi, I'm interested in ${parcel.title} listed on Geo Properties.`}
+          message={`Hi, I'm interested in ${parcel.title} listed on GeoPin Properties.`}
+          parcelId={parcel.id}
         />
         <ShareButton
           title={parcel.title}
@@ -467,7 +479,7 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
       <div className="flex items-start justify-between border-b border-border p-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center rounded-sm bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+            <span className="inline-flex items-center rounded-sm bg-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-foreground">
               {TYPE_LABELS[property.type]}
             </span>
             <span className="inline-flex items-center rounded-sm border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
@@ -475,7 +487,7 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
             </span>
             <PostedByBadge postedBy={property.postedBy} />
             {property.featured && (
-              <span className="inline-flex items-center rounded-sm bg-[#D97706] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+              <span className="inline-flex items-center rounded-sm bg-warning-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning-subtle-foreground">
                 Featured
               </span>
             )}
@@ -572,7 +584,7 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
       <div className="flex items-center gap-2 border-t border-border p-4">
         <WhatsAppButton
           phone={property.agent.phone}
-          message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on Geo Properties.`}
+          message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on GeoPin Properties.`}
         />
         <ShareButton
           title={property.title}

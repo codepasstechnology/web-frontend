@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Geo Properties Kenya — Verified Land & Property Intelligence" },
+      { title: "GeoPin Properties Kenya — Verified Land & Property Intelligence" },
       {
         name: "description",
         content:
@@ -90,7 +90,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:title",
-        content: "Geo Properties Kenya — Verified Land & Property Intelligence",
+        content: "GeoPin Properties Kenya — Verified Land & Property Intelligence",
       },
       {
         property: "og:description",
@@ -99,7 +99,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: import.meta.env.VITE_CPANEL
       ? []
@@ -151,7 +150,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {showNavbar && <Navbar scrollAware />}
+        {showNavbar && <Navbar scrollAware overlay={pathname === "/"} />}
         <Outlet />
         <Toaster position="top-right" richColors />
       </AuthProvider>

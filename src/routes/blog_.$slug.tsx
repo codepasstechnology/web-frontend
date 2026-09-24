@@ -97,8 +97,8 @@ function BlogPostPage() {
         .article-body li { margin-bottom: 0.35rem; }
         .article-body ul { list-style-type: disc; }
         .article-body ol { list-style-type: decimal; }
-        .article-body a  { color: #2563eb; text-decoration: underline; text-underline-offset: 2px; }
-        .article-body a:hover { color: #1d4ed8; }
+        .article-body a  { color: #15803d; text-decoration: underline; text-underline-offset: 2px; }
+        .article-body a:hover { color: #166534; }
         .article-body strong { font-weight: 600; color: var(--foreground); }
         .article-body img { max-width: 100%; border-radius: 0.5rem; margin: 1.5rem 0; }
         .article-body blockquote {

@@ -123,8 +123,8 @@ export function LegalDocPage({ type }: Props) {
         .legal-body li { margin-bottom: 0.35rem; }
         .legal-body ul { list-style-type: disc; }
         .legal-body ol { list-style-type: decimal; }
-        .legal-body a  { color: #2563eb; text-decoration: underline; text-underline-offset: 2px; }
-        .legal-body a:hover { color: #1d4ed8; }
+        .legal-body a  { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+        .legal-body a:hover { color: var(--brand-hover); }
         .legal-body strong { font-weight: 600; color: var(--foreground); }
         .legal-body blockquote {
           border-left: 3px solid var(--border); padding-left: 1rem;

@@ -17,7 +17,7 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { useSignupsOpen } from "@/lib/settings";
 
 export const Route = createFileRoute("/register")({
-  head: () => ({ meta: [{ title: "Create Account — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Create Account — GeoPin Properties Kenya" }] }),
   component: RegisterPage,
 });
 
@@ -124,16 +124,16 @@ export function RegisterPage() {
       />
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/58 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* Logo — top left */}
       <div className="absolute left-6 top-6 z-20 sm:left-8 sm:top-8">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB] shadow-lg shadow-blue-900/60">
-            <MapPinned className="h-5 w-5 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-brand">
+            <MapPinned className="h-5 w-5 text-brand-foreground" />
           </div>
-          <span className="text-base font-semibold tracking-tight text-white drop-shadow">
-            Geo Properties
+          <span className="text-base font-semibold tracking-tight text-white">
+            GeoPin Properties
           </span>
         </Link>
       </div>
@@ -142,7 +142,7 @@ export function RegisterPage() {
       <div className="absolute right-6 top-6 z-20 sm:right-8 sm:top-8">
         <Link
           to="/"
-          className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
+          className="flex items-center gap-1.5 rounded-md border border-white/20 bg-black/40 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black/60"
         >
           <ArrowLeft className="h-4 w-4" />
           Home
@@ -151,27 +151,27 @@ export function RegisterPage() {
 
       {/* ── Form card ── */}
       <div className="relative z-10 w-full max-w-[480px] mx-4 mt-16">
-        <div className="rounded-2xl bg-white/15 px-8 py-8 shadow-2xl shadow-black/50 ring-1 ring-white/25 backdrop-blur-2xl">
+        <div className="rounded-lg border border-border bg-card px-8 py-8 shadow-md">
           {!signupsOpen ? (
             /* ── Sign-ups closed by the platform ── */
             <div className="flex flex-col items-center py-4 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
-                <Lock className="h-8 w-8 text-white/80" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted">
+                <Lock className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h2 className="mt-5 text-2xl font-bold text-white">Registrations are closed</h2>
-              <p className="mt-2 text-sm text-white/70">
+              <h2 className="mt-5 text-2xl font-bold text-foreground">Registrations are closed</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
                 New accounts are paused right now. Please check back later.
               </p>
               <div className="mt-7 flex w-full flex-col gap-2.5">
                 <Link
                   to="/login"
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98]"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-hover"
                 >
                   Sign in <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/"
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-white/25 bg-white/10 text-sm font-semibold text-white transition-all hover:bg-white/20"
+                  className="flex h-11 w-full items-center justify-center rounded-md border border-border text-sm font-semibold text-foreground transition-colors hover:bg-muted"
                 >
                   Back to home
                 </Link>
@@ -180,22 +180,23 @@ export function RegisterPage() {
           ) : registered ? (
             /* ── Success state ── */
             <div className="flex flex-col items-center py-4 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 ring-1 ring-emerald-400/30">
-                <Check className="h-8 w-8 text-emerald-400" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-success-subtle">
+                <Check className="h-8 w-8 text-success" />
               </div>
-              <h2 className="mt-5 text-2xl font-bold text-white">You're all set!</h2>
-              <p className="mt-2 text-sm text-white/70">
-                Welcome to Geo Properties,{" "}
-                <span className="font-semibold text-white">{form.fullName.split(" ")[0]}</span>!
+              <h2 className="mt-5 text-2xl font-bold text-foreground">You're all set!</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Welcome to GeoPin Properties,{" "}
+                <span className="font-semibold text-foreground">{form.fullName.split(" ")[0]}</span>
+                !
               </p>
-              <p className="mt-1 text-sm text-white/50">
+              <p className="mt-1 text-sm text-muted-foreground">
                 We've sent a verification email to{" "}
-                <span className="text-white/70">{form.email}</span>. Check your inbox before
+                <span className="text-foreground">{form.email}</span>. Check your inbox before
                 listing.
               </p>
               <button
                 onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })}
-                className="mt-7 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98]"
+                className="mt-7 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-hover"
               >
                 Go to Dashboard <ArrowRight className="h-4 w-4" />
               </button>
@@ -204,17 +205,17 @@ export function RegisterPage() {
             <>
               {/* Heading */}
               <div className="mb-6">
-                <h1 className="text-2xl font-bold leading-tight text-white drop-shadow">
+                <h1 className="text-2xl font-bold leading-tight text-foreground">
                   Create your account
                 </h1>
-                <p className="mt-1.5 text-sm text-white/70">
+                <p className="mt-1.5 text-sm text-muted-foreground">
                   List and manage verified land in minutes. No upfront payment required.
                 </p>
               </div>
 
               {err && (
-                <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/40 bg-red-500/20 px-4 py-3 text-sm font-medium text-red-200">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500/40 text-xs font-bold text-red-200 ring-1 ring-red-400/50">
+                <div className="mb-5 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive-subtle px-4 py-3 text-sm font-medium text-destructive-subtle-foreground">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive/20 text-xs font-bold text-destructive">
                     !
                   </span>
                   {err}
@@ -225,9 +226,9 @@ export function RegisterPage() {
                 {/* Name + Phone */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-white">Full name</label>
+                    <label className="block text-sm font-semibold text-foreground">Full name</label>
                     <div className="relative">
-                      <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                      <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <input
                         className="rg-input has-icon"
                         value={form.fullName}
@@ -238,11 +239,12 @@ export function RegisterPage() {
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-white">
-                      Phone <span className="text-xs font-normal text-white/40">(optional)</span>
+                    <label className="block text-sm font-semibold text-foreground">
+                      Phone{" "}
+                      <span className="text-xs font-normal text-muted-foreground">(optional)</span>
                     </label>
                     <div className="relative">
-                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <input
                         className="rg-input has-icon"
                         value={form.phone}
@@ -256,9 +258,11 @@ export function RegisterPage() {
 
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-white">Email address</label>
+                  <label className="block text-sm font-semibold text-foreground">
+                    Email address
+                  </label>
                   <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="email"
                       className="rg-input has-icon"
@@ -273,9 +277,9 @@ export function RegisterPage() {
                 {/* Password + Confirm */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-white">Password</label>
+                    <label className="block text-sm font-semibold text-foreground">Password</label>
                     <div className="relative">
-                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <input
                         type={showPw ? "text" : "password"}
                         className="rg-input has-icon pr-9"
@@ -288,7 +292,7 @@ export function RegisterPage() {
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
                         tabIndex={-1}
-                        className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                        className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -302,7 +306,7 @@ export function RegisterPage() {
                               className="h-1 flex-1 rounded-full transition-all duration-300"
                               style={{
                                 backgroundColor:
-                                  i <= strength.score ? strength.color : "rgba(255,255,255,0.12)",
+                                  i <= strength.score ? strength.color : "var(--border)",
                               }}
                             />
                           ))}
@@ -314,9 +318,9 @@ export function RegisterPage() {
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-white">Confirm</label>
+                    <label className="block text-sm font-semibold text-foreground">Confirm</label>
                     <div className="relative">
-                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <input
                         type={showConfirm ? "text" : "password"}
                         className="rg-input has-icon pr-9"
@@ -329,7 +333,7 @@ export function RegisterPage() {
                         type="button"
                         onClick={() => setShowConfirm((v) => !v)}
                         tabIndex={-1}
-                        className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                        className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -339,25 +343,25 @@ export function RegisterPage() {
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-white">I am a</label>
+                  <label className="block text-sm font-semibold text-foreground">I am a</label>
                   <div className="grid grid-cols-3 gap-2">
                     {roles.map((r) => (
                       <button
                         type="button"
                         key={r.id}
                         onClick={() => setRole(r.id)}
-                        className={`flex flex-col items-center rounded-xl border-2 px-2 py-2.5 text-center transition-all ${
+                        className={`flex flex-col items-center rounded-md border px-2 py-2.5 text-center transition-colors ${
                           role === r.id
-                            ? "border-blue-400 bg-blue-500/25 shadow-sm"
-                            : "border-white/20 bg-white/10 hover:border-white/40 hover:bg-white/15"
+                            ? "border-brand bg-brand-subtle"
+                            : "border-border hover:bg-muted"
                         }`}
                       >
                         <span
-                          className={`text-xs font-bold ${role === r.id ? "text-blue-300" : "text-white"}`}
+                          className={`text-xs font-bold ${role === r.id ? "text-brand-subtle-foreground" : "text-foreground"}`}
                         >
                           {r.label}
                         </span>
-                        <span className="mt-0.5 text-[10px] leading-tight text-white/50">
+                        <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
                           {r.desc}
                         </span>
                       </button>
@@ -366,27 +370,25 @@ export function RegisterPage() {
                 </div>
 
                 {/* Terms */}
-                <label className="flex cursor-pointer items-start gap-2.5 text-xs text-white/70">
+                <label className="flex cursor-pointer items-start gap-2.5 text-xs text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={terms}
                     onChange={(e) => setTerms(e.target.checked)}
-                    className="mt-0.5 h-3.5 w-3.5 rounded accent-[#2563EB]"
+                    className="mt-0.5 h-3.5 w-3.5 rounded accent-brand"
                   />
                   <span>
-                    I agree to Geo Properties'{" "}
-                    <span className="font-bold text-blue-300 hover:underline">
-                      Terms of Service
-                    </span>{" "}
-                    and{" "}
-                    <span className="font-bold text-blue-300 hover:underline">Privacy Policy</span>.
+                    I agree to GeoPin Properties'{" "}
+                    <span className="font-bold text-brand hover:underline">Terms of Service</span>{" "}
+                    and <span className="font-bold text-brand hover:underline">Privacy Policy</span>
+                    .
                   </span>
                 </label>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] text-sm font-semibold text-white shadow-lg shadow-blue-900/50 transition-all hover:bg-[#1d4ed8] active:scale-[0.98] disabled:opacity-60"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-hover disabled:opacity-60"
                 >
                   {loading ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -395,12 +397,9 @@ export function RegisterPage() {
                   )}
                 </button>
 
-                <p className="text-center text-sm text-white/70">
+                <p className="text-center text-sm text-muted-foreground">
                   Already have an account?{" "}
-                  <Link
-                    to="/login"
-                    className="font-bold text-blue-300 hover:text-blue-200 hover:underline"
-                  >
+                  <Link to="/login" className="font-bold text-brand hover:underline">
                     Sign in
                   </Link>
                 </p>
@@ -412,9 +411,9 @@ export function RegisterPage() {
           {signupsOpen && !registered && (
             <>
               <div className="mt-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/15" />
-                <span className="text-xs text-white/40">or</span>
-                <div className="h-px flex-1 bg-white/15" />
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="h-px flex-1 bg-border" />
               </div>
               <GoogleSignInButton onCredential={onGoogleCredential} text="signup_with" />
             </>
@@ -423,19 +422,13 @@ export function RegisterPage() {
 
         {/* Terms & Privacy */}
         {signupsOpen && !registered && (
-          <p className="mt-5 text-center text-xs text-white/40">
+          <p className="mt-5 text-center text-xs text-white/70">
             By creating an account you agree to our{" "}
-            <Link
-              to="/terms"
-              className="text-white/60 underline underline-offset-2 hover:text-white transition-colors"
-            >
+            <Link to="/terms" className="underline underline-offset-2 hover:text-white">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link
-              to="/privacy"
-              className="text-white/60 underline underline-offset-2 hover:text-white transition-colors"
-            >
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-white">
               Privacy Policy
             </Link>
             .
@@ -447,23 +440,15 @@ export function RegisterPage() {
         .rg-input {
           display: block; width: 100%; height: 42px;
           padding: 0 12px 0 12px; font-size: 14px;
-          color: #fff; background: rgba(255,255,255,0.15);
-          border: 1.5px solid rgba(255,255,255,0.25); border-radius: 10px;
-          outline: none; transition: border-color .15s, box-shadow .15s, background .15s;
+          color: var(--foreground); background: var(--background);
+          border: 1.5px solid var(--border); border-radius: var(--radius-md);
+          outline: none; transition: border-color .15s, box-shadow .15s;
         }
         .rg-input.has-icon { padding-left: 2.75rem; }
-        .rg-input:hover  { border-color: rgba(255,255,255,0.4); }
-        .rg-input:focus  { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.25); background: rgba(255,255,255,0.2); }
-        .rg-input::placeholder { color: rgba(255,255,255,0.4); }
+        .rg-input:hover  { border-color: var(--muted-foreground); }
+        .rg-input:focus  { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand) 20%, transparent); }
+        .rg-input::placeholder { color: var(--muted-foreground); }
         .rg-input::-ms-reveal { display: none; }
-        .rg-input:-webkit-autofill,
-        .rg-input:-webkit-autofill:hover,
-        .rg-input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px rgba(30,40,60,0.85) inset !important;
-          -webkit-text-fill-color: #fff !important;
-          caret-color: #fff;
-          border-color: rgba(255,255,255,0.25) !important;
-        }
       `}</style>
     </div>
   );

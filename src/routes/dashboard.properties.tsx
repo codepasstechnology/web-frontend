@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2, MapPin } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { StkCheckoutModal } from "@/components/StkCheckoutModal";
 import { kenyaCounties } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";
+import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
 import {
   useCreateProperty,
   INTENT_LABELS,
@@ -18,7 +19,7 @@ import {
 export const Route = createFileRoute("/dashboard/properties")({
   component: PostPropertyPage,
   ssr: false,
-  head: () => ({ meta: [{ title: "Post a Property — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Post a Property — GeoPin Properties Kenya" }] }),
 });
 
 const steps = ["Property Details", "Location", "Photos", "Review & Submit"];
@@ -41,6 +42,45 @@ const PRICE_LABEL: Record<PropertyIntent, string> = {
   bnb: "Nightly rate (KES)",
   sale: "Asking price (KES)",
 };
+
+const DRAFT_KEY = "lv_property_draft_v1";
+
+interface PropertyDraft {
+  step: number;
+  title: string;
+  county: string;
+  area: string;
+  description: string;
+  intent: PropertyIntent;
+  type: PropertyType;
+  price: string;
+  bedrooms: string;
+  bathrooms: string;
+  furnished: boolean;
+  amenities: string[];
+  minNights: string;
+  cleaningFee: string;
+  postedBy: "owner" | "broker";
+  agentName: string;
+  agentPhone: string;
+  agentAgency: string;
+  pin: [number, number] | null;
+}
+
+function loadDraft(): PropertyDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as PropertyDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft(): void {
+  if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
+  clearDraftPhotos(DRAFT_KEY);
+}
 
 interface Form {
   title: string;
@@ -89,14 +129,66 @@ const emptyForm: Form = {
 function PostPropertyPage() {
   const navigate = useNavigate();
   const create = useCreateProperty();
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState<Form>(emptyForm);
+  const draft = useRef(loadDraft()).current;
+  const [step, setStep] = useState(draft?.step ?? 0);
+  const [form, setForm] = useState<Form>({
+    title: draft?.title ?? emptyForm.title,
+    county: draft?.county ?? emptyForm.county,
+    area: draft?.area ?? emptyForm.area,
+    description: draft?.description ?? emptyForm.description,
+    intent: draft?.intent ?? emptyForm.intent,
+    type: draft?.type ?? emptyForm.type,
+    price: draft?.price ?? emptyForm.price,
+    bedrooms: draft?.bedrooms ?? emptyForm.bedrooms,
+    bathrooms: draft?.bathrooms ?? emptyForm.bathrooms,
+    furnished: draft?.furnished ?? emptyForm.furnished,
+    amenities: draft?.amenities ?? emptyForm.amenities,
+    minNights: draft?.minNights ?? emptyForm.minNights,
+    cleaningFee: draft?.cleaningFee ?? emptyForm.cleaningFee,
+    postedBy: draft?.postedBy ?? emptyForm.postedBy,
+    agentName: draft?.agentName ?? emptyForm.agentName,
+    agentPhone: draft?.agentPhone ?? emptyForm.agentPhone,
+    agentAgency: draft?.agentAgency ?? emptyForm.agentAgency,
+    pin: draft?.pin ?? emptyForm.pin,
+    photos: [],
+  });
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [feeDue, setFeeDue] = useState<{ id: string; amount: number } | null>(null);
+  const [showDraftNotice, setShowDraftNotice] = useState(!!draft);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  // Autosave the wizard so an accidental refresh or nav-away doesn't lose
+  // progress, the same way the land-upload wizard does.
+  useEffect(() => {
+    if (typeof window === "undefined" || submitted) return;
+    const { photos: _photos, ...draftFields } = form;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, ...draftFields }));
+  }, [step, form, submitted]);
+
+  // Photos live in IndexedDB (File objects aren't JSON-serializable) and are
+  // saved separately from the fields above.
+  useEffect(() => {
+    if (typeof window === "undefined" || submitted) return;
+    saveDraftPhotos(DRAFT_KEY, form.photos);
+  }, [form.photos, submitted]);
+
+  // Restoring photos is async (IndexedDB), so it arrives a tick after the
+  // synchronous localStorage-backed fields above already populated the form.
+  useEffect(() => {
+    if (!draft) return;
+    let cancelled = false;
+    loadDraftPhotos(DRAFT_KEY).then((files) => {
+      if (cancelled || files.length === 0) return;
+      setForm((f) => ({ ...f, photos: [...f.photos, ...files] }));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const canNext =
     step === 0
@@ -136,6 +228,7 @@ function PostPropertyPage() {
       if (created.postingPaymentStatus === "pending") {
         setFeeDue({ id: created.id, amount: created.postingFeeAmount });
       }
+      clearDraft();
       setSubmitted(true);
     } catch (err: unknown) {
       const e = err as { errors?: Record<string, string[]>; message?: string };
@@ -162,14 +255,14 @@ function PostPropertyPage() {
           </p>
 
           {feeDue && (
-            <p className="mt-5 text-sm font-medium text-[#2563EB]">
+            <p className="mt-5 text-sm font-medium text-[#15803D]">
               Posting fee due: KES {feeDue.amount.toLocaleString()}
             </p>
           )}
 
           <button
             onClick={() => navigate({ to: "/dashboard", search: { tab: "listings" } })}
-            className="mt-6 w-full rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+            className="mt-6 w-full rounded-md bg-[#15803D] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#166534]"
           >
             Go to my listings
           </button>
@@ -203,9 +296,9 @@ function PostPropertyPage() {
               key={label}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 i === step
-                  ? "bg-[#2563EB] text-white"
+                  ? "bg-[#15803D] text-white"
                   : i < step
-                    ? "bg-[#2563EB]/10 text-[#2563EB]"
+                    ? "bg-[#15803D]/10 text-[#15803D]"
                     : "bg-muted text-muted-foreground"
               }`}
             >
@@ -213,6 +306,18 @@ function PostPropertyPage() {
             </li>
           ))}
         </ol>
+
+        {showDraftNotice && (
+          <div className="mt-4 flex items-center justify-between rounded-md border border-[#15803D]/30 bg-[#15803D]/5 px-3 py-2 text-xs text-foreground">
+            <span>Restored your unsaved draft from earlier, including your photos.</span>
+            <button
+              onClick={() => setShowDraftNotice(false)}
+              className="font-medium text-[#15803D] hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -371,7 +476,7 @@ function PostPropertyPage() {
                         }
                         className={`rounded-full border px-3 py-1 text-xs font-medium ${
                           on
-                            ? "border-[#2563EB] bg-[#2563EB]/10 text-[#2563EB]"
+                            ? "border-[#15803D] bg-[#15803D]/10 text-[#15803D]"
                             : "border-border text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -542,7 +647,7 @@ function PostPropertyPage() {
               type="button"
               onClick={() => setStep((s) => s + 1)}
               disabled={!canNext}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
             >
               Next <ArrowRight className="h-4 w-4" />
             </button>
@@ -551,7 +656,7 @@ function PostPropertyPage() {
               type="button"
               onClick={submit}
               disabled={create.isPending}
-              className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+              className="rounded-md bg-[#15803D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
             >
               {create.isPending ? "Submitting…" : "Submit listing"}
             </button>
@@ -567,7 +672,7 @@ function PostPropertyPage() {
           border: 1px solid var(--border); border-radius: 6px; outline: none;
         }
         textarea.dp-input { height: auto; padding: 8px 10px; }
-        .dp-input:focus { border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,.2); }
+        .dp-input:focus { border-color: #15803D; box-shadow: 0 0 0 2px rgba(21,128,61,.2); }
       `}</style>
     </DashboardShell>
   );

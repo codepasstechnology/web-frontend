@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/contact")({
-  head: () => ({ meta: [{ title: "Contact — Geo Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Contact — GeoPin Properties Kenya" }] }),
   component: ContactPage,
 });
 

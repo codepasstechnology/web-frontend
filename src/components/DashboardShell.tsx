@@ -158,7 +158,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
                   onClick={() => handleSelect(it.id)}
                   className={`mb-1 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-[#2563EB]/10 text-[#2563EB]"
+                      ? "bg-brand/10 text-brand"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
@@ -209,9 +209,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
                       key={it.id}
                       onClick={() => handleSelect(it.id)}
                       className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                        isActive
-                          ? "bg-[#2563EB]/10 text-[#2563EB]"
-                          : "text-foreground hover:bg-muted"
+                        isActive ? "bg-brand/10 text-brand" : "text-foreground hover:bg-muted"
                       }`}
                     >
                       {it.icon}

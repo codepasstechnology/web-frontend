@@ -12,12 +12,13 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/land")({
   component: LandPage,
   ssr: false,
-  validateSearch: (s: Record<string, unknown>): { parcel?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { parcel?: string; county?: string } => ({
     parcel: typeof s.parcel === "string" ? s.parcel : undefined,
+    county: typeof s.county === "string" ? s.county : undefined,
   }),
   head: () => ({
     meta: [
-      { title: "Land Parcels Map — Geo Properties Kenya" },
+      { title: "Land Parcels Map — GeoPin Properties Kenya" },
       {
         name: "description",
         content: "Interactive GIS map of plotted, verified land parcels across Kenya.",
@@ -121,7 +122,7 @@ function LandPage() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<Filters>({
     query: "",
-    county: "All",
+    county: search.county ?? "All",
     status: "all",
     listingType: "all",
     postedBy: "all",
