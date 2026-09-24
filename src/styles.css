@@ -113,6 +113,19 @@
   --color-warning: var(--warning);
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --animate-pin-pulse: pin-pulse 2.4s ease-out infinite;
+
+  @keyframes pin-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.35;
+    }
+    70%,
+    100% {
+      transform: scale(3.2);
+      opacity: 0;
+    }
+  }
 }
 
 /* Leaflet polish */

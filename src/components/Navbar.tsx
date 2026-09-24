@@ -2,7 +2,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import {
   Search,
-  MapPinned,
   Menu,
   X,
   ChevronDown,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { NotificationBell } from "@/components/NotificationBell";
+import { LogoMark } from "@/components/ui/logo";
 
 const moreLinks = [
   { to: "/blog", label: "Blog", icon: BookOpen, desc: "Guides & industry news" },
@@ -81,21 +81,17 @@ export function Navbar({
         className={`mx-auto flex h-14 items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6 ${compact ? "max-w-none" : "max-w-7xl"}`}
       >
         <Link to="/" className="flex shrink-0 items-center gap-2">
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-md ${transparent ? "bg-blue-600 text-white" : "bg-primary text-primary-foreground"}`}
-          >
-            <MapPinned className="h-4 w-4" />
-          </div>
+          <LogoMark aria-hidden className="h-8" />
           <div className="flex flex-col leading-tight">
             <span
-              className={`text-sm font-semibold tracking-tight ${transparent ? "text-white" : "text-foreground"}`}
+              className={`text-sm font-extrabold tracking-tight ${transparent ? "text-white" : "text-foreground"}`}
             >
-              Geo Properties
+              GEO <span className="text-brand">PIN</span>
             </span>
             <span
               className={`text-[10px] font-medium uppercase tracking-widest ${transparent ? "text-white/50" : "text-muted-foreground"}`}
             >
-              Kenya
+              Properties
             </span>
           </div>
         </Link>
