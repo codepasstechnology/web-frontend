@@ -100,7 +100,7 @@ export function BoostModal({ addOn, onClose }: Props) {
 
         {stage === "success" ? (
           <div className="py-6 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-[#16A34A]" />
+            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
             <h2 className="mt-4 text-lg font-semibold text-foreground">Payment received</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Your listing is now {boostType === "featured" ? "featured" : "boosted to the top"} for{" "}
@@ -108,14 +108,14 @@ export function BoostModal({ addOn, onClose }: Props) {
             </p>
             <button
               onClick={onClose}
-              className="mt-6 w-full rounded-md bg-[#15803d] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="mt-6 w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
             >
               Done
             </button>
           </div>
         ) : stage === "pending" ? (
           <div className="py-6 text-center">
-            <Clock className="mx-auto h-12 w-12 text-[#15803d]" />
+            <Clock className="mx-auto h-12 w-12 text-brand" />
             <h2 className="mt-4 text-lg font-semibold text-foreground">Still processing</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               M-Pesa is taking longer than usual. You don&apos;t need to pay again — if it went
@@ -123,14 +123,14 @@ export function BoostModal({ addOn, onClose }: Props) {
             </p>
             <button
               onClick={onClose}
-              className="mt-6 w-full rounded-md bg-[#15803d] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="mt-6 w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
             >
               Done
             </button>
           </div>
         ) : stage === "waiting" && method === "card" ? (
           <div className="py-6 text-center">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#15803d]" />
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand" />
             <h2 className="mt-4 text-lg font-semibold text-foreground">Redirecting to checkout…</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Taking you to a secure page to complete your card payment.
@@ -138,7 +138,7 @@ export function BoostModal({ addOn, onClose }: Props) {
           </div>
         ) : stage === "waiting" ? (
           <div className="py-6 text-center">
-            <Smartphone className="mx-auto h-12 w-12 text-[#15803d]" />
+            <Smartphone className="mx-auto h-12 w-12 text-brand" />
             <h2 className="mt-4 text-lg font-semibold text-foreground">Check your phone</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Enter your M-Pesa PIN on the prompt sent to {phone} to complete the payment.
@@ -168,7 +168,7 @@ export function BoostModal({ addOn, onClose }: Props) {
                   onClick={() => setMethod(m.id)}
                   className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium ${
                     method === m.id
-                      ? "border-[#15803d] bg-[#f0fdf4] text-[#15803d]"
+                      ? "border-brand bg-brand-subtle text-brand-subtle-foreground"
                       : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                 >
@@ -193,7 +193,7 @@ export function BoostModal({ addOn, onClose }: Props) {
                   id="boost-listing"
                   value={listingId}
                   onChange={(e) => setListingId(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
+                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-brand focus:outline-none"
                 >
                   {listings.map((l) => (
                     <option key={l.id} value={l.id}>
@@ -216,7 +216,7 @@ export function BoostModal({ addOn, onClose }: Props) {
                       onChange={(e) => setPhone(e.target.value)}
                       required
                       placeholder="07XX XXX XXX"
-                      className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-[#15803d] focus:outline-none"
+                      className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-brand focus:outline-none"
                     />
                   </>
                 ) : (
@@ -227,12 +227,12 @@ export function BoostModal({ addOn, onClose }: Props) {
               </>
             )}
 
-            {error && <p className="mt-3 text-sm text-[#DC2626]">{error}</p>}
+            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
             <button
               type="submit"
               disabled={listings.length === 0}
-              className="mt-5 w-full rounded-md bg-[#15803d] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              className="mt-5 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
             >
               Pay Ksh {addOn.price.toLocaleString()}
             </button>

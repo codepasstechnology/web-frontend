@@ -292,7 +292,7 @@ export const landParcels: LandParcel[] = [
 ];
 
 export const statusMeta: Record<LandStatus, { label: string; color: string; fill: string }> = {
-  available: { label: "Available", color: "#2563EB", fill: "#2563EB" },
+  available: { label: "Available", color: "#15803D", fill: "#15803D" },
   sold: { label: "Sold", color: "#64748B", fill: "#64748B" },
   reserved: { label: "Reserved", color: "#D97706", fill: "#D97706" },
   verified: { label: "Verified", color: "#16A34A", fill: "#16A34A" },

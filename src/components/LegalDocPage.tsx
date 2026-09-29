@@ -1,116 +1,73 @@
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { FileText, AlertCircle, Calendar, Tag } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/site/PageHeader";
+import { useLegalDoc, type LegalDocType } from "@/lib/content";
 
-interface LegalDoc {
-  name: string;
-  version: string;
-  content: string;
-  effective_date: string | null;
-  published_at: string;
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-KE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
-interface Props {
-  type: "terms" | "privacy" | "data-usage" | "cookie-policy";
-}
-
-export function LegalDocPage({ type }: Props) {
-  const [doc, setDoc] = useState<LegalDoc | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    setNotFound(false);
-    api
-      .get<LegalDoc>(`/legal/${type}`)
-      .then(setDoc)
-      .catch((e: unknown) => {
-        if ((e as { status?: number }).status === 404) setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [type]);
+export function LegalDocPage({ type }: { type: LegalDocType }) {
+  const { data: doc, isLoading, error } = useLegalDoc(type);
+  const notFound = (error as { status?: number } | null)?.status === 404;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-10 md:py-16">
-        {/* Loading skeleton */}
-        {loading && (
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-2/3 rounded-md bg-muted" />
-            <div className="h-4 w-1/3 rounded-md bg-muted" />
-            <div className="mt-8 space-y-3">
-              {[95, 88, 80, 92, 75, 85].map((w, i) => (
-                <div key={i} className="h-4 rounded-md bg-muted" style={{ width: `${w}%` }} />
-              ))}
-            </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader eyebrow="Legal" title={doc?.name ?? "Legal document"}>
+        {doc && (
+          <p className="text-sm text-muted-foreground">
+            Version {doc.version}
+            {doc.effective_date && ` · Effective ${formatDate(doc.effective_date)}`}
+          </p>
+        )}
+      </PageHeader>
+
+      <main className="mx-auto max-w-[760px] px-4 py-12 md:px-8 md:py-16">
+        {isLoading && (
+          <div className="flex flex-col gap-3">
+            {[95, 88, 80, 92, 75, 85].map((w) => (
+              <Skeleton key={w} className="h-4" style={{ width: `${w}%` }} />
+            ))}
           </div>
         )}
 
-        {/* Not published yet */}
-        {!loading && notFound && (
-          <div className="flex flex-col items-center py-24 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-muted">
-              <AlertCircle className="h-6 w-6 text-muted-foreground" />
+        {error && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+              <AlertCircle aria-hidden className="h-6 w-6 text-muted-foreground" />
             </div>
-            <h1 className="mt-4 text-xl font-semibold text-foreground">Not yet available</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              This document hasn't been published yet. Check back soon.
+            <h2 className="text-lg font-bold">
+              {notFound ? "Not yet available" : "Couldn't load this document"}
+            </h2>
+            <p className="text-muted-foreground">
+              {notFound
+                ? "This document hasn't been published yet. Check back soon."
+                : "Please check your connection and try again."}
             </p>
           </div>
         )}
 
-        {/* Document */}
-        {!loading && doc && (
-          <>
-            {/* Header */}
-            <div className="border-b border-border pb-6">
-              <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <FileText className="h-3.5 w-3.5" />
-                Legal Document
-              </p>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">{doc.name}</h1>
-              <div className="mt-3 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5" />
-                  Version {doc.version}
-                </span>
-                {doc.effective_date && (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Effective{" "}
-                    {new Date(doc.effective_date).toLocaleDateString("en-KE", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Body */}
+        {doc && (
+          <article className="rounded-xl border border-border bg-card p-6 text-card-foreground md:p-10">
             <div
-              className="legal-body mt-8 text-foreground"
+              className="legal-body text-foreground"
               dangerouslySetInnerHTML={{ __html: doc.content }}
             />
-
-            {/* Footer */}
-            <p className="mt-12 border-t border-border pt-5 text-xs text-muted-foreground">
-              Last published:{" "}
-              {new Date(doc.published_at).toLocaleDateString("en-KE", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+            <p className="mt-10 border-t border-border pt-5 text-xs text-muted-foreground">
+              Last published: {formatDate(doc.published_at)}
             </p>
-          </>
+          </article>
         )}
-      </div>
+      </main>
 
       {/* Prose styles for admin-authored HTML content */}
       <style>{`
-        .legal-body { line-height: 1.75; font-size: 0.9375rem; }
+        .legal-body { line-height: 1.75; font-size: 1rem; }
+        .legal-body > :first-child { margin-top: 0; }
         .legal-body h1, .legal-body h2, .legal-body h3, .legal-body h4 {
           font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem;
           color: var(--foreground);
@@ -123,8 +80,8 @@ export function LegalDocPage({ type }: Props) {
         .legal-body li { margin-bottom: 0.35rem; }
         .legal-body ul { list-style-type: disc; }
         .legal-body ol { list-style-type: decimal; }
-        .legal-body a  { color: #2563eb; text-decoration: underline; text-underline-offset: 2px; }
-        .legal-body a:hover { color: #1d4ed8; }
+        .legal-body a  { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+        .legal-body a:hover { color: var(--brand-hover); }
         .legal-body strong { font-weight: 600; color: var(--foreground); }
         .legal-body blockquote {
           border-left: 3px solid var(--border); padding-left: 1rem;

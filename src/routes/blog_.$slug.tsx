@@ -1,78 +1,92 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Calendar } from "lucide-react";
-import { api, type BlogPost } from "@/lib/api";
+import { ArrowLeft } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useBlogPost } from "@/lib/content";
 
 export const Route = createFileRoute("/blog_/$slug")({
   component: BlogPostPage,
 });
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 function BlogPostPage() {
   const { slug } = Route.useParams();
-  const [post, setPost] = useState<BlogPost | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    setNotFound(false);
-    api
-      .get<BlogPost>(`/blog/${slug}`)
-      .then(setPost)
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [slug]);
+  const { data: post, isLoading, isError } = useBlogPost(slug);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <Link
-          to="/blog"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to blog
-        </Link>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-[760px] px-4 pb-16 pt-10 md:px-8 md:pt-14">
+        <Button asChild variant="ghost" size="sm" className="-ml-3 text-muted-foreground">
+          <Link to="/blog">
+            <ArrowLeft /> Back to guides
+          </Link>
+        </Button>
 
-        {loading && <p className="py-16 text-sm text-muted-foreground">Loading article…</p>}
+        {isLoading && (
+          <div className="mt-8 flex flex-col gap-4">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-10 w-4/5" />
+            <Skeleton className="aspect-video w-full rounded-xl" />
+          </div>
+        )}
 
-        {!loading && notFound && (
-          <p className="py-16 text-sm text-muted-foreground">
+        {isError && (
+          <p className="py-16 text-muted-foreground">
             That article could not be found. It may have been unpublished.
           </p>
         )}
 
-        {!loading && post && (
+        {post && (
           <article className="mt-8">
+            <header className="flex flex-col gap-4 border-b border-border pb-8">
+              <div className="flex">
+                <Badge variant="secondary">{post.category}</Badge>
+              </div>
+              <h1 className="text-balance text-[clamp(2rem,4.5vw,3rem)] font-bold leading-[1.1] tracking-[-0.02em]">
+                {post.title}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                {post.author && (
+                  <span className="flex items-center gap-2 font-medium text-foreground">
+                    <Avatar className="h-8 w-8">
+                      {post.author.avatar && <AvatarImage src={post.author.avatar} alt="" />}
+                      <AvatarFallback className="bg-brand/10 text-xs font-bold text-brand">
+                        {initials(post.author.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {post.author.name}
+                  </span>
+                )}
+                {post.published_at && (
+                  <span>
+                    {new Date(post.published_at).toLocaleDateString("en-KE", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                )}
+                <span>{post.read_minutes} min read</span>
+              </div>
+            </header>
+
             {post.cover_url && (
               <img
                 src={post.cover_url}
                 alt=""
-                className="mb-8 h-64 w-full rounded-xl object-cover"
+                className="mt-8 aspect-video w-full rounded-xl object-cover"
               />
             )}
-
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-              {post.category}
-            </span>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              {post.title}
-            </h1>
-
-            <div className="mt-4 flex flex-wrap items-center gap-5 border-b border-border pb-6 text-sm text-muted-foreground">
-              {post.author && <span>{post.author.name}</span>}
-              {post.published_at && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {new Date(post.published_at).toLocaleDateString("en-KE", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </span>
-              )}
-              <span>{post.read_minutes} min read</span>
-            </div>
 
             <div
               className="article-body mt-8 text-foreground"
@@ -84,7 +98,7 @@ function BlogPostPage() {
 
       {/* Prose styles for admin-authored HTML content */}
       <style>{`
-        .article-body { line-height: 1.75; font-size: 1rem; }
+        .article-body { line-height: 1.75; font-size: 1.0625rem; }
         .article-body h1, .article-body h2, .article-body h3, .article-body h4 {
           font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem;
           color: var(--foreground);
@@ -97,8 +111,8 @@ function BlogPostPage() {
         .article-body li { margin-bottom: 0.35rem; }
         .article-body ul { list-style-type: disc; }
         .article-body ol { list-style-type: decimal; }
-        .article-body a  { color: #2563eb; text-decoration: underline; text-underline-offset: 2px; }
-        .article-body a:hover { color: #1d4ed8; }
+        .article-body a  { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+        .article-body a:hover { color: var(--brand-hover); }
         .article-body strong { font-weight: 600; color: var(--foreground); }
         .article-body img { max-width: 100%; border-radius: 0.5rem; margin: 1.5rem 0; }
         .article-body blockquote {

@@ -1,0 +1,85 @@
+{
+  "projectId": "fe77b1b4-3fc7-48a7-86c1-a962477670fe",
+  "shape": "package",
+  "pkg": "land-eye-kenya-frontend",
+  "globalName": "GeoPin",
+  "buildCmd": "node .design-sync/build.mjs",
+  "entry": ".design-sync/.cache/pkg/index.mjs",
+  "srcDir": "../../../src/components/ui",
+  "tsconfig": "../../../tsconfig.json",
+  "cssEntry": "ds.css",
+  "libOverrides": {
+    "source-kit.mjs": "shadcn ui/ files export many compound parts; map each export to its declaring file and group by category"
+  },
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "640x440",
+      "primaryStory": "ConfirmAction"
+    },
+    "Select": {
+      "cardMode": "single",
+      "viewport": "360x340",
+      "primaryStory": "Open"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "viewport": "640x360"
+    },
+    "Sheet": {
+      "cardMode": "single",
+      "viewport": "720x520"
+    },
+    "Drawer": {
+      "cardMode": "single",
+      "viewport": "520x400"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "viewport": "360x340"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "viewport": "400x320"
+    },
+    "HoverCard": {
+      "cardMode": "single",
+      "viewport": "400x260"
+    },
+    "Menubar": {
+      "cardMode": "single",
+      "viewport": "460x300"
+    },
+    "NavigationMenu": {
+      "cardMode": "single",
+      "viewport": "640x320"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "viewport": "320x180"
+    },
+    "Sidebar": {
+      "cardMode": "single",
+      "viewport": "320x520"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "Logo": {
+      "cardMode": "column"
+    },
+    "Card": {
+      "cardMode": "column"
+    },
+    "ChartContainer": {
+      "cardMode": "column"
+    },
+    "Alert": {
+      "cardMode": "column"
+    },
+    "Tabs": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

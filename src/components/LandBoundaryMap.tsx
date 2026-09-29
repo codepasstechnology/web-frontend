@@ -32,7 +32,7 @@ const TUTORIAL_STEPS: [string, string][] = [
 
 const pinIcon = L.divIcon({
   className: "lv-marker",
-  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#2563EB;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
+  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#15803D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
@@ -291,7 +291,7 @@ export function LandBoundaryMap({
   const [pointCount, setPointCount] = useState(0);
   const [tracing, setTracing] = useState(false);
   const [colorMode, setColorMode] = useState<"fresh" | "retrace">("fresh");
-  const shapeColor = colorMode === "retrace" ? "#F97316" : "#2563EB";
+  const shapeColor = colorMode === "retrace" ? "#F97316" : "#15803D";
 
   const handleBoundaryCreated = (b: { lat: number; lng: number }[]) => {
     onBoundaryChange(b);
@@ -320,7 +320,7 @@ export function LandBoundaryMap({
             <button
               type="button"
               onClick={() => setShowTutorial(true)}
-              className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+              className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand hover:underline"
             >
               <HelpCircle className="h-3.5 w-3.5" /> How it works
             </button>
@@ -398,7 +398,7 @@ export function LandBoundaryMap({
                 type="button"
                 onClick={() => setFinishTrigger((n) => n + 1)}
                 disabled={pointCount < 3}
-                className="rounded-md bg-[#2563EB] px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
+                className="rounded-md bg-brand px-3.5 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
               >
                 Confirm plot
               </button>
@@ -468,7 +468,7 @@ export function LandBoundaryMap({
               <ol className="space-y-3">
                 {TUTORIAL_STEPS.map(([title, body], i) => (
                   <li key={i} className="flex gap-3">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-xs font-semibold text-white">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand text-xs font-semibold text-brand-foreground">
                       {i + 1}
                     </span>
                     <div>
@@ -481,7 +481,7 @@ export function LandBoundaryMap({
               <button
                 type="button"
                 onClick={dismissTutorial}
-                className="mt-5 w-full rounded-md bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                className="mt-5 w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
               >
                 Got it
               </button>
@@ -490,7 +490,7 @@ export function LandBoundaryMap({
         )}
       </div>
       {countyMismatch && (
-        <p className="mt-2 text-xs font-medium text-[#D97706]">
+        <p className="mt-2 text-xs font-medium text-warning-subtle-foreground">
           This location looks like it&apos;s in {countyMismatch}, but you selected {county}.
           Double-check the pin before continuing.
         </p>

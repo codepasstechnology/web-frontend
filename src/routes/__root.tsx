@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
+import { SiteFooter } from "@/components/site/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -82,7 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Geo Properties Kenya — Verified Land & Property Intelligence" },
+      { title: "Geo Pin Properties Kenya — Verified Land & Property Intelligence" },
       {
         name: "description",
         content:
@@ -90,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:title",
-        content: "Geo Properties Kenya — Verified Land & Property Intelligence",
+        content: "Geo Pin Properties Kenya — Verified Land & Property Intelligence",
       },
       {
         property: "og:description",
@@ -99,7 +100,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: import.meta.env.VITE_CPANEL
       ? []
@@ -135,12 +135,22 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const NO_NAVBAR_PREFIXES = ["/dashboard", "/manager", "/login", "/register", "/forgot-password"];
+const NO_NAVBAR_PREFIXES = [
+  "/dashboard",
+  "/manager",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+];
+// Full-screen map pages have no room for a page footer.
+const NO_FOOTER_PREFIXES = ["/land", "/rentals"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { pathname } = useLocation();
   const showNavbar = !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
+  const showFooter = showNavbar && !NO_FOOTER_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {
@@ -151,8 +161,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {showNavbar && <Navbar scrollAware />}
+        {showNavbar && <Navbar scrollAware overlay={pathname === "/"} />}
         <Outlet />
+        {showFooter && <SiteFooter />}
         <Toaster position="top-right" richColors />
       </AuthProvider>
     </QueryClientProvider>

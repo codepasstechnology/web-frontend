@@ -41,37 +41,44 @@ export function MapSidebar({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // `isMobile` is real component state, not a CSS-only concern: it decides
+  // whether this renders as an overlay drawer with its own open/closed
+  // default (mobile) or a persistent collapsible rail (desktop) — Tailwind
+  // breakpoints alone can't drive that behavioral branch, only the layout
+  // within it.
   const FloatingToggle = (
     <button
       onClick={() => setOpen(true)}
-      className="absolute left-3 top-3 z-[1100] flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-md md:hidden"
+      className="absolute left-3 top-3 z-[1100] flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
     >
       <Filter className="h-3.5 w-3.5" /> Filters
     </button>
   );
 
-  if (isMobile && !open) return FloatingToggle;
-
   return (
     <>
-      {isMobile && open && (
+      {isMobile && !open && FloatingToggle}
+
+      {isMobile && (
         <div
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-[1050] bg-black/40 md:hidden"
+          className={`fixed inset-0 z-[1050] bg-black/40 transition-opacity duration-300 md:hidden ${
+            open ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         />
       )}
 
       <aside
         className={`${
           isMobile
-            ? "fixed left-0 top-0 z-[1060] h-full w-[85%] max-w-xs"
-            : `relative z-20 h-full ${open ? "w-72" : "w-12"}`
-        } flex flex-col border-r border-border bg-card transition-all`}
+            ? `fixed left-0 top-0 z-[1060] h-full w-[85%] max-w-xs transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "-translate-x-full"}`
+            : `relative z-20 h-full transition-[width] duration-300 ease-in-out ${open ? "w-72" : "w-12"}`
+        } flex flex-col border-r border-border bg-card`}
       >
         {!isMobile && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="absolute right-2 top-4 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:text-foreground"
+            className="absolute right-2 top-4 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {open ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </button>
@@ -87,7 +94,7 @@ export function MapSidebar({
                 {isMobile && (
                   <button
                     onClick={() => setOpen(false)}
-                    className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -103,7 +110,7 @@ export function MapSidebar({
                       placeholder="Title number…"
                       value={filters.query}
                       onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-                      className="w-full rounded-sm border border-border bg-background py-1.5 pl-7 pr-2 text-xs text-foreground outline-none focus:border-primary"
+                      className="w-full rounded-sm border border-border bg-background py-1.5 pl-7 pr-2 text-xs text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus:border-brand"
                     />
                   </div>
                 </Group>
@@ -142,7 +149,7 @@ export function MapSidebar({
                         <button
                           key={c}
                           onClick={() => setFilters({ ...filters, county: c })}
-                          className={`rounded-sm border px-2 py-1 text-[11px] font-medium transition-colors ${
+                          className={`rounded-sm border px-2 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                             active
                               ? "border-primary bg-primary text-primary-foreground"
                               : "border-border bg-background text-foreground hover:bg-muted"
@@ -195,7 +202,7 @@ export function MapSidebar({
                             maxPrice: Math.max(v, filters.maxPrice),
                           });
                         }}
-                        className="w-full accent-[var(--accent)]"
+                        className="w-full accent-brand"
                       />
                     </div>
                     <div>
@@ -217,7 +224,7 @@ export function MapSidebar({
                             minPrice: Math.min(v, filters.minPrice),
                           });
                         }}
-                        className="w-full accent-[var(--accent)]"
+                        className="w-full accent-brand"
                       />
                     </div>
                   </div>
@@ -235,7 +242,7 @@ export function MapSidebar({
                       maxPrice: 30000000,
                     })
                   }
-                  className="w-full rounded-sm border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="w-full rounded-sm border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   Reset filters
                 </button>
@@ -273,7 +280,7 @@ function Segmented({
         <button
           key={o.v}
           onClick={() => onChange(o.v)}
-          className={`px-2 py-1.5 text-[11px] font-medium transition-colors ${
+          className={`px-2 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
             value === o.v
               ? "bg-primary text-primary-foreground"
               : "bg-background text-foreground hover:bg-muted"
@@ -300,7 +307,7 @@ function StatusOption({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-sm border px-2.5 py-1.5 text-left text-xs transition-colors ${
+      className={`flex w-full items-center gap-2 rounded-sm border px-2.5 py-1.5 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         active
           ? "border-primary bg-muted text-foreground"
           : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
