@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths(),
       cpanelPostBuild(outDir),
     ],
-    publicDir: false,
+    publicDir: "public",
     build: {
       outDir,
       emptyOutDir: true,

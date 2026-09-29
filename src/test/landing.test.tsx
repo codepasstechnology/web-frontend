@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { ParcelSummary } from "@/lib/parcels";
 import type { Property } from "@/lib/properties";
 import type { Plan } from "@/lib/plans";
@@ -81,6 +81,17 @@ describe("Landing page", () => {
       screen.getByRole("heading", { name: "How we verify every listing" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Find. Connect. Own." })).toBeInTheDocument();
+  });
+
+  it("sends the hero's single call to action to the combined map", () => {
+    render(<Index />);
+    const hero = within(
+      screen.getByRole("region", { name: "Verified land & property intelligence for Kenya." }),
+    );
+    const links = hero.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAccessibleName("Explore Map");
+    expect(links[0]).toHaveAttribute("href", "/explore");
   });
 
   it("hides data-driven sections when their queries return nothing", () => {

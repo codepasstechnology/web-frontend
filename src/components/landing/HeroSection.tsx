@@ -39,27 +39,17 @@ export function HeroSection({ parcels }: { parcels: ParcelSummary[] }) {
             Verified land &amp; property intelligence for Kenya.
           </h1>
           <p className="mt-4 max-w-xl text-pretty text-base leading-relaxed text-white/70">
-            Explore plotted parcels with accurate boundaries, ownership status, and location
-            insights — all on one professional GIS platform.
+            Explore plotted parcels and rental homes with accurate locations, ownership status, and
+            area insights — all on one map.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8">
             <Button
               asChild
               size="lg"
               className="rounded-xl bg-brand px-5 font-semibold text-brand-foreground shadow-lg shadow-black/30 hover:bg-brand/90"
             >
-              <Link to="/land">
-                Explore Land Map <ArrowRight />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-xl border-white/25 bg-white/10 px-5 font-semibold text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
-            >
-              <Link to="/rentals">
-                Browse Rentals <ArrowRight />
+              <Link to="/explore">
+                Explore Map <ArrowRight />
               </Link>
             </Button>
           </div>
