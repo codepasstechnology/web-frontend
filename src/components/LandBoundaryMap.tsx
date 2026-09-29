@@ -335,7 +335,7 @@ export function LandBoundaryMap({
             zoomControl={false}
             className="h-full w-full"
           >
-            <ZoomControl position="bottomleft" />
+            <ZoomControl position="bottomright" />
             <TileLayer
               key={isSatellite ? "sat" : "osm"}
               url={isSatellite ? SATELLITE_TILES : OSM_TILES}
@@ -370,7 +370,7 @@ export function LandBoundaryMap({
         <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
         <div
           ref={controlsRef}
-          className="absolute bottom-2.5 right-2.5 z-[800] flex flex-wrap items-center justify-end gap-1.5"
+          className="absolute bottom-2.5 right-14 z-[800] flex flex-wrap items-center justify-end gap-1.5"
         >
           {pinOnly ? null : tracing ? (
             <>

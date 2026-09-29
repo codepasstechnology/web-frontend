@@ -5,7 +5,8 @@ import { MapSidebar, type Filters } from "@/components/MapSidebar";
 import { ParcelPanel } from "@/components/PropertyPanel";
 import { MapLegend } from "@/components/MapLegend";
 import { MapSearchBar } from "@/components/MapSearchBar";
-import { type LandParcel, type LandStatus } from "@/lib/landData";
+import { type LandParcel } from "@/lib/landData";
+import { mapApiParcel, type ApiParcel } from "@/lib/parcels";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/land")({
   }),
   head: () => ({
     meta: [
-      { title: "Land Parcels Map — GeoPin Properties Kenya" },
+      { title: "Land Parcels Map — Geo Pin Properties Kenya" },
       {
         name: "description",
         content: "Interactive GIS map of plotted, verified land parcels across Kenya.",
@@ -29,78 +30,6 @@ export const Route = createFileRoute("/land")({
 
 // UUID v4 pattern — real DB parcels have these; static demo parcels have IDs like "LV-001"
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-interface ApiParcel {
-  id: string;
-  title: string;
-  parcel_number: string;
-  county: string;
-  price: number;
-  size: string;
-  area: string;
-  description: string;
-  land_type: string;
-  listing_type: "sale" | "lease";
-  posted_by: "owner" | "broker";
-  verified: boolean;
-  featured: boolean;
-  status: string;
-  latitude: number;
-  longitude: number;
-  boundary: { lat: number; lng: number }[] | null;
-  boundary_source: string | null;
-  seller_name: string;
-  seller_phone: string;
-  seller_agency: string;
-  photos: string[];
-  amenities: {
-    school: string | null;
-    hospital: string | null;
-    shopping: string | null;
-    main_road: string | null;
-    distance_to_tarmac: string | null;
-    utilities: string[];
-    development_score: number;
-  } | null;
-}
-
-function mapApiParcel(p: ApiParcel): LandParcel {
-  return {
-    id: p.id,
-    title: p.parcel_number,
-    parcelNumber: p.parcel_number,
-    size: p.size || "—",
-    price: p.price,
-    status: (p.status === "verified" ? "verified" : "available") as LandStatus,
-    listingType: p.listing_type,
-    postedBy: p.posted_by,
-    county: p.county,
-    description: p.description || "",
-    verified: p.verified,
-    featured: p.featured,
-    photos: p.photos ?? [],
-    seller: {
-      name: p.seller_name || "—",
-      phone: p.seller_phone || "—",
-      agency: p.seller_agency || "",
-    },
-    amenities: {
-      school: p.amenities?.school ?? "—",
-      hospital: p.amenities?.hospital ?? "—",
-      shopping: p.amenities?.shopping ?? "—",
-      mainRoad: p.amenities?.main_road ?? "—",
-      distanceToTarmac: p.amenities?.distance_to_tarmac ?? "—",
-      utilities: p.amenities?.utilities ?? [],
-      developmentScore: p.amenities?.development_score ?? 0,
-    },
-    polygon:
-      p.boundary && p.boundary.length >= 3
-        ? p.boundary.map((v): [number, number] => [Number(v.lat), Number(v.lng)])
-        : undefined,
-    latitude: p.latitude != null ? Number(p.latitude) : undefined,
-    longitude: p.longitude != null ? Number(p.longitude) : undefined,
-  };
-}
 
 function classifyReferrer(ref: string): "direct" | "search" | "social" | "referral" {
   if (!ref || ref.startsWith(window.location.origin)) return "direct";
@@ -229,7 +158,7 @@ function LandPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-[calc(100dvh-3.5rem-1px)] flex-col bg-background sm:h-[calc(100dvh-4rem-1px)]">
       <div className="relative flex flex-1 overflow-hidden">
         <MapSidebar filters={filters} setFilters={setFilters} count={filtered.length} />
         <div className="relative flex-1">
@@ -241,7 +170,7 @@ function LandPage() {
             flyTarget={flyTarget}
           />
           <MapSearchBar onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 14 })} />
-          <div className="pointer-events-none absolute bottom-4 left-4 z-10">
+          <div className="pointer-events-none absolute bottom-4 left-4 z-[800]">
             <div className="pointer-events-auto">
               <MapLegend />
             </div>

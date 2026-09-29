@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Badge } from "@/components/ui/badge";
+import { GuideCard } from "@/components/site/GuideCard";
 import type { BlogPost } from "@/lib/api";
 
 export function GuidesSection({ posts }: { posts: BlogPost[] }) {
@@ -26,34 +26,7 @@ export function GuidesSection({ posts }: { posts: BlogPost[] }) {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {posts.slice(0, 3).map((post) => (
-          <Link
-            key={post.id}
-            to="/blog/$slug"
-            params={{ slug: post.slug }}
-            className="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground transition-colors hover:border-brand"
-          >
-            <div className="aspect-video bg-muted">
-              {post.cover_url && (
-                <img
-                  src={post.cover_url}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-            <div className="flex flex-col gap-2.5 px-5 pb-5 pt-[18px]">
-              <div className="flex">
-                <Badge variant="secondary">{post.category}</Badge>
-              </div>
-              <h3 className="text-pretty text-[1.0625rem] font-semibold leading-snug">
-                {post.title}
-              </h3>
-              <span className="text-[0.8125rem] text-muted-foreground">
-                {post.read_minutes} min read
-              </span>
-            </div>
-          </Link>
+          <GuideCard key={post.id} post={post} />
         ))}
       </div>
     </section>

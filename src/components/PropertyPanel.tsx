@@ -447,7 +447,7 @@ export function ParcelPanel({
         <VerificationRequestButton parcelId={parcel.id} />
         <WhatsAppButton
           phone={parcel.seller.phone}
-          message={`Hi, I'm interested in ${parcel.title} listed on GeoPin Properties.`}
+          message={`Hi, I'm interested in ${parcel.title} listed on Geo Pin Properties.`}
           parcelId={parcel.id}
         />
         <ShareButton
@@ -584,7 +584,7 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
       <div className="flex items-center gap-2 border-t border-border p-4">
         <WhatsAppButton
           phone={property.agent.phone}
-          message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on GeoPin Properties.`}
+          message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on Geo Pin Properties.`}
         />
         <ShareButton
           title={property.title}
