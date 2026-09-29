@@ -25,8 +25,11 @@ export function FaqSection({ faqs }: { faqs: Faq[] }) {
         {shown.map((f) => (
           <AccordionItem key={f.id} value={f.id}>
             <AccordionTrigger className="text-left text-base">{f.question}</AccordionTrigger>
-            <AccordionContent className="text-[0.9375rem] leading-relaxed text-muted-foreground">
-              {f.answer}
+            <AccordionContent>
+              <div
+                className="text-[0.9375rem] leading-relaxed text-muted-foreground"
+                dangerouslySetInnerHTML={{ __html: f.answer }}
+              />
             </AccordionContent>
           </AccordionItem>
         ))}

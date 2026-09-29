@@ -14,6 +14,7 @@ const posts = vi.fn<() => BlogPost[]>(() => []);
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: object) => opts,
+  useNavigate: () => vi.fn(),
   Link: ({
     to,
     search,

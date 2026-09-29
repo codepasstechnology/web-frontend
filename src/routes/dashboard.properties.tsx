@@ -19,7 +19,7 @@ import {
 export const Route = createFileRoute("/dashboard/properties")({
   component: PostPropertyPage,
   ssr: false,
-  head: () => ({ meta: [{ title: "Post a Property — GeoPin Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Post a Property — Geo Pin Properties Kenya" }] }),
 });
 
 const steps = ["Property Details", "Location", "Photos", "Review & Submit"];

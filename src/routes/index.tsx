@@ -2,10 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { GuidesSection } from "@/components/landing/GuidesSection";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { LandingFooter } from "@/components/landing/LandingFooter";
 import { MarketplacesSection } from "@/components/landing/MarketplacesSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { VerificationSection } from "@/components/landing/VerificationSection";
+import { CtaBand } from "@/components/site/CtaBand";
 import { useBlogPosts, useFaqs } from "@/lib/content";
 import { usePublicParcels } from "@/lib/parcels";
 import { usePlans } from "@/lib/plans";
@@ -30,7 +30,7 @@ function Index() {
       <PricingSection plans={plans} />
       <FaqSection faqs={faqs} />
       <GuidesSection posts={posts} />
-      <LandingFooter />
+      <CtaBand />
     </div>
   );
 }

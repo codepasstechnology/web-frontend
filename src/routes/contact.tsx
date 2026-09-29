@@ -1,9 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Mail, MapPin, Phone, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/site/PageHeader";
 
 export const Route = createFileRoute("/contact")({
-  head: () => ({ meta: [{ title: "Contact — GeoPin Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Contact — Geo Pin Properties Kenya" }] }),
   component: ContactPage,
 });
 
@@ -28,13 +40,21 @@ const contactItems = [
   },
 ];
 
+const topics = [
+  "Verification result question",
+  "Account or billing issue",
+  "Technical problem",
+  "Partnership enquiry",
+  "Other",
+];
+
+const emptyForm = { name: "", email: "", subject: "", message: "" };
+
 function ContactPage() {
   const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+  const [form, setForm] = useState(emptyForm);
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-  ) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
@@ -45,149 +65,142 @@ function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="border-b border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-2xl px-4 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">Get in touch</h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            Questions about a verification? Need help with your account? Our team is here for you.
-          </p>
-        </div>
-      </section>
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader eyebrow="Contact" title="Get in touch">
+        <p className="max-w-[56ch] text-pretty text-[1.0625rem] leading-relaxed text-muted-foreground">
+          Questions about a verification? Need help with your account? Our team is here for you.
+        </p>
+      </PageHeader>
 
-      <main className="mx-auto grid max-w-5xl gap-10 px-4 py-14 lg:grid-cols-5">
-        {/* Contact info */}
-        <aside className="lg:col-span-2">
-          <div className="space-y-6">
+      <main className="mx-auto grid max-w-[1100px] gap-10 px-4 py-12 md:px-8 md:py-16 lg:grid-cols-5">
+        <aside className="flex flex-col gap-8 lg:col-span-2">
+          <ul className="flex flex-col gap-6">
             {contactItems.map(({ icon: Icon, label, value, sub }) => (
-              <div key={label} className="flex gap-4">
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-primary">
-                  <Icon className="h-4.5 w-4.5" />
+              <li key={label} className="flex gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Icon aria-hidden className="h-5 w-5 text-brand" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
                     {label}
                   </p>
-                  <p className="mt-0.5 font-medium text-foreground">{value}</p>
-                  <p className="text-xs text-muted-foreground">{sub}</p>
+                  <p className="mt-0.5 font-semibold">{value}</p>
+                  <p className="text-sm text-muted-foreground">{sub}</p>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
 
-          <div className="mt-10 rounded-xl border border-border bg-card p-5">
-            <p className="text-sm font-semibold text-foreground">Looking for help articles?</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Check our Help Centre — most common questions are answered there.
+          <div className="rounded-xl border border-border bg-muted/40 p-5">
+            <p className="font-semibold">Looking for help articles?</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Most common questions are answered in the Help Centre.
             </p>
-            <a
-              href="/help"
-              className="mt-3 inline-flex text-xs font-medium text-primary hover:underline"
+            <Link
+              to="/help"
+              className="mt-3 inline-flex text-sm font-semibold text-brand hover:underline"
             >
               Go to Help Centre →
-            </a>
+            </Link>
           </div>
         </aside>
 
-        {/* Form */}
-        <div className="rounded-xl border border-border bg-card p-6 lg:col-span-3">
+        <section className="rounded-xl border border-border bg-card p-6 text-card-foreground md:p-8 lg:col-span-3">
           {sent ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
-              <h2 className="mt-4 text-lg font-semibold text-foreground">Message received!</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                We'll get back to you at {form.email} within one business day.
+            <div role="status" className="flex flex-col items-center gap-3 py-12 text-center">
+              <CheckCircle2 aria-hidden className="h-12 w-12 text-success" />
+              <h2 className="text-lg font-bold">Message received!</h2>
+              <p className="text-muted-foreground">
+                We&apos;ll get back to you at {form.email} within one business day.
               </p>
-              <button
+              <Button
+                variant="link"
+                className="text-brand"
                 onClick={() => {
                   setSent(false);
-                  setForm({ name: "", email: "", subject: "", message: "" });
+                  setForm(emptyForm);
                 }}
-                className="mt-6 text-sm font-medium text-primary hover:underline"
               >
                 Send another message
-              </button>
+              </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Send a message</h2>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <h2 className="text-lg font-bold">Send a message</h2>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Full name
-                  </label>
-                  <input
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="contact-name">Full name</Label>
+                  <Input
+                    id="contact-name"
                     name="name"
                     required
                     value={form.name}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                     placeholder="Jane Doe"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Email address
-                  </label>
-                  <input
+                <div className="grid gap-1.5">
+                  <Label htmlFor="contact-email">Email address</Label>
+                  <Input
+                    id="contact-email"
                     name="email"
                     type="email"
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                     placeholder="jane@example.com"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Subject
-                </label>
-                <select
+              <div className="grid gap-1.5">
+                <Label htmlFor="contact-subject">Subject</Label>
+                <Select
                   name="subject"
                   required
                   value={form.subject}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  onValueChange={(subject) => setForm((prev) => ({ ...prev, subject }))}
                 >
-                  <option value="">Select a topic…</option>
-                  <option>Verification result question</option>
-                  <option>Account or billing issue</option>
-                  <option>Technical problem</option>
-                  <option>Partnership enquiry</option>
-                  <option>Other</option>
-                </select>
+                  <SelectTrigger id="contact-subject">
+                    <SelectValue placeholder="Select a topic…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {topics.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Message
-                </label>
-                <textarea
+              <div className="grid gap-1.5">
+                <Label htmlFor="contact-message">Message</Label>
+                <Textarea
+                  id="contact-message"
                   name="message"
                   required
                   rows={5}
                   value={form.message}
                   onChange={handleChange}
-                  className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                   placeholder="Describe your question or issue…"
+                  className="resize-none"
                 />
               </div>
 
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-secondary"
-              >
-                <Send className="h-4 w-4" />
-                Send message
-              </button>
+              <div>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="h-11 bg-brand px-6 text-base text-brand-foreground hover:bg-brand-hover"
+                >
+                  <Send /> Send message
+                </Button>
+              </div>
             </form>
           )}
-        </div>
+        </section>
       </main>
     </div>
   );

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
 
 export const Route = createFileRoute("/manager")({
-  head: () => ({ meta: [{ title: "My Clients — GeoPin Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "My Clients — Geo Pin Properties Kenya" }] }),
   component: ManagerPage,
 });
 

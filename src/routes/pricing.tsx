@@ -1,19 +1,21 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Star, Zap } from "lucide-react";
 import { PlanCard } from "@/components/PlanCard";
-import { usePlans, addOns } from "@/lib/plans";
+import { CtaBand } from "@/components/site/CtaBand";
+import { PageHeader } from "@/components/site/PageHeader";
 import { useAuth } from "@/lib/auth";
-import { Zap, Star } from "lucide-react";
+import { addOns, usePlans } from "@/lib/plans";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing — GeoPin Properties Kenya" },
+      { title: "Pricing — Geo Pin Properties Kenya" },
       {
         name: "description",
         content:
           "Simple, transparent pricing for land sellers, agents and developers across Kenya.",
       },
-      { property: "og:title", content: "Pricing — GeoPin Properties Kenya" },
+      { property: "og:title", content: "Pricing — Geo Pin Properties Kenya" },
       {
         property: "og:description",
         content: "Free, Basic and Pro plans for listing verified land in Kenya.",
@@ -38,21 +40,16 @@ function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <section className="mx-auto max-w-7xl px-4 py-12 md:py-16">
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Pricing
-          </span>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            Plans that scale with your land business
-          </h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            Start free. Upgrade when you need more listings, photos and visibility.
-          </p>
-        </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader eyebrow="Pricing" title="Plans that scale with your land business">
+        <p className="max-w-[56ch] text-pretty text-[1.0625rem] leading-relaxed text-muted-foreground">
+          Browsing is always free. Start free, and upgrade when you need more listings, photos and
+          visibility. Pay monthly by M-Pesa or card.
+        </p>
+      </PageHeader>
 
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
+      <section className="mx-auto max-w-[1100px] px-4 pt-14 md:px-8 md:pt-20">
+        <div className="grid items-stretch gap-6 lg:grid-cols-3">
           {plans.map((p) => (
             <PlanCard
               key={p.id}
@@ -62,38 +59,58 @@ function PricingPage() {
             />
           ))}
         </div>
+      </section>
 
-        <div className="mt-16">
-          <h2 className="text-lg font-semibold text-foreground">Boost Individual Listings</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            One-time add-ons available on any plan.
+      <section
+        aria-labelledby="addons-title"
+        className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 pt-16 md:px-8 md:pt-24"
+      >
+        <div className="flex flex-col gap-2">
+          <h2
+            id="addons-title"
+            className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-[1.15] tracking-[-0.02em]"
+          >
+            Boost individual listings
+          </h2>
+          <p className="text-muted-foreground">
+            One-time add-ons on any plan, applied from your listings dashboard.
           </p>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {addOns.map((a) => (
-              <div
-                key={a.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-card p-5 shadow-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground">
-                    {a.id === "boost" ? <Zap className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{a.name}</p>
-                    <p className="text-xs text-muted-foreground">{a.period}</p>
-                  </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {addOns.map((a) => (
+            <article
+              key={a.id}
+              className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  {a.id === "boost" ? (
+                    <Zap aria-hidden className="h-5 w-5" />
+                  ) : (
+                    <Star aria-hidden className="h-5 w-5" />
+                  )}
                 </div>
-                <div className="text-right">
-                  <div className="text-base font-semibold text-foreground">Ksh {a.price}</div>
-                  <button className="mt-1 text-xs font-medium text-[#15803D] hover:underline">
-                    Add to listing
-                  </button>
+                <div>
+                  <p className="font-semibold">{a.name}</p>
+                  <p className="text-sm text-muted-foreground">{a.period}</p>
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="shrink-0 text-right">
+                <div className="font-bold tabular-nums">KES {a.price.toLocaleString("en-US")}</div>
+                <Link
+                  to="/dashboard"
+                  search={{ tab: "listings" }}
+                  className="whitespace-nowrap text-sm font-semibold text-brand hover:underline"
+                >
+                  Add to a listing
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
+
+      <CtaBand />
     </div>
   );
 }

@@ -80,7 +80,7 @@
 
 :root {
   --radius: 0.5rem;
-  /* GeoPin Properties — enterprise GIS palette, navy + green brand (no gradients, solid colors only) */
+  /* Geo Pin Properties — enterprise GIS palette, navy + green brand (no gradients, solid colors only) */
   --background: oklch(0.984 0.003 247.858); /* #F8FAFC */
   --foreground: oklch(0.198 0.04 265.6); /* #0F172A */
   --card: oklch(1 0 0); /* #FFFFFF */
@@ -97,7 +97,7 @@
      never competes with --brand as "the" accent color. */
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.198 0.04 265.6);
-  /* Brand green, from the GeoPin Properties logo's pin mark. */
+  /* Brand green, from the Geo Pin Properties logo's pin mark. */
   --brand: oklch(0.527 0.154 150.069); /* #15803D */
   --brand-foreground: oklch(1 0 0);
   --brand-hover: oklch(0.448 0.119 151.328); /* #166534 */

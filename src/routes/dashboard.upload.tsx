@@ -21,7 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
 
 export const Route = createFileRoute("/dashboard/upload")({
-  head: () => ({ meta: [{ title: "Upload Land — GeoPin Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Upload Land — Geo Pin Properties Kenya" }] }),
   component: UploadPage,
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({

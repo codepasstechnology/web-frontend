@@ -124,7 +124,7 @@ export function Navbar({
             <span
               className={`text-sm font-semibold tracking-tight ${dark ? "text-white" : "text-foreground"}`}
             >
-              GeoPin Properties
+              Geo Pin Properties
             </span>
             <span
               className={`text-[10px] font-medium uppercase tracking-widest ${dark ? "text-white/50" : "text-muted-foreground"}`}

@@ -1,152 +1,130 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { api, type Faq } from "@/lib/api";
+import { useState } from "react";
+import { MessageCircle, Search } from "lucide-react";
 import {
-  ChevronDown,
-  Search,
-  MessageCircle,
-  BookOpen,
-  ShieldCheck,
-  CreditCard,
-} from "lucide-react";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { PageHeader } from "@/components/site/PageHeader";
+import { useFaqs } from "@/lib/content";
 
 export const Route = createFileRoute("/help")({
-  head: () => ({ meta: [{ title: "Help Centre — GeoPin Properties Kenya" }] }),
+  head: () => ({ meta: [{ title: "Help Centre — Geo Pin Properties Kenya" }] }),
   component: HelpPage,
 });
 
-const topicIcons: Record<string, React.ElementType> = {
-  Verification: ShieldCheck,
-  Account: MessageCircle,
-  Billing: CreditCard,
-  General: BookOpen,
-};
+const ALL = "All";
 
 function HelpPage() {
-  const [faqs, setFaqs] = useState<Faq[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState<number | null>(null);
+  const { data: faqs = [], isLoading } = useFaqs();
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState(ALL);
 
-  useEffect(() => {
-    api
-      .get<Faq[]>("/faqs")
-      .then(setFaqs)
-      .finally(() => setLoading(false));
-  }, []);
-
+  const categories = [ALL, ...Array.from(new Set(faqs.map((f) => f.category).filter(Boolean)))];
+  const q = query.trim().toLowerCase();
   const filtered = faqs.filter(
     (f) =>
-      !query ||
-      f.question.toLowerCase().includes(query.toLowerCase()) ||
-      f.answer.toLowerCase().includes(query.toLowerCase()),
+      (category === ALL || f.category === category) &&
+      (!q || f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q)),
   );
 
-  const categories = Array.from(new Set(faqs.map((f) => f.category).filter(Boolean)));
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="border-b border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-2xl px-4 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">Help Centre</h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            Search our knowledge base or browse by topic below.
-          </p>
-          <div className="relative mx-auto mt-6 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search questions…"
-              className="h-11 w-full rounded-md border border-border bg-background pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
-            />
-          </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <PageHeader eyebrow="Help centre" title="How can we help?">
+        <p className="max-w-[56ch] text-[1.0625rem] leading-relaxed text-muted-foreground">
+          Search our answers or browse by topic.
+        </p>
+        <div className="relative mt-3 w-full max-w-md">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search questions…"
+            aria-label="Search questions"
+            className="h-11 bg-background pl-9 text-base"
+          />
         </div>
-      </section>
+      </PageHeader>
 
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        {/* Topic chips */}
-        {!query && categories.length > 0 && (
-          <div className="mb-8 flex flex-wrap gap-2">
-            {categories.map((cat) => {
-              const Icon = topicIcons[cat ?? ""] ?? BookOpen;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setQuery(cat ?? "")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-                >
-                  <Icon className="h-3.5 w-3.5 text-primary" />
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Heading */}
-        <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {query ? `Results for "${query}"` : "Frequently asked questions"}
-        </h2>
-
-        {/* Loading */}
-        {loading && (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-        )}
-
-        {/* FAQs */}
-        {!loading && (
-          <div className="divide-y divide-border rounded-xl border border-border bg-card">
-            {filtered.length === 0 && (
-              <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-                No results found. Try different keywords or{" "}
-                <Link to="/contact" className="text-primary hover:underline">
-                  contact support
-                </Link>
-                .
-              </div>
-            )}
-            {filtered.map((faq, i) => (
-              <div key={faq.id}>
-                <button
-                  onClick={() => setOpen(open === i ? null : i)}
-                  className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left"
-                >
-                  <span className="text-sm font-medium text-foreground">{faq.question}</span>
-                  <ChevronDown
-                    className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open === i ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {open === i && (
-                  <div
-                    className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: faq.answer }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Still need help? */}
-        <div className="mt-12 rounded-xl border border-border bg-muted/40 p-6 text-center">
-          <MessageCircle className="mx-auto mb-3 h-8 w-8 text-primary" />
-          <h3 className="font-semibold text-foreground">Still need help?</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Our support team replies within one business day.
-          </p>
-          <Link
-            to="/contact"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-secondary"
+      <main className="mx-auto flex max-w-[760px] flex-col gap-8 px-4 py-12 md:px-8 md:py-16">
+        {categories.length > 1 && (
+          <ToggleGroup
+            type="single"
+            value={category}
+            onValueChange={(v) => v && setCategory(v)}
+            variant="outline"
+            aria-label="Filter by topic"
+            className="flex-wrap justify-start"
           >
-            Contact support
-          </Link>
-        </div>
+            {categories.map((cat) => (
+              <ToggleGroupItem key={cat} value={cat}>
+                {cat}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        )}
+
+        <section aria-labelledby="faq-list-title" className="flex flex-col gap-4">
+          <h2
+            id="faq-list-title"
+            className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground"
+          >
+            {q ? `Results for "${query.trim()}"` : "Frequently asked questions"}
+          </h2>
+
+          {isLoading ? (
+            <div className="flex flex-col gap-3">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="rounded-xl border border-border bg-card px-6 py-10 text-center text-muted-foreground">
+              No results found. Try different keywords or{" "}
+              <Link to="/contact" className="font-semibold text-brand hover:underline">
+                contact support
+              </Link>
+              .
+            </p>
+          ) : (
+            <Accordion type="single" collapsible className="w-full">
+              {filtered.map((faq) => (
+                <AccordionItem key={faq.id} value={faq.id}>
+                  <AccordionTrigger className="text-left text-base">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      className="text-[0.9375rem] leading-relaxed text-muted-foreground"
+                      dangerouslySetInnerHTML={{ __html: faq.answer }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
+        </section>
+
+        <aside className="flex flex-col items-center gap-3 rounded-xl border border-border bg-muted/40 p-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-card">
+            <MessageCircle aria-hidden className="h-6 w-6 text-brand" strokeWidth={1.75} />
+          </div>
+          <h2 className="text-lg font-bold">Still need help?</h2>
+          <p className="text-muted-foreground">Our support team replies within one business day.</p>
+          <Button asChild className="mt-1 bg-brand text-brand-foreground hover:bg-brand-hover">
+            <Link to="/contact">Contact support</Link>
+          </Button>
+        </aside>
       </main>
     </div>
   );
