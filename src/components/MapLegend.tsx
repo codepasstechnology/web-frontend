@@ -1,10 +1,11 @@
+import { Home } from "lucide-react";
 import { statusMeta, type LandStatus } from "@/lib/landData";
 
 // Only "available" and "sold" ever occur on the public marketplace — every
 // listing goes live as available, with no separate verified/reserved/disputed stage.
 const visibleStatuses: LandStatus[] = ["available", "sold"];
 
-export function MapLegend() {
+export function MapLegend({ kinds = false }: { kinds?: boolean }) {
   const items = visibleStatuses;
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
@@ -22,6 +23,19 @@ export function MapLegend() {
           </li>
         ))}
       </ul>
+      {kinds && (
+        <>
+          <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Rentals
+          </p>
+          <div className="flex items-center gap-2 text-xs text-foreground">
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground">
+              <Home aria-hidden className="h-2.5 w-2.5 text-background" />
+            </span>
+            Home pin, coloured by rent / BnB / sale
+          </div>
+        </>
+      )}
     </div>
   );
 }

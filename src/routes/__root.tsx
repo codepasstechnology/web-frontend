@@ -144,7 +144,7 @@ const NO_NAVBAR_PREFIXES = [
   "/reset-password",
 ];
 // Full-screen map pages have no room for a page footer.
-const NO_FOOTER_PREFIXES = ["/land", "/rentals"];
+const NO_FOOTER_PREFIXES = ["/land", "/rentals", "/explore"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
