@@ -99,21 +99,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { property: "og:site_name", content: "Geo Pin Properties" },
+      { property: "og:image", content: `${import.meta.env.VITE_SITE_URL ?? ""}/og-image.png` },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Geo Pin Properties — Find. Connect. Own." },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: `${import.meta.env.VITE_SITE_URL ?? ""}/og-image.png` },
+      { name: "theme-color", content: "#1A752A" },
     ],
-    links: import.meta.env.VITE_CPANEL
-      ? []
-      : [
-          { rel: "stylesheet", href: appCss },
-          { rel: "preconnect", href: "https://fonts.googleapis.com" },
-          { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-          {
-            rel: "stylesheet",
-            href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
-          },
-          { rel: "preload", as: "image", href: AUTH_BG_URLS[0] },
-          { rel: "preload", as: "image", href: AUTH_BG_URLS[1] },
-        ],
+    links: [
+      { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
+      ...(import.meta.env.VITE_CPANEL
+        ? []
+        : [
+            { rel: "stylesheet", href: appCss },
+            { rel: "preconnect", href: "https://fonts.googleapis.com" },
+            { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" as const },
+            {
+              rel: "stylesheet",
+              href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+            },
+            { rel: "preload", as: "image", href: AUTH_BG_URLS[0] },
+            { rel: "preload", as: "image", href: AUTH_BG_URLS[1] },
+          ]),
+    ],
   }),
   shellComponent: import.meta.env.VITE_CPANEL ? undefined : RootShell,
   component: RootComponent,
@@ -144,7 +157,7 @@ const NO_NAVBAR_PREFIXES = [
   "/reset-password",
 ];
 // Full-screen map pages have no room for a page footer.
-const NO_FOOTER_PREFIXES = ["/land", "/rentals"];
+const NO_FOOTER_PREFIXES = ["/land", "/rentals", "/explore"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();

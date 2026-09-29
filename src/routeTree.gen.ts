@@ -15,6 +15,7 @@ import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
 import { Route as DataUsageRouteImport } from './routes/data-usage'
+import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as LandRouteImport } from './routes/land'
@@ -59,6 +60,11 @@ const CookiePolicyRoute = CookiePolicyRouteImport.update({
 const DataUsageRoute = DataUsageRouteImport.update({
   id: '/data-usage',
   path: '/data-usage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExploreRoute = ExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-usage': typeof DataUsageRoute
+  '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/land': typeof LandRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-usage': typeof DataUsageRoute
+  '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/land': typeof LandRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-usage': typeof DataUsageRoute
+  '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/land': typeof LandRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/cookie-policy'
     | '/data-usage'
+    | '/explore'
     | '/forgot-password'
     | '/help'
     | '/land'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/cookie-policy'
     | '/data-usage'
+    | '/explore'
     | '/forgot-password'
     | '/help'
     | '/land'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/cookie-policy'
     | '/data-usage'
+    | '/explore'
     | '/forgot-password'
     | '/help'
     | '/land'
@@ -286,6 +298,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
   DataUsageRoute: typeof DataUsageRoute
+  ExploreRoute: typeof ExploreRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   LandRoute: typeof LandRoute
@@ -345,6 +358,13 @@ declare module '@tanstack/react-router' {
       path: '/data-usage'
       fullPath: '/data-usage'
       preLoaderRoute: typeof DataUsageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explore': {
+      id: '/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof ExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -462,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   CookiePolicyRoute: CookiePolicyRoute,
   DataUsageRoute: DataUsageRoute,
+  ExploreRoute: ExploreRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   LandRoute: LandRoute,

@@ -24,6 +24,7 @@ import { formatPrice, INTENT_LABELS, TYPE_LABELS, type Property } from "@/lib/pr
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PhotoViewer } from "@/components/PhotoViewer";
 
 // Mobile: draggable bottom sheet (peek/default/full snap points, leaves the map visible
 // underneath). Desktop: right side panel, unaffected by the drag state.
@@ -265,24 +266,40 @@ function CoordinatesRow({ lat, lng }: { lat: number; lng: number }) {
   );
 }
 
-function PhotoGallery({ photos }: { photos: string[] }) {
+function PhotoGallery({ photos, title }: { photos: string[]; title: string }) {
   const [index, setIndex] = useState(0);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   if (photos.length === 0) return null;
   const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
   const next = () => setIndex((i) => (i + 1) % photos.length);
   return (
     <div className="relative -mx-4 -mt-4 mb-4 h-48 overflow-hidden bg-muted md:h-56">
-      <img src={photos[index]} alt="" className="h-full w-full object-cover" />
+      <button
+        type="button"
+        onClick={() => setViewerIndex(index)}
+        aria-label={`View photo ${index + 1} of ${photos.length}`}
+        className="h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <img src={photos[index]} alt="" className="h-full w-full object-cover" />
+      </button>
+      <PhotoViewer
+        photos={photos}
+        title={title}
+        index={viewerIndex}
+        onClose={() => setViewerIndex(null)}
+      />
       {photos.length > 1 && (
         <>
           <button
             onClick={prev}
+            aria-label="Previous photo"
             className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={next}
+            aria-label="Next photo"
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
           >
             <ChevronRight className="h-4 w-4" />
@@ -357,7 +374,7 @@ export function ParcelPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {parcel.photos && <PhotoGallery photos={parcel.photos} />}
+        {parcel.photos && <PhotoGallery photos={parcel.photos} title={parcel.parcelNumber} />}
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <Stat label="Size" value={parcel.size} />
@@ -507,19 +524,7 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {property.photos.length > 0 && (
-          <div className="mb-4 flex gap-2 overflow-x-auto">
-            {property.photos.map((url) => (
-              <img
-                key={url}
-                src={url}
-                alt=""
-                className="h-28 w-40 flex-shrink-0 rounded-md object-cover"
-                loading="lazy"
-              />
-            ))}
-          </div>
-        )}
+        <PhotoGallery photos={property.photos} title={property.title} />
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <Stat label={priceLabel} value={formatPrice(property.price, property.pricePeriod)} />

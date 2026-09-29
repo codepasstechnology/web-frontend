@@ -1,27 +1,22 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
-  Link: ({
-    to,
-    children,
-    className,
-  }: {
-    to: string;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <a href={to} className={className}>
-      {children}
-    </a>
-  ),
+  useLocation: () => ({ pathname: "/" }),
+  Link: React.forwardRef<
+    HTMLAnchorElement,
+    { to: string; activeProps?: unknown; search?: unknown } & React.ComponentProps<"a">
+  >(({ to, activeProps: _a, search: _s, ...rest }, ref) => <a ref={ref} href={to} {...rest} />),
 }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null, logout: vi.fn() }) }));
 vi.mock("@/components/NotificationBell", () => ({ NotificationBell: () => null }));
 
 const { Navbar } = await import("@/components/Navbar");
+
+const pinTrigger = () => screen.getByRole("button", { name: "Pin Properties" });
 
 let onIntersect: ((entries: { isIntersecting: boolean }[]) => void) | null = null;
 
@@ -55,7 +50,7 @@ describe("Navbar overlay mode", () => {
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
     expect(header.className).toContain("bg-gradient-to-b");
-    expect(screen.getAllByRole("link", { name: "Land" })[0].className).toContain("text-white/70");
+    expect(pinTrigger().className).toContain("text-white/70");
   });
 
   it("turns frosted white once the hero scrolls out from under it", () => {
@@ -64,9 +59,7 @@ describe("Navbar overlay mode", () => {
     const header = screen.getByRole("banner");
     expect(header.className).toContain("fixed");
     expect(header.className).not.toContain("bg-gradient-to-b");
-    expect(screen.getAllByRole("link", { name: "Land" })[0].className).toContain(
-      "text-muted-foreground",
-    );
+    expect(pinTrigger().className).toContain("text-muted-foreground");
   });
 
   it("stays a normal sticky bar on pages without overlay", () => {
@@ -75,5 +68,28 @@ describe("Navbar overlay mode", () => {
     expect(header.className).toContain("sticky");
     expect(header.className).not.toContain("bg-gradient-to-b");
     expect(onIntersect).toBeNull();
+  });
+});
+
+describe("Navbar Pin Properties menu", () => {
+  it("groups the explore map, land and rentals under one dropdown", async () => {
+    render(<Navbar />);
+
+    await userEvent.click(pinTrigger());
+    const items = screen.getAllByRole("menuitem");
+    expect(items.map((i) => i.getAttribute("href"))).toEqual(["/explore", "/land", "/rentals"]);
+    expect(items[0]).toHaveTextContent("Explore map");
+  });
+
+  it("drops Land and Rentals down from Explore map in the mobile menu", async () => {
+    render(<Navbar />);
+    const toggle = screen.getByRole("button", { name: "Show land and rentals" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Rentals" })).not.toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Land" })).toHaveAttribute("href", "/land");
+    expect(screen.getByRole("link", { name: "Rentals" })).toHaveAttribute("href", "/rentals");
   });
 });
