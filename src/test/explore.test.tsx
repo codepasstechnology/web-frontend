@@ -63,22 +63,22 @@ describe("Explore map", () => {
     mockSearch.mockReturnValue({});
   });
 
-  it("puts land and rentals on one map by default", () => {
+  it("puts land and rentals on one map by default", async () => {
     render(<ExplorePage />);
-    expect(screen.getByTestId("map")).toHaveTextContent("1 parcels, 1 properties");
+    expect(await screen.findByTestId("map")).toHaveTextContent("1 parcels, 1 properties");
     expect(screen.getByRole("radio", { name: "Land 1" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Rentals 1" })).toBeInTheDocument();
   });
 
-  it("narrows to one kind from the URL", () => {
+  it("narrows to one kind from the URL", async () => {
     mockSearch.mockReturnValue({ show: "land" });
     const { unmount } = render(<ExplorePage />);
-    expect(screen.getByTestId("map")).toHaveTextContent("1 parcels, 0 properties");
+    expect(await screen.findByTestId("map")).toHaveTextContent("1 parcels, 0 properties");
     unmount();
 
     mockSearch.mockReturnValue({ show: "rentals" });
     render(<ExplorePage />);
-    expect(screen.getByTestId("map")).toHaveTextContent("0 parcels, 1 properties");
+    expect(await screen.findByTestId("map")).toHaveTextContent("0 parcels, 1 properties");
   });
 
   it("writes the chosen kind to the URL", async () => {

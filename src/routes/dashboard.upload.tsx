@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { LandBoundaryMap } from "@/components/LandBoundaryMap";
+import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { useAuth, type NewListingInput } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";

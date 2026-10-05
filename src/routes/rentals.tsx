@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { List, X, SlidersHorizontal } from "lucide-react";
-import { LandMap } from "@/components/LandMap";
-import { MapSearchBar } from "@/components/MapSearchBar";
+import { LandMap } from "@/components/map/LazyMaps";
+import { MapSearchBar } from "@/components/map/LazyMaps";
 import { RentalPanel } from "@/components/PropertyPanel";
 import {
   usePublicProperties,

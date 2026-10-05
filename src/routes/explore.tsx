@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { List, X } from "lucide-react";
-import { LandMap, type FlyTarget } from "@/components/LandMap";
+import { LandMap } from "@/components/map/LazyMaps";
+import type { FlyTarget } from "@/components/LandMap";
 import { MapLegend } from "@/components/MapLegend";
-import { MapSearchBar } from "@/components/MapSearchBar";
+import { MapSearchBar } from "@/components/map/LazyMaps";
 import { ParcelPanel, RentalPanel } from "@/components/PropertyPanel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2, MapPin } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
-import { LandBoundaryMap } from "@/components/LandBoundaryMap";
+import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { StkCheckoutModal } from "@/components/StkCheckoutModal";
 import { kenyaCounties } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";

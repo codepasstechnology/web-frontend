@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { LandMap, type FlyTarget } from "@/components/LandMap";
+import { LandMap } from "@/components/map/LazyMaps";
+import type { FlyTarget } from "@/components/LandMap";
 import { MapSidebar, type Filters } from "@/components/MapSidebar";
 import { ParcelPanel } from "@/components/PropertyPanel";
 import { MapLegend } from "@/components/MapLegend";
-import { MapSearchBar } from "@/components/MapSearchBar";
+import { MapSearchBar } from "@/components/map/LazyMaps";
 import { type LandParcel } from "@/lib/landData";
 import { mapApiParcel, type ApiParcel } from "@/lib/parcels";
 import { api } from "@/lib/api";

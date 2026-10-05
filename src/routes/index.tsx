@@ -1,36 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FaqSection } from "@/components/landing/FaqSection";
-import { GuidesSection } from "@/components/landing/GuidesSection";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { MarketplacesSection } from "@/components/landing/MarketplacesSection";
-import { PricingSection } from "@/components/landing/PricingSection";
-import { VerificationSection } from "@/components/landing/VerificationSection";
-import { CtaBand } from "@/components/site/CtaBand";
-import { useBlogPosts, useFaqs } from "@/lib/content";
-import { usePublicParcels } from "@/lib/parcels";
-import { usePlans } from "@/lib/plans";
-import { usePublicProperties } from "@/lib/properties";
+import { HomePage } from "@/components/home/HomePage";
+
+const FONTS_URL =
+  "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Caveat:wght@500;700&display=swap";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [{ title: "Geo Pin Properties — Home" }],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "stylesheet", href: FONTS_URL },
+    ],
+  }),
+  component: HomePage,
 });
-
-function Index() {
-  const { data: parcels = [] } = usePublicParcels();
-  const { data: properties = [] } = usePublicProperties();
-  const { data: plans = [] } = usePlans();
-  const { data: faqs = [] } = useFaqs();
-  const { data: posts = [] } = useBlogPosts();
-
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <HeroSection parcels={parcels} />
-      <MarketplacesSection parcels={parcels} properties={properties} />
-      <VerificationSection />
-      <PricingSection plans={plans} />
-      <FaqSection faqs={faqs} />
-      <GuidesSection posts={posts} />
-      <CtaBand />
-    </div>
-  );
-}
