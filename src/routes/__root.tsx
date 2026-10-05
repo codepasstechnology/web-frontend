@@ -162,7 +162,9 @@ const NO_FOOTER_PREFIXES = ["/land", "/rentals", "/explore"];
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { pathname } = useLocation();
-  const showNavbar = !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
+  // The home page brings its own header and footer.
+  const isHome = pathname === "/";
+  const showNavbar = !isHome && !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
   const showFooter = showNavbar && !NO_FOOTER_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
@@ -174,7 +176,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {showNavbar && <Navbar scrollAware overlay={pathname === "/"} />}
+        {showNavbar && <Navbar scrollAware />}
         <Outlet />
         {showFooter && <SiteFooter />}
         <Toaster position="top-right" richColors />

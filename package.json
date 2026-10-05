@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npx tsc --noEmit && npx prettier --check . && npm run test"
+    "check": "npm run lint && npx tsc --noEmit && npx prettier --check . && npm run test",
+    "e2e": "playwright test e2e/home.spec.ts",
+    "e2e:baseline": "playwright test e2e/reference-baselines.spec.ts --update-snapshots"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
@@ -79,6 +81,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.25.2",
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
