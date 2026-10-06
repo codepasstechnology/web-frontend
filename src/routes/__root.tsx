@@ -152,6 +152,7 @@ const NO_NAVBAR_PREFIXES = [
   "/dashboard",
   "/manager",
   "/login",
+  "/loading",
   "/register",
   "/forgot-password",
   "/reset-password",
