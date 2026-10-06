@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { LoadingScreen } from "@/components/auth/LoadingScreen";
@@ -19,6 +19,7 @@ export function LoadingPage() {
   const { mode } = Route.useSearch();
   const { user, ready } = useAuth();
   const navigate = useNavigate();
+  const router = useRouter();
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
@@ -27,9 +28,21 @@ export function LoadingPage() {
       navigate({ to: "/login" });
       return;
     }
-    const timer = window.setTimeout(() => setFading(true), MIN_MS);
-    return () => window.clearTimeout(timer);
-  }, [ready, user, navigate]);
+    // Fade only once the minimum time has passed and the destination's code is loaded,
+    // so the dashboard never appears on a blank page.
+    const minimum = new Promise<void>((resolve) => window.setTimeout(resolve, MIN_MS));
+    const preload =
+      user.role === "account_manager"
+        ? router.preloadRoute({ to: "/manager" })
+        : router.preloadRoute({ to: "/dashboard", search: { tab: undefined } });
+    let cancelled = false;
+    void Promise.all([minimum, preload]).then(() => {
+      if (!cancelled) setFading(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, user, navigate, router]);
 
   useEffect(() => {
     if (!fading || !user) return;
