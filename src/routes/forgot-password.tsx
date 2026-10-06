@@ -1,129 +1,183 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { AlertCircle, ArrowLeft, Mail } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
-import { AuthShell } from "@/components/site/AuthShell";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
+import { AuthLayout, type AuthMessage } from "@/components/auth/AuthLayout";
+import {
+  ArrowIcon,
+  FloatField,
+  PrimaryButton,
+  type BusyState,
+  type Shake,
+} from "@/components/auth/AuthFields";
+import { isValidEmail } from "@/components/auth/validation";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({ meta: [{ title: "Reset Password — Geo Pin Properties Kenya" }] }),
   component: ForgotPasswordPage,
 });
 
+const MESSAGES: AuthMessage[] = [
+  { h: "Happens to the best of us.", n: "we'll get you back in" },
+  { h: "Your plots are safe.", n: "nothing changes while you are away" },
+  { h: "Back on the map in a minute.", n: "just three quick steps" },
+];
+
+const RESEND_SECONDS = 30;
+
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState<BusyState>("idle");
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [wait, setWait] = useState(0);
   const [err, setErr] = useState("");
+  const shake: Shake = attempt % 2 ? "b" : "a";
+  const emailError = !email.trim()
+    ? "Enter your email address."
+    : !isValidEmail(email)
+      ? "Enter a valid email address."
+      : "";
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = window.setTimeout(() => setWait((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [wait]);
+
+  const send = async (address: string) => {
     setErr("");
-    setLoading(true);
+    setBusy("loading");
     try {
-      await api.post("/auth/forgot-password", { email });
-      setSubmitted(true);
+      await api.post("/auth/forgot-password", { email: address });
+      setBusy("success");
+      window.setTimeout(() => {
+        setBusy("idle");
+        setSentTo(address);
+        setWait(RESEND_SECONDS);
+      }, 380);
     } catch (error: unknown) {
       const e = error as { errors?: Record<string, string[]>; message?: string };
       setErr(e?.errors?.email?.[0] ?? e?.message ?? "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      setBusy("idle");
     }
   };
 
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setTried(true);
+    if (emailError) {
+      setAttempt((n) => n + 1);
+      return;
+    }
+    void send(email.trim());
+  };
+
   return (
-    <AuthShell image="https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop">
-      {!submitted ? (
+    <AuthLayout messages={MESSAGES}>
+      {sentTo ? (
         <>
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-brand-subtle">
-              <Mail aria-hidden className="h-7 w-7 text-brand-subtle-foreground" />
-            </div>
-          </div>
-          <div className="mb-7 text-center">
-            <h1 className="text-2xl font-bold">Forgot your password?</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Enter your registered email and we&apos;ll send you a link to reset your password.
+          <span className="ga-success-badge">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                className="ga-tick-draw"
+                d="m5 12 5 5L20 7"
+                stroke="#2F4520"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div role="status" className="ga-heading">
+            <h1>
+              Check your email<span className="ga-dot-mark">.</span>
+            </h1>
+            <p>
+              We sent a reset link to <strong style={{ color: "#1E2418" }}>{sentTo}</strong>. Open
+              it to choose a new password.
             </p>
           </div>
 
-          {err && (
-            <Alert variant="destructive" className="mb-5">
-              <AlertCircle aria-hidden className="h-4 w-4" />
-              <AlertDescription>{err}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="forgot-email">Email address</Label>
-              <div className="relative">
-                <Mail
-                  aria-hidden
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                  id="forgot-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  className="h-11 pl-10"
-                />
-              </div>
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              disabled={loading}
-              className="h-11 w-full bg-brand text-brand-foreground hover:bg-brand-hover"
+          <div className="ga-stack">
+            <p className="ga-progress-head">
+              <span>Didn&apos;t get it? Check your spam folder.</span>
+              <button
+                type="button"
+                className="ga-btn ga-link"
+                disabled={wait > 0}
+                onClick={() => void send(sentTo)}
+              >
+                {wait > 0 ? `Resend in ${wait}s` : "Resend link"}
+              </button>
+            </p>
+            <button
+              type="button"
+              className="ga-btn ga-link"
+              onClick={() => {
+                setSentTo(null);
+                setBusy("idle");
+              }}
             >
-              {loading ? <Spinner size="sm" label="Sending…" /> : "Send reset link"}
-            </Button>
-          </form>
+              Use a different email
+            </button>
+          </div>
+
+          <Link to="/login" className="ga-btn ga-press ga-primary">
+            Back to sign in
+            <ArrowIcon />
+          </Link>
         </>
       ) : (
-        <div role="status">
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-success-subtle">
-              <Mail aria-hidden className="h-7 w-7 text-success" />
-            </div>
-          </div>
-          <div className="mb-7 text-center">
-            <h1 className="text-2xl font-bold">Check your inbox</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              We&apos;ve sent a password reset link to{" "}
-              <span className="font-semibold text-foreground">{email}</span>. Check your spam folder
-              if you don&apos;t see it.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-11 w-full"
-            onClick={() => {
-              setSubmitted(false);
-              setEmail("");
-            }}
-          >
-            Try a different email
-          </Button>
-        </div>
-      )}
-
-      <div className="mt-6 flex justify-center">
-        <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-          <Link to="/login">
-            <ArrowLeft /> Back to sign in
+        <>
+          <Link to="/login" className="ga-link ga-back">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M19 12H5M11 18l-6-6 6-6" />
+            </svg>
+            Back to sign in
           </Link>
-        </Button>
-      </div>
-    </AuthShell>
+
+          <div className="ga-heading">
+            <h1>
+              Forgot your password<span className="ga-dot-mark">?</span>
+            </h1>
+            <p>Enter the email you signed up with and we&apos;ll send you a reset link.</p>
+          </div>
+
+          <form onSubmit={onSubmit} className="ga-stack" noValidate>
+            <FloatField
+              id="fp-email"
+              label="Email address"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              error={tried ? emailError : ""}
+              valid={isValidEmail(email)}
+              shake={tried && emailError ? shake : null}
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
+            {err && (
+              <p role="alert" className="ga-err">
+                {err}
+              </p>
+            )}
+            <PrimaryButton type="submit" busy={busy}>
+              Send reset link
+            </PrimaryButton>
+          </form>
+        </>
+      )}
+    </AuthLayout>
   );
 }

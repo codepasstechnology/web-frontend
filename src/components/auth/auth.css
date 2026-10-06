@@ -1,0 +1,1626 @@
+/* Sign in, register and forgot password. Ported from design/auth/*.design.html; classes are prefixed `ga-` so they can't clash with the home page's `gp-` styles. */
+
+.ga-page {
+  background: #f6f0e2;
+  color: #1e2418;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+}
+
+.ga-page a {
+  color: #3f5a2a;
+}
+
+.ga-page a:hover {
+  color: #2f4520;
+}
+
+.ga-split {
+  display: flex;
+  min-height: 100vh;
+}
+
+.ga-side {
+  position: relative;
+  flex: 1 1 50%;
+  max-width: 720px;
+  overflow: hidden;
+  background: #15140f;
+  color: #f4eee2;
+  border-radius: 0 40px 40px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 36px 48px 44px;
+}
+
+.ga-side-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  min-height: 44px;
+  text-decoration: none;
+  color: #f4eee2;
+}
+
+.ga-side .ga-side-brand,
+.ga-side .ga-side-brand:hover {
+  color: #f4eee2;
+}
+
+.ga-brand-tile {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #1a752a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ga-brand-text {
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+}
+
+.ga-side-map {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ga-map-wrap {
+  position: relative;
+  width: min(100cqw, 100cqh * 0.8317);
+  height: min(100cqh, 100cqw * 1.2024);
+  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
+  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.ga-map {
+  position: absolute;
+  inset: 0;
+  animation: gaBreathe 18s ease-in-out infinite;
+}
+
+.ga-map-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: gaReveal 2s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-m-outline {
+  fill: rgba(169, 201, 122, 0.035);
+  stroke: rgba(196, 214, 160, 0.3);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.ga-m-mesh {
+  fill: none;
+  stroke: rgba(214, 198, 160, 0.15);
+  stroke-width: 1;
+}
+
+.ga-m-dots {
+  fill: rgba(214, 198, 160, 0.4);
+}
+
+.ga-green {
+  position: absolute;
+  border-radius: 50%;
+  background: #a9c97a;
+  box-shadow: 0 0 10px #a9c97aaa;
+  animation: gaGlow 4s ease-in-out infinite;
+}
+
+.ga-ring {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  border: 1.5px solid #a9c97a;
+  opacity: 0;
+  animation: gaRing 2.2s ease-out 2s infinite backwards;
+}
+
+.ga-side-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 400px;
+  padding-bottom: 4px;
+}
+
+.ga-message {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 148px;
+  justify-content: flex-end;
+}
+
+.ga-message h2 {
+  margin: 0;
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: clamp(34px, 3.4vw, 50px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.ga-note {
+  font-family: "Caveat", "Segoe Print", cursive;
+  font-weight: 700;
+  font-size: 28px;
+  color: #f1e7d2;
+  transform: rotate(-3deg);
+  align-self: flex-start;
+}
+
+.ga-swap-a {
+  animation: gaSwapA 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-swap-b {
+  animation: gaSwapB 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-note.ga-swap-a,
+.ga-note.ga-swap-b {
+  animation-delay: 0.2s;
+}
+
+.ga-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.ga-dot-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ga-dot {
+  display: block;
+  height: 6px;
+  width: 6px;
+  border-radius: 99px;
+  background: rgba(244, 238, 226, 0.35);
+  transition:
+    width 0.3s,
+    background 0.3s;
+}
+
+.ga-dot.is-active {
+  width: 22px;
+  background: #a9c97a;
+}
+
+.ga-perks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ga-perks li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 16px;
+  color: #f4eee2;
+}
+
+.ga-perk-icon {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1e7d2;
+  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+}
+
+.ga-main {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.ga-form-col {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.ga-form-col.is-wide {
+  max-width: 460px;
+}
+
+.ga-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ga-heading h1 {
+  margin: 0;
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.ga-heading h1.is-display {
+  font-size: clamp(40px, 5vw, 52px);
+}
+
+.ga-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #3f5a2a;
+}
+
+.ga-heading h1.is-small {
+  font-size: 40px;
+}
+
+.ga-heading p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: #56594a;
+}
+
+.ga-dot-mark {
+  color: #6e8b47;
+}
+
+.ga-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ga-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ga-input {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 18px;
+  border: 1.5px solid #dcd3bf;
+  border-radius: 16px;
+  background: #fffaf2;
+  font: inherit;
+  font-size: 16px;
+  color: #1e2418;
+  box-shadow: 0 0 0 0 rgba(63, 90, 42, 0);
+  transition:
+    border-color 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 0.25s;
+}
+
+.ga-input::placeholder {
+  color: #8c8a78;
+}
+
+.ga-input:focus {
+  outline: none;
+  border-color: #3f5a2a;
+  box-shadow: 0 0 0 4px rgba(63, 90, 42, 0.16);
+  background-color: #ffffff;
+}
+
+.ga-input[aria-invalid="true"] {
+  border-color: #b3261e;
+}
+
+.ga-input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 4px rgba(179, 38, 30, 0.14);
+}
+
+.ga-float {
+  position: relative;
+}
+
+.ga-float .ga-input {
+  padding: 24px 18px 8px;
+  min-height: 62px;
+}
+
+.ga-float.has-tick .ga-input {
+  padding-right: 48px;
+}
+
+.ga-float.has-action .ga-input {
+  padding-right: 64px;
+}
+
+.ga-float label {
+  position: absolute;
+  left: 19px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #56594a;
+  pointer-events: none;
+  transition:
+    top 0.22s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1),
+    font-size 0.22s cubic-bezier(0.2, 0.7, 0.2, 1),
+    color 0.22s;
+}
+
+.ga-float .ga-input::placeholder {
+  color: transparent;
+  transition: color 0.2s;
+}
+
+.ga-float .ga-input:focus::placeholder {
+  color: #8c8a78;
+}
+
+.ga-float .ga-input:focus + label,
+.ga-float .ga-input:not(:placeholder-shown) + label {
+  top: 8px;
+  transform: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3f5a2a;
+}
+
+.ga-float.has-prefix .ga-input {
+  padding-left: 68px;
+}
+
+.ga-float.has-prefix label {
+  left: 69px;
+}
+
+.ga-float.has-prefix .ga-input:focus + label,
+.ga-float.has-prefix .ga-input:not(:placeholder-shown) + label {
+  left: 19px;
+}
+
+.ga-prefix {
+  position: absolute;
+  left: 19px;
+  top: calc(50% + 8px);
+  transform: translateY(-50%);
+  font-weight: 600;
+  color: #56594a;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.ga-tick {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  margin-top: -11px;
+  pointer-events: none;
+}
+
+.ga-tick path {
+  stroke-dasharray: 24;
+  animation: gaTickDraw 0.45s cubic-bezier(0.6, 0.1, 0.3, 1) backwards;
+}
+
+.ga-eye {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ga-err {
+  font-size: 14px;
+  color: #b3261e;
+  animation: gaErrIn 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-shake-a {
+  animation: gaShakeA 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.ga-shake-b {
+  animation: gaShakeB 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.ga-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #e3ebd3;
+  color: #2f4520;
+  border-radius: 16px;
+  padding: 14px 18px;
+  font-weight: 500;
+  animation: gaErrIn 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-btn {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ga-btn:focus-visible,
+.ga-link:focus-visible,
+.ga-chip:focus-visible,
+.ga-role:focus-visible {
+  outline: 3px solid #3f5a2a;
+  outline-offset: 3px;
+}
+
+.ga-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ga-link {
+  color: #3f5a2a;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ga-press {
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.ga-press:active {
+  transform: scale(0.98);
+}
+
+.ga-press .ga-arrow {
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.ga-press:hover .ga-arrow {
+  transform: translateX(4px);
+}
+
+.ga-primary {
+  min-height: 58px;
+  border-radius: 999px;
+  background: #3f5a2a;
+  color: #fff6ea;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.ga-primary:hover {
+  background-color: #35502a;
+  box-shadow: 0 8px 22px rgba(63, 90, 42, 0.25);
+}
+
+.ga-secondary {
+  min-height: 58px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1.5px solid #dcd3bf;
+  background: #fffaf2;
+  color: #1e2418;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ga-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 56px;
+  border-radius: 999px;
+  border: 1.5px solid #dcd3bf;
+  background: #fffaf2;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e2418;
+  width: 100%;
+}
+
+.ga-or {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #8c8a78;
+  font-size: 14px;
+}
+
+.ga-or span {
+  flex: 1;
+  height: 1px;
+  background: #dcd3bf;
+}
+
+.ga-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: #56594a;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.ga-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: #3f5a2a;
+  margin: 0;
+  flex: none;
+}
+
+.ga-meter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: -6px;
+}
+
+.ga-meter-track {
+  display: block;
+  height: 5px;
+  border-radius: 99px;
+  background: #e6dfcd;
+  overflow: hidden;
+}
+
+.ga-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transform-origin: left;
+  transition:
+    transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 0.45s;
+}
+
+.ga-hint {
+  font-size: 14px;
+  color: #56594a;
+  transition: color 0.2s;
+}
+
+.ga-hint.is-error {
+  color: #b3261e;
+}
+
+.ga-bars {
+  display: grid;
+  gap: 6px;
+}
+
+.ga-bar-track {
+  display: block;
+  height: 5px;
+  border-radius: 99px;
+  background: #e6dfcd;
+  overflow: hidden;
+}
+
+.ga-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: #3f5a2a;
+  transform-origin: left;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.ga-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #56594a;
+}
+
+.ga-progress-head strong {
+  color: #1e2418;
+}
+
+.ga-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ga-role {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  padding: 14px 16px;
+  min-height: 76px;
+  border-radius: 20px;
+  font: inherit;
+  cursor: pointer;
+  color: #1e2418;
+  background: #fffaf2;
+  border: 1.5px solid #dcd3bf;
+  transition:
+    transform 0.15s,
+    background-color 0.25s,
+    border-color 0.25s;
+}
+
+.ga-role.is-on {
+  background: #e3ebd3;
+  border-color: #3f5a2a;
+}
+
+.ga-role-icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2f4520;
+  background: #f1e7d2;
+  transition:
+    background-color 0.25s,
+    color 0.25s,
+    transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.ga-role.is-on .ga-role-icon {
+  background: #3f5a2a;
+  color: #fff6ea;
+  transform: rotate(-6deg) scale(1.05);
+}
+
+.ga-role-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.ga-role-text strong {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.ga-role-text span {
+  font-size: 14px;
+  color: #56594a;
+}
+
+.ga-radio {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid #c9c2ae;
+  background: #3f5a2a;
+  box-shadow: inset 0 0 0 11px #fffaf2;
+  transition: all 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.ga-role.is-on .ga-radio {
+  border-color: #3f5a2a;
+  box-shadow: inset 0 0 0 4px #e3ebd3;
+}
+
+.ga-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ga-chip {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #fffaf2;
+  color: #1e2418;
+  border: 1.5px solid #dcd3bf;
+  transition:
+    transform 0.15s,
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.ga-chip:active {
+  transform: scale(0.96);
+}
+
+.ga-chip[aria-pressed="true"] {
+  background: #3f5a2a;
+  color: #fff6ea;
+  border-color: #3f5a2a;
+}
+
+.ga-group-label {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.ga-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ga-row {
+  display: flex;
+  gap: 10px;
+}
+
+.ga-row .ga-secondary {
+  padding: 0 24px;
+}
+
+.ga-row .ga-primary {
+  flex: 1;
+  width: auto;
+}
+
+.ga-step {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.ga-step.is-back {
+  animation: gaStepBackA 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-step.is-fwd {
+  animation: gaStepFwdA 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-step.is-fwd.is-alt {
+  animation-name: gaStepFwdB;
+}
+
+.ga-step.is-back.is-alt {
+  animation-name: gaStepBackB;
+}
+
+.ga-pins {
+  position: relative;
+  height: 64px;
+}
+
+.ga-pin {
+  position: absolute;
+  bottom: 0;
+  transform-origin: bottom center;
+  animation: gaPinDrop 0.75s cubic-bezier(0.3, 0.7, 0.4, 1) backwards;
+}
+
+.ga-write {
+  font-family: "Caveat", "Segoe Print", cursive;
+  font-weight: 700;
+  font-size: 30px;
+  color: #3f5a2a;
+  transform: rotate(-3deg);
+  align-self: flex-start;
+  animation: gaWrite 0.9s cubic-bezier(0.5, 0, 0.3, 1) 0.7s backwards;
+}
+
+.ga-next {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: #1e2418;
+  background: #fffaf2;
+  border: 1.5px solid #dcd3bf;
+  border-radius: 20px;
+  padding: 16px 18px;
+  min-height: 72px;
+  animation: gaErrIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-next:hover {
+  color: #1e2418;
+}
+
+.ga-next-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e3ebd3;
+  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+}
+
+.ga-next-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.ga-next-text strong {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.ga-next-text span {
+  font-size: 14px;
+  color: #56594a;
+}
+
+.ga-success-badge {
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e3ebd3;
+  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+  animation: gaPop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s backwards;
+}
+
+.ga-tick-draw {
+  stroke-dasharray: 24;
+  animation: gaTickDraw 0.5s cubic-bezier(0.6, 0.1, 0.3, 1) 0.45s backwards;
+}
+
+.ga-code-boxes {
+  position: relative;
+}
+
+.ga-code-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ga-spin {
+  animation: gaSpin 0.8s linear infinite;
+}
+
+.ga-fade-in {
+  animation: gaErrIn 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+/* Mobile: the dark panel becomes a faint map behind the form. */
+@media (max-width: 860px) {
+  .ga-split {
+    position: relative;
+    display: block;
+  }
+
+  .ga-side {
+    position: absolute;
+    inset: 0;
+    max-width: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 20px;
+    pointer-events: none;
+  }
+
+  .ga-side a {
+    pointer-events: auto;
+    color: #1e2418;
+  }
+
+  .ga-side-copy {
+    display: none;
+  }
+
+  .ga-side-map {
+    position: fixed;
+    inset: 0;
+    padding: 24px;
+    opacity: 0.6;
+  }
+
+  .ga-m-outline {
+    fill: rgba(169, 201, 122, 0.1);
+    stroke: rgba(63, 90, 42, 0.28);
+  }
+
+  .ga-m-mesh {
+    stroke: rgba(63, 90, 42, 0.12);
+  }
+
+  .ga-m-dots {
+    fill: rgba(63, 90, 42, 0.22);
+  }
+
+  .ga-green {
+    background: #8fb360;
+    box-shadow: none;
+  }
+
+  .ga-side .ga-side-brand,
+  .ga-side .ga-side-brand:hover {
+    color: #1e2418;
+  }
+
+  .ga-main {
+    padding: 104px 20px 48px;
+    min-height: 100vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga-page *,
+  .ga-page *::before,
+  .ga-page *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes gaSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gaTickDraw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gaErrIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaShakeA {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes gaShakeB {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes gaPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes gaStepFwdA {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaStepFwdB {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaStepBackA {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaStepBackB {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaPinDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-70px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(5px);
+  }
+  80% {
+    transform: translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaWrite {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes gaReveal {
+  from {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0.2;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@keyframes gaGlow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes gaRing {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes gaBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+@keyframes gaSwapA {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaSwapB {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ga-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ga-status-icon {
+  flex: none;
+}
+
+.ga-status-icon path {
+  stroke-dasharray: 24;
+  animation: gaTickDraw 0.45s cubic-bezier(0.6, 0.1, 0.3, 1) backwards;
+}
+
+.ga-google-slot {
+  width: 100%;
+}
+
+.ga-help {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #56594a;
+  text-align: center;
+}
+
+.ga-page a.ga-primary {
+  color: #fff6ea;
+  text-decoration: none;
+}
+
+.ga-page a.ga-primary:hover {
+  color: #fff6ea;
+}
+
+.ga-back {
+  align-self: flex-start;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.ga-page a.ga-newcard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #1e2418;
+  text-decoration: none;
+  background: #e3ebd3;
+  border: 1.5px solid #c9d7b3;
+  border-radius: 24px;
+  padding: 18px 18px 18px 20px;
+  margin-top: 16px;
+  animation: gaErrIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s backwards;
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 0.25s,
+    box-shadow 0.25s,
+    background-color 0.25s;
+}
+
+.ga-page a.ga-newcard:hover {
+  border-color: #3f5a2a;
+  background-color: #dce7c9;
+  box-shadow: 0 10px 26px rgba(63, 90, 42, 0.16);
+  color: #1e2418;
+}
+
+.ga-newcard-icon {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3f5a2a;
+  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+}
+
+.ga-newcard-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ga-newcard-title {
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.ga-newcard-desc {
+  font-size: 15px;
+  line-height: 1.45;
+  color: #3f4a33;
+}
+
+.ga-newbtn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #3f5a2a;
+  color: #fff6ea;
+  border-radius: 999px;
+  padding: 0 18px;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.ga-doodle {
+  position: absolute;
+  right: 22px;
+  top: -30px;
+  font-family: "Caveat", "Segoe Print", cursive;
+  font-weight: 700;
+  font-size: 24px;
+  color: #3f5a2a;
+  transform: rotate(-4deg);
+  pointer-events: none;
+  animation: gaWrite 0.8s cubic-bezier(0.5, 0, 0.3, 1) 1.2s backwards;
+}
+
+/* Loading screen, shown after sign-in or sign-up (design/auth/loading.design.html). */
+.ga-load {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #15140f;
+  color: #f4eee2;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  padding: 48px 24px;
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+}
+
+.ga-load.is-out {
+  opacity: 0;
+}
+
+.ga-load-logo {
+  position: absolute;
+  left: 28px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ga-load-logo .ga-brand-tile {
+  width: 34px;
+  height: 34px;
+}
+
+.ga-load-logo .ga-brand-text {
+  font-size: 18px;
+}
+
+.ga-load-map {
+  position: relative;
+  width: min(340px, 64vw);
+  aspect-ratio: 840 / 1010;
+}
+
+.ga-load-breathe {
+  position: absolute;
+  inset: 0;
+  animation: gaLoadBreathe 6s ease-in-out infinite;
+}
+
+.ga-load-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ga-trace {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: gaTrace 1.5s cubic-bezier(0.6, 0.1, 0.3, 1) backwards;
+}
+
+.ga-fade-in {
+  animation: gaFade 0.9s ease 0.9s backwards;
+}
+
+.ga-load-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: #a9c97a;
+  box-shadow: 0 0 10px #a9c97aaa;
+  animation:
+    gaDotPop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) backwards,
+    gaGlow 3s ease-in-out infinite;
+}
+
+.ga-load-ring {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  margin: -35px 0 0 -35px;
+  border-radius: 50%;
+  border: 1.5px solid #a9c97a;
+  opacity: 0;
+  animation: gaPulse 2s ease-out infinite backwards;
+}
+
+.ga-load-pin {
+  position: absolute;
+  width: 40px;
+  height: 50px;
+  margin: -48px 0 0 -20px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+  animation: gaPinDrop 0.8s cubic-bezier(0.3, 0.7, 0.4, 1) 1.2s backwards;
+}
+
+.ga-load-pin svg {
+  display: block;
+}
+
+.ga-load-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  max-width: 520px;
+}
+
+.ga-load-title {
+  margin: 0;
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  animation: gaRise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s backwards;
+}
+
+.ga-load-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: 17px;
+  color: #b9b2a1;
+}
+
+.ga-load-status-text {
+  display: inline-block;
+  animation: gaRise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ga-load-blinks {
+  display: flex;
+  gap: 4px;
+}
+
+.ga-blink {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a9c97a;
+  animation: gaBlink 1.2s ease-in-out infinite;
+}
+
+.ga-load-bar {
+  width: min(260px, 60vw);
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 99px;
+  background: rgba(244, 238, 226, 0.12);
+  overflow: hidden;
+}
+
+.ga-load-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: #a9c97a;
+  transform-origin: left;
+  transition: transform 0.12s linear;
+}
+
+.ga-load-note {
+  font-family: "Caveat", "Segoe Print", cursive;
+  font-weight: 700;
+  font-size: 26px;
+  color: #f1e7d2;
+  transform: rotate(-3deg);
+  animation: gaWrite 0.8s cubic-bezier(0.5, 0, 0.3, 1) 1.4s backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga-load,
+  .ga-load *,
+  .ga-load *::before,
+  .ga-load *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes gaLoadBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes gaTrace {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gaFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gaDotPop {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gaPulse {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes gaRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gaBlink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}

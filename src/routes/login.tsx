@@ -1,21 +1,29 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { AlertCircle, ArrowRight, Check, Eye, EyeOff } from "lucide-react";
+import { useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { AuthShell, AuthTerms } from "@/components/site/AuthShell";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
+import { AuthLayout, type AuthMessage } from "@/components/auth/AuthLayout";
+import {
+  ArrowIcon,
+  EyeButton,
+  FloatField,
+  PrimaryButton,
+  TickIcon,
+  type BusyState,
+  type Shake,
+} from "@/components/auth/AuthFields";
+import { isValidEmail } from "@/components/auth/validation";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign In — Geo Pin Properties Kenya" }] }),
   component: LoginPage,
 });
+
+const MESSAGES: AuthMessage[] = [
+  { h: "Your plots are right where you left them.", n: "welcome back, karibu tena!" },
+  { h: "See boundaries before you visit.", n: "no more guessing where it ends" },
+  { h: "Every listing checked.", n: "look for the green badge ✓" },
+];
 
 export function LoginPage() {
   const { login, loginWithGoogle, verifyTwoFactor, resendTwoFactorCode } = useAuth();
@@ -23,23 +31,26 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [tried, setTried] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [busy, setBusy] = useState<BusyState>("idle");
   const [challenge, setChallenge] = useState<{ token: string; email: string } | null>(null);
   const [code, setCode] = useState("");
   const [resent, setResent] = useState(false);
 
-  const goToDashboard = (role: string) => {
-    setSuccess(true);
-    setTimeout(() => {
-      if (role === "account_manager") {
-        navigate({ to: "/manager" });
-      } else {
-        navigate({ to: "/dashboard", search: { tab: undefined } });
-      }
-    }, 1500);
+  const emailError = !email.trim()
+    ? "Enter your email address."
+    : !isValidEmail(email)
+      ? "Enter a valid email address."
+      : "";
+  const passwordError = password ? "" : "Enter your password.";
+  const shake: Shake = attempt % 2 ? "b" : "a";
+
+  const goToDashboard = () => {
+    setBusy("success");
+    window.setTimeout(() => navigate({ to: "/loading", search: { mode: "login" } }), 380);
   };
 
   const readError = (err: unknown, fallback: string) => {
@@ -55,64 +66,58 @@ export function LoginPage() {
     );
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setTried(true);
+    if (emailError || passwordError) {
+      setAttempt((n) => n + 1);
+      return;
+    }
     setErr("");
-    if (!email.trim()) {
-      setErr("Email is required.");
-      return;
-    }
-    if (!password) {
-      setErr("Password is required.");
-      return;
-    }
-    setLoading(true);
+    setBusy("loading");
     try {
       const result = await login(email, password, rememberMe);
       if (result.status === "two_factor_required") {
         setChallenge({ token: result.challenge, email: result.email });
         setPassword("");
+        setBusy("idle");
       } else {
-        goToDashboard(result.user.role);
+        goToDashboard();
       }
     } catch (err: unknown) {
       setErr(readError(err, "Login failed. Please try again."));
-    } finally {
-      setLoading(false);
+      setAttempt((n) => n + 1);
+      setBusy("idle");
     }
   };
 
   const onGoogleCredential = async (credential: string) => {
     setErr("");
-    setLoading(true);
     try {
       const result = await loginWithGoogle(credential);
       if (result.status === "two_factor_required") {
         setChallenge({ token: result.challenge, email: result.email });
       } else {
-        goToDashboard(result.user.role);
+        goToDashboard();
       }
     } catch (err: unknown) {
       setErr(readError(err, "Google sign-in failed. Please try again."));
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onSubmitCode = async (e: React.FormEvent) => {
+  const onSubmitCode = async (e: FormEvent) => {
     e.preventDefault();
     if (!challenge) return;
     setErr("");
     setResent(false);
-    setLoading(true);
+    setBusy("loading");
     try {
       const u = await verifyTwoFactor(challenge.token, code, rememberMe);
-      goToDashboard(u.role);
+      goToDashboard();
     } catch (err: unknown) {
       setErr(readError(err, "That code didn't work. Please try again."));
       setCode("");
-    } finally {
-      setLoading(false);
+      setBusy("idle");
     }
   };
 
@@ -136,200 +141,161 @@ export function LoginPage() {
   };
 
   return (
-    <AuthShell
-      image="https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop"
-      below={<AuthTerms action="signing in" />}
-    >
-      {success ? (
-        <div role="status" className="flex flex-col items-center py-6 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle">
-            <Check aria-hidden className="h-8 w-8 text-success" />
-          </div>
-          <h2 className="mt-5 text-xl font-bold">Welcome back!</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">Taking you to your dashboard…</p>
-          <div className="mt-6 h-[3px] w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-success"
-              style={{ animation: "lv-fill 1.5s linear forwards" }}
-            />
-          </div>
-          <style>{`@keyframes lv-fill { from { width: 0 } to { width: 100% } }`}</style>
+    <AuthLayout messages={MESSAGES}>
+      {busy === "success" && (
+        <div role="status" className="ga-status">
+          <TickIcon className="ga-status-icon" />
+          Signed in. Taking you to your dashboard…
         </div>
-      ) : challenge ? (
+      )}
+      {challenge ? (
         <>
-          <div className="mb-7 text-center">
-            <h1 className="text-2xl font-bold">Check your email</h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
+          <div className="ga-heading">
+            <h1>
+              Check your email<span className="ga-dot-mark">.</span>
+            </h1>
+            <p>
               We sent a 6-digit sign-in code to{" "}
-              <span className="font-semibold text-foreground">{challenge.email}</span>.
+              <strong style={{ color: "#1E2418" }}>{challenge.email}</strong>.
             </p>
           </div>
 
           {err && (
-            <Alert variant="destructive" className="mb-5">
-              <AlertCircle aria-hidden className="h-4 w-4" />
-              <AlertDescription>{err}</AlertDescription>
-            </Alert>
+            <p role="alert" className="ga-err">
+              {err}
+            </p>
           )}
-          {resent && !err && (
-            <Alert variant="success" className="mb-5">
-              <AlertDescription>A new code is on its way.</AlertDescription>
-            </Alert>
-          )}
+          {resent && !err && <p className="ga-status">A new code is on its way.</p>}
 
-          <form onSubmit={onSubmitCode} className="flex flex-col gap-4">
-            <Label htmlFor="login-code" className="sr-only">
-              Sign-in code
-            </Label>
-            <Input
+          <form onSubmit={onSubmitCode} className="ga-stack">
+            <FloatField
               id="login-code"
+              label="Sign-in code"
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
               placeholder="000000"
               inputMode="numeric"
               autoComplete="one-time-code"
-              autoFocus
-              maxLength={6}
-              className="h-12 text-center text-lg font-semibold tracking-[0.3em]"
             />
-            <Button
-              type="submit"
-              size="lg"
-              disabled={loading || code.length !== 6}
-              className="h-11 w-full bg-brand text-brand-foreground hover:bg-brand-hover"
-            >
-              {loading ? (
-                <Spinner size="sm" label="Verifying…" />
-              ) : (
-                <>
-                  Verify <ArrowRight />
-                </>
-              )}
-            </Button>
+            <PrimaryButton type="submit" busy={busy} disabled={code.length !== 6}>
+              Verify
+            </PrimaryButton>
           </form>
 
-          <div className="mt-4 flex items-center justify-between text-xs">
-            <button
-              type="button"
-              onClick={onResend}
-              className="font-semibold text-brand hover:underline"
-            >
+          <div className="ga-progress-head">
+            <button type="button" className="ga-btn ga-link" onClick={onResend}>
               Resend code
             </button>
-            <button
-              type="button"
-              onClick={restart}
-              className="text-muted-foreground hover:text-foreground hover:underline"
-            >
+            <button type="button" className="ga-btn ga-link" onClick={restart}>
               Use a different account
             </button>
           </div>
         </>
       ) : (
         <>
-          <div className="mb-7 text-center">
-            <h1 className="text-2xl font-bold">Welcome back</h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Sign in to manage your verified land listings across Kenya.
-            </p>
+          <div className="ga-heading">
+            <h1>
+              Sign in<span className="ga-dot-mark">.</span>
+            </h1>
           </div>
 
-          {err && (
-            <Alert variant="destructive" className="mb-5">
-              <AlertCircle aria-hidden className="h-4 w-4" />
-              <AlertDescription>{err}</AlertDescription>
-            </Alert>
-          )}
+          <div className="ga-google-slot">
+            <GoogleSignInButton onCredential={onGoogleCredential} text="continue_with" />
+          </div>
 
-          <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="login-email">Email address</Label>
-              <Input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                className="h-11"
-              />
-            </div>
+          <div className="ga-or" aria-hidden="true">
+            <span />
+            or with your email
+            <span />
+          </div>
 
-            <div className="grid gap-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="login-password">Password</Label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-semibold text-brand hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Input
-                  id="login-password"
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="h-11 pr-10 [&::-ms-reveal]:hidden"
+          <form onSubmit={onSubmit} className="ga-stack" noValidate>
+            <FloatField
+              id="login-email"
+              label="Email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              error={tried ? emailError : ""}
+              valid={isValidEmail(email)}
+              shake={tried && emailError ? shake : null}
+              placeholder="you@example.com"
+              autoComplete="username"
+            />
+            <FloatField
+              id="login-password"
+              label="Password"
+              type={showPw ? "text" : "password"}
+              value={password}
+              onChange={setPassword}
+              error={tried ? passwordError : ""}
+              shake={tried && passwordError ? shake : null}
+              placeholder="Your password"
+              autoComplete="current-password"
+              action={<EyeButton shown={showPw} onToggle={() => setShowPw((v) => !v)} />}
+            />
+            {err && (
+              <p role="alert" className="ga-err">
+                {err}
+              </p>
+            )}
+
+            <div className="ga-progress-head">
+              <label className="ga-check">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+                Keep me signed in
+              </label>
+              <Link to="/forgot-password" className="ga-link">
+                Forgot password?
+              </Link>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="login-remember"
-                checked={rememberMe}
-                onCheckedChange={(v) => setRememberMe(v === true)}
-                className="border-input data-[state=checked]:border-brand data-[state=checked]:bg-brand"
-              />
-              <Label htmlFor="login-remember" className="font-normal text-muted-foreground">
-                Remember me
-              </Label>
-            </div>
-
-            <Button
-              type="submit"
-              size="lg"
-              disabled={loading}
-              className="h-11 w-full bg-brand text-brand-foreground hover:bg-brand-hover"
-            >
-              {loading ? (
-                <Spinner size="sm" label="Signing in…" />
-              ) : (
-                <>
-                  Sign in <ArrowRight />
-                </>
-              )}
-            </Button>
+            <PrimaryButton type="submit" busy={busy}>
+              Sign in
+            </PrimaryButton>
           </form>
 
-          <div className="my-5 flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">or</span>
-            <Separator className="flex-1" />
-          </div>
+          <Link to="/register" className="ga-newcard ga-press">
+            <span className="ga-newcard-icon">
+              <svg width="22" height="22" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+                <path
+                  d="M15 27s-9-7.8-9-14a9 9 0 0 1 18 0c0 6.2-9 14-9 14z"
+                  stroke="#FFF6EA"
+                  strokeWidth="2.2"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15 9v8M11 13h8"
+                  stroke="#FFF6EA"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span className="ga-newcard-text">
+              <span className="ga-newcard-title">New to Geo Pin?</span>
+              <span className="ga-newcard-desc">
+                Create an account to save plots and get alerts for land near you.
+              </span>
+            </span>
+            <span className="ga-newbtn">
+              Sign up
+              <ArrowIcon />
+            </span>
+            <span className="ga-doodle" aria-hidden="true">
+              it&apos;s quick!
+            </span>
+          </Link>
 
-          <GoogleSignInButton onCredential={onGoogleCredential} text="continue_with" />
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-bold text-brand hover:underline">
-              Create one free
-            </Link>
+          <p className="ga-help">
+            Need help? <a href="/contact">Contact support</a>
           </p>
         </>
       )}
-    </AuthShell>
+    </AuthLayout>
   );
 }

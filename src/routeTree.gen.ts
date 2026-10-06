@@ -19,6 +19,7 @@ import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as LandRouteImport } from './routes/land'
+import { Route as LoadingRouteImport } from './routes/loading'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManagerRouteImport } from './routes/manager'
 import { Route as PricingRouteImport } from './routes/pricing'
@@ -80,6 +81,11 @@ const HelpRoute = HelpRouteImport.update({
 const LandRoute = LandRouteImport.update({
   id: '/land',
   path: '/land',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoadingRoute = LoadingRouteImport.update({
+  id: '/loading',
+  path: '/loading',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/land': typeof LandRoute
+  '/loading': typeof LoadingRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRoute
   '/pricing': typeof PricingRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/land': typeof LandRoute
+  '/loading': typeof LoadingRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRoute
   '/pricing': typeof PricingRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/land': typeof LandRoute
+  '/loading': typeof LoadingRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRoute
   '/pricing': typeof PricingRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/help'
     | '/land'
+    | '/loading'
     | '/login'
     | '/manager'
     | '/pricing'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/help'
     | '/land'
+    | '/loading'
     | '/login'
     | '/manager'
     | '/pricing'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/help'
     | '/land'
+    | '/loading'
     | '/login'
     | '/manager'
     | '/pricing'
@@ -302,6 +314,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   LandRoute: typeof LandRoute
+  LoadingRoute: typeof LoadingRoute
   LoginRoute: typeof LoginRoute
   ManagerRoute: typeof ManagerRoute
   PricingRoute: typeof PricingRoute
@@ -386,6 +399,13 @@ declare module '@tanstack/react-router' {
       path: '/land'
       fullPath: '/land'
       preLoaderRoute: typeof LandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/loading': {
+      id: '/loading'
+      path: '/loading'
+      fullPath: '/loading'
+      preLoaderRoute: typeof LoadingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -486,6 +506,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   LandRoute: LandRoute,
+  LoadingRoute: LoadingRoute,
   LoginRoute: LoginRoute,
   ManagerRoute: ManagerRoute,
   PricingRoute: PricingRoute,
