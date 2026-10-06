@@ -44,8 +44,11 @@ describe("DashboardShell — bottom nav", () => {
 
     await userEvent.click(bar().getByRole("button", { name: "More sections" }));
     ["Billing & Plan", "KYC Status", "Account Settings"].forEach((name) =>
-      expect(bar().getByRole("button", { name })).toBeInTheDocument(),
+      expect(screen.getByRole("menuitem", { name })).toBeInTheDocument(),
     );
+
+    await userEvent.click(screen.getByRole("menuitem", { name: "Billing & Plan" }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard", search: { tab: "billing" } });
   });
 
   it("expands exactly one pill, and marks it as the current page", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -33,13 +33,14 @@ const statusGlyphs: Record<string, string> = {
   reserved:
     '<circle cx="12" cy="12" r="5" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M12 9.2v3l2.2 1.4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
   available: '<circle cx="12" cy="12" r="3.5" fill="#fff"/>',
+  home: '<path d="M7 12.2L12 8l5 4.2V16.5H13.8v-2.8h-3.6v2.8H7z" fill="#fff"/>',
 };
 
 // Rounded-square badge with a small callout tail — a shape of our own, not the
 // generic teardrop everyone associates with Google Maps. Anchored at the tail tip.
 // Selected parcels pop slightly larger with a glow.
-const pinIconFor = (color: string, status: string, selected: boolean) => {
-  const glyph = statusGlyphs[status] ?? statusGlyphs.available;
+const pinIconFor = (color: string, glyphKey: string, selected: boolean) => {
+  const glyph = statusGlyphs[glyphKey] ?? statusGlyphs.available;
   const scale = selected ? 1.2 : 1;
   const w = Math.round(24 * scale);
   const h = Math.round(30 * scale);
@@ -82,8 +83,10 @@ function FlyToTarget({ target }: { target: FlyTarget | null }) {
   return null;
 }
 
+export type MapMode = "land" | "rentals" | "all";
+
 interface Props {
-  mode: "land" | "rentals";
+  mode: MapMode;
   onSelectParcel?: (p: LandParcel | null) => void;
   onSelectProperty?: (p: Property | null) => void;
   selectedId?: string | null;
@@ -100,50 +103,48 @@ function MapController({
   parcels,
   properties,
 }: {
-  mode: "land" | "rentals";
+  mode: MapMode;
   selectedId?: string | null;
   parcels: LandParcel[];
   properties: Property[];
 }) {
   const map = useMap();
+  const fitted = useRef(false);
   useEffect(() => {
-    if (mode === "land") {
-      if (parcels.length === 0) return;
-      const all = parcels.flatMap(
-        (p) =>
-          p.polygon ??
-          (p.latitude != null && p.longitude != null
-            ? [[p.latitude, p.longitude] as [number, number]]
-            : []),
-      );
-      if (all.length) map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
-    } else {
-      if (properties.length === 0) return;
-      map.fitBounds(properties.map((p) => p.position) as L.LatLngBoundsLiteral, {
-        padding: [40, 40],
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, mode]);
+    if (fitted.current) return;
+    const all = [
+      ...(mode === "rentals"
+        ? []
+        : parcels.flatMap(
+            (p) =>
+              p.polygon ??
+              (p.latitude != null && p.longitude != null
+                ? [[p.latitude, p.longitude] as [number, number]]
+                : []),
+          )),
+      ...(mode === "land" ? [] : properties.map((p) => p.position)),
+    ];
+    if (all.length === 0) return;
+    fitted.current = true;
+    map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
+  }, [map, mode, parcels, properties]);
   useEffect(() => {
     if (!selectedId) return;
 
     let bounds: [number, number][] | null = null;
-    if (mode === "land") {
-      const p = parcels.find((x) => x.id === selectedId);
-      if (!p) return;
+    const parcel = mode === "rentals" ? undefined : parcels.find((x) => x.id === selectedId);
+    const property = mode === "land" ? undefined : properties.find((x) => x.id === selectedId);
+    if (parcel) {
       bounds =
-        p.polygon ??
-        (p.latitude != null && p.longitude != null
+        parcel.polygon ??
+        (parcel.latitude != null && parcel.longitude != null
           ? [
-              [p.latitude, p.longitude],
-              [p.latitude, p.longitude],
+              [parcel.latitude, parcel.longitude],
+              [parcel.latitude, parcel.longitude],
             ]
           : null);
-    } else {
-      const p = properties.find((x) => x.id === selectedId);
-      if (!p) return;
-      bounds = [p.position, p.position];
+    } else if (property) {
+      bounds = [property.position, property.position];
     }
     if (!bounds) return;
 
@@ -206,7 +207,7 @@ export function LandMap({
         className="h-full w-full"
         style={{ background: "#e8eef5" }}
       >
-        <ZoomControl position="topright" />
+        <ZoomControl position="bottomright" />
         <MapController
           mode={mode}
           selectedId={selectedId}
@@ -220,7 +221,7 @@ export function LandMap({
           attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
         />
 
-        {mode === "land" &&
+        {mode !== "rentals" &&
           parcelList.map((p) => {
             if (!p.polygon) return null;
             const meta = statusMeta[p.status];
@@ -250,7 +251,7 @@ export function LandMap({
             );
           })}
 
-        {mode === "land" &&
+        {mode !== "rentals" &&
           parcelList.map((p) => {
             const position = p.polygon
               ? polygonAnchorPoint(p.polygon)
@@ -278,14 +279,14 @@ export function LandMap({
             );
           })}
 
-        {mode === "rentals" &&
+        {mode !== "land" &&
           properties.map((p) => (
             <Marker
               key={p.id}
               position={p.position}
               icon={pinIconFor(
                 intentColors[p.intent],
-                p.intent === "sale" ? "sold" : "available",
+                mode === "all" ? "home" : p.intent === "sale" ? "sold" : "available",
                 selectedId === p.id,
               )}
               eventHandlers={{ click: () => onSelectProperty?.(p) }}

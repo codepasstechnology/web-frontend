@@ -1,0 +1,3178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Geo Pin Properties — Home</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Caveat:wght@500;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #15140f;
+      }
+      a {
+        color: #a9c97a;
+      }
+      a:hover {
+        color: #c9dda4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      @keyframes gpRise {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes gpGlow {
+        0%,
+        100% {
+          opacity: 0.55;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @keyframes gpInk {
+        from {
+          stroke-dashoffset: 420;
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      @keyframes gpWiggle {
+        0%,
+        100% {
+          transform: rotate(-4deg);
+        }
+        50% {
+          transform: rotate(3deg);
+        }
+      }
+      @supports (animation-timeline: view()) {
+        .gp-ink-scroll {
+          animation: gpInk linear both;
+          animation-timeline: view();
+          animation-range: entry 30% cover 45%;
+        }
+      }
+      @media (max-width: 1000px) {
+        .gp-doodle {
+          display: none !important;
+        }
+      }
+      @keyframes gpMenu {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .gp-mob {
+        display: none !important;
+      }
+      @media (max-width: 860px) {
+        .gp-desk {
+          display: none !important;
+        }
+        .gp-mob {
+          display: flex !important;
+        }
+        .gp-hero {
+          padding: 72px 20px 64px !important;
+        }
+      }
+      @keyframes gpBob {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(6px);
+        }
+      }
+      @supports (animation-timeline: view()) {
+        .gp-reveal {
+          animation: gpRise linear both;
+          animation-timeline: view();
+          animation-range: entry 5% entry 45%;
+        }
+      }
+      .gp-story {
+        --z: 0;
+        --plots: 0;
+        --mesh: 1;
+        --hi: 0;
+        --pin: 0;
+        --card: 0;
+        --t0: 1;
+        --t1: 0;
+        --t2: 0;
+        --t3: 0;
+        --p: 0;
+      }
+      .gp-stage {
+        display: flex;
+        align-items: center;
+        gap: 56px;
+      }
+      .gp-vis {
+        height: calc(var(--stage-h, 820px) - 140px);
+      }
+      @media (max-width: 860px) {
+        .gp-stage {
+          flex-direction: column;
+          justify-content: center;
+          gap: 20px;
+        }
+        .gp-vis {
+          height: calc(var(--stage-h, 820px) * 0.56);
+        }
+        .gp-steps {
+          height: 150px !important;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .gp-anim,
+        .gp-reveal {
+          animation: none !important;
+        }
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+      #gp-menu[hidden] {
+        display: none !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      style="
+        font-family: &quot;IBM Plex Sans&quot;, &quot;Segoe UI&quot;, system-ui, sans-serif;
+        color: #f4eee2;
+        background: #15140f;
+        width: 100%;
+      "
+    >
+      <!-- NAV -->
+      <header
+        style="
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          background: rgba(21, 20, 15, 0.82);
+          backdrop-filter: saturate(160%) blur(16px);
+          -webkit-backdrop-filter: saturate(160%) blur(16px);
+          border-bottom: 1px solid rgba(244, 238, 226, 0.08);
+        "
+      >
+        <nav
+          aria-label="Main"
+          style="
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 64px;
+          "
+        >
+          <a
+            href="#top"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              text-decoration: none;
+              color: #f4eee2;
+              min-height: 44px;
+            "
+          >
+            <span
+              style="
+                width: 34px;
+                height: 34px;
+                border-radius: 11px;
+                background: #1a752a;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path>
+                <circle cx="12" cy="10" r="2.5"></circle>
+              </svg>
+            </span>
+            <span
+              style="
+                font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                font-weight: 700;
+                font-size: 18px;
+              "
+              >Geo Pin</span
+            >
+          </a>
+          <div class="gp-desk" style="display: flex; gap: 4px; font-size: 14px">
+            <a
+              href="#story"
+              style="
+                color: #d8d0be;
+                text-decoration: none;
+                padding: 12px 14px;
+                border-radius: 999px;
+              "
+              >Map</a
+            >
+            <a
+              href="#listings"
+              style="
+                color: #d8d0be;
+                text-decoration: none;
+                padding: 12px 14px;
+                border-radius: 999px;
+              "
+              >Land</a
+            >
+            <a
+              href="#listings"
+              style="
+                color: #d8d0be;
+                text-decoration: none;
+                padding: 12px 14px;
+                border-radius: 999px;
+              "
+              >Homes</a
+            >
+            <a
+              href="#listings"
+              style="
+                color: #d8d0be;
+                text-decoration: none;
+                padding: 12px 14px;
+                border-radius: 999px;
+              "
+              >Rentals</a
+            >
+            <a
+              href="#statement"
+              style="
+                color: #d8d0be;
+                text-decoration: none;
+                padding: 12px 14px;
+                border-radius: 999px;
+              "
+              >Verification</a
+            >
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <a
+              href="#list"
+              class="gp-desk"
+              style="
+                background: #f4eee2;
+                color: #15140f;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 14px;
+                padding: 0 20px;
+                border-radius: 999px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+              "
+              >List a property</a
+            >
+            <button
+              type="button"
+              class="gp-mob"
+              aria-expanded="false"
+              aria-controls="gp-menu"
+              aria-label="Open menu"
+              style="
+                width: 48px;
+                height: 48px;
+                border-radius: 999px;
+                border: 1px solid rgba(244, 238, 226, 0.16);
+                background: rgba(244, 238, 226, 0.06);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                cursor: pointer;
+                padding: 0;
+              "
+            >
+              <span
+                style="
+                  display: block;
+                  width: 20px;
+                  height: 2px;
+                  border-radius: 2px;
+                  background: #f4eee2;
+                  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+                "
+              ></span>
+              <span
+                style="
+                  display: block;
+                  width: 20px;
+                  height: 2px;
+                  border-radius: 2px;
+                  background: #f4eee2;
+                  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+                "
+              ></span>
+            </button>
+          </div>
+        </nav>
+
+        <div
+          id="gp-menu"
+          hidden
+          class="gp-mob gp-anim"
+          style="
+            padding: 8px 20px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border-top: 1px solid rgba(244, 238, 226, 0.08);
+            animation: gpMenu 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+          "
+        >
+          <a
+            href="#story"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              color: #f4eee2;
+              text-decoration: none;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 700;
+              font-size: 28px;
+              letter-spacing: -0.02em;
+              padding: 14px 4px;
+              min-height: 56px;
+              border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+            "
+          >
+            Explore the map
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#A9C97A"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+
+          <a
+            href="#listings"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              color: #f4eee2;
+              text-decoration: none;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 700;
+              font-size: 28px;
+              letter-spacing: -0.02em;
+              padding: 14px 4px;
+              min-height: 56px;
+              border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+            "
+          >
+            Land
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#A9C97A"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+
+          <a
+            href="#listings"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              color: #f4eee2;
+              text-decoration: none;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 700;
+              font-size: 28px;
+              letter-spacing: -0.02em;
+              padding: 14px 4px;
+              min-height: 56px;
+              border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+            "
+          >
+            Homes
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#A9C97A"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+
+          <a
+            href="#listings"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              color: #f4eee2;
+              text-decoration: none;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 700;
+              font-size: 28px;
+              letter-spacing: -0.02em;
+              padding: 14px 4px;
+              min-height: 56px;
+              border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+            "
+          >
+            Rentals
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#A9C97A"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+
+          <a
+            href="#statement"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              color: #f4eee2;
+              text-decoration: none;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 700;
+              font-size: 28px;
+              letter-spacing: -0.02em;
+              padding: 14px 4px;
+              min-height: 56px;
+              border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+            "
+          >
+            Verification
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#A9C97A"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+
+          <a
+            href="#list"
+            style="
+              margin-top: 20px;
+              background: #a9c97a;
+              color: #15140f;
+              text-decoration: none;
+              font-weight: 600;
+              font-size: 17px;
+              border-radius: 999px;
+              min-height: 56px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+            >List a property</a
+          >
+          <span
+            style="
+              margin-top: 14px;
+              text-align: center;
+              font-family: &quot;Caveat&quot;, &quot;Segoe Print&quot;, cursive;
+              font-weight: 700;
+              font-size: 24px;
+              color: #f1e7d2;
+            "
+            >find. connect. own.</span
+          >
+        </div>
+      </header>
+
+      <!-- HERO -->
+      <section
+        id="top"
+        class="gp-hero"
+        style="
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 128px 32px 96px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 28px;
+        "
+      >
+        <h1
+          class="gp-anim"
+          style="
+            margin: 0;
+            font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+            font-weight: 800;
+            font-size: clamp(52px, 8vw, 112px);
+            line-height: 0.94;
+            letter-spacing: -0.04em;
+            animation: gpRise 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s backwards;
+          "
+        >
+          Every plot,<br />pinned to
+          <span style="position: relative; display: inline-block; color: #a9c97a"
+            >the ground.<svg
+              class="gp-anim"
+              viewBox="0 0 320 24"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+              style="
+                position: absolute;
+                left: -2%;
+                bottom: -0.16em;
+                width: 104%;
+                height: 0.28em;
+                overflow: visible;
+                stroke-dasharray: 420;
+                animation: gpInk 1.1s cubic-bezier(0.6, 0.1, 0.3, 1) 1.1s backwards;
+              "
+            >
+              <path
+                d="M4 15 C 60 5, 130 3, 200 9 S 290 18, 316 7"
+                fill="none"
+                stroke="#F1E7D2"
+                stroke-width="7"
+                stroke-linecap="round"
+              ></path></svg
+          ></span>
+        </h1>
+        <p
+          class="gp-anim"
+          style="
+            margin: 0;
+            font-size: 21px;
+            line-height: 1.5;
+            color: #b9b2a1;
+            max-width: 620px;
+            animation: gpRise 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s backwards;
+          "
+        >
+          Plotted land, verified homes and rentals across Kenya, on one map.
+        </p>
+
+        <div
+          class="gp-anim"
+          style="
+            width: 100%;
+            max-width: 640px;
+            background: rgba(244, 238, 226, 0.06);
+            border: 1px solid rgba(241, 231, 210, 0.22);
+            border-radius: 34px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            animation: gpRise 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s backwards;
+          "
+        >
+          <div
+            role="tablist"
+            aria-label="What are you looking for"
+            style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected="true"
+              style="
+                border: 0;
+                font: inherit;
+                font-size: 15px;
+                font-weight: 600;
+                border-radius: 999px;
+                padding: 0 20px;
+                min-height: 44px;
+                cursor: pointer;
+                background: #f1e7d2;
+                color: #1e2418;
+              "
+            >
+              Land
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              style="
+                border: 0;
+                font: inherit;
+                font-size: 15px;
+                font-weight: 600;
+                border-radius: 999px;
+                padding: 0 20px;
+                min-height: 44px;
+                cursor: pointer;
+                background: transparent;
+                color: #b9b2a1;
+              "
+            >
+              Homes
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              style="
+                border: 0;
+                font: inherit;
+                font-size: 15px;
+                font-weight: 600;
+                border-radius: 999px;
+                padding: 0 20px;
+                min-height: 44px;
+                cursor: pointer;
+                background: transparent;
+                color: #b9b2a1;
+              "
+            >
+              Rentals
+            </button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <label
+              for="loc3"
+              style="
+                flex: 1 1 260px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: rgba(21, 20, 15, 0.7);
+                border-radius: 999px;
+                padding: 0 22px;
+                min-height: 56px;
+                text-align: left;
+              "
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#B9B2A1"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.5-3.5"></path>
+              </svg>
+              <span
+                style="
+                  position: absolute;
+                  width: 1px;
+                  height: 1px;
+                  overflow: hidden;
+                  clip: rect(0 0 0 0);
+                "
+                >Location</span
+              >
+              <input
+                id="loc3"
+                type="text"
+                placeholder="County, town or parcel number"
+                style="
+                  border: 0;
+                  background: transparent;
+                  font: inherit;
+                  font-size: 17px;
+                  color: #f4eee2;
+                  width: 100%;
+                  min-height: 44px;
+                  outline-offset: 4px;
+                "
+              />
+            </label>
+            <button
+              type="button"
+              style="
+                background: #a9c97a;
+                color: #15140f;
+                border: 0;
+                border-radius: 999px;
+                padding: 0 30px;
+                min-height: 56px;
+                font: inherit;
+                font-weight: 600;
+                font-size: 16px;
+                cursor: pointer;
+              "
+            >
+              Search
+            </button>
+          </div>
+        </div>
+
+        <a
+          href="#story"
+          class="gp-anim"
+          style="
+            margin-top: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #f1e7d2;
+            text-decoration: none;
+            padding: 8px;
+            animation: gpRise 1s ease 0.9s backwards;
+          "
+        >
+          <span
+            style="
+              font-family: &quot;Caveat&quot;, &quot;Segoe Print&quot;, cursive;
+              font-weight: 700;
+              font-size: 28px;
+              transform: rotate(-3deg);
+            "
+            >scroll down, the map's waiting</span
+          >
+          <svg
+            class="gp-anim"
+            width="70"
+            height="78"
+            viewBox="0 0 70 78"
+            fill="none"
+            aria-hidden="true"
+            style="animation: gpBob 2.6s ease-in-out infinite"
+          >
+            <path
+              d="M30 4 C 8 14, 10 34, 30 36 C 46 38, 50 22, 38 20 C 24 18, 22 44, 36 70"
+              stroke="#A9C97A"
+              stroke-width="3.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+            <path
+              d="M25 60 L 36 71 L 45 57"
+              stroke="#A9C97A"
+              stroke-width="3.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+        </a>
+      </section>
+
+      <!-- PINNED SCROLL STORY -->
+      <section
+        id="story"
+        class="gp-story"
+        style="position: relative; height: calc(var(--stage-h, 820px) * var(--story-len, 1))"
+      >
+        <div style="position: sticky; top: 0; height: var(--stage-h, 820px); overflow: hidden">
+          <div
+            class="gp-stage"
+            style="max-width: 1200px; height: 100%; margin: 0 auto; padding: 64px 32px 0"
+          >
+            <!-- text steps -->
+            <div
+              style="
+                flex: 1 1 360px;
+                min-width: 0;
+                display: flex;
+                gap: 28px;
+                align-items: center;
+                width: 100%;
+              "
+            >
+              <div
+                aria-hidden="true"
+                style="
+                  width: 2px;
+                  height: 180px;
+                  background: rgba(244, 238, 226, 0.12);
+                  border-radius: 2px;
+                  overflow: hidden;
+                  flex: none;
+                "
+              >
+                <div
+                  style="
+                    width: 100%;
+                    height: 100%;
+                    background: #f1e7d2;
+                    transform-origin: top;
+                    transform: scaleY(var(--p));
+                  "
+                ></div>
+              </div>
+              <div class="gp-steps" style="position: relative; flex: 1; height: 240px">
+                <div
+                  style="
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    gap: 16px;
+                    opacity: var(--t0);
+                    transform: translateY(calc((1 - var(--t0)) * 16px));
+                  "
+                >
+                  <span
+                    style="
+                      font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                      font-size: 12px;
+                      letter-spacing: 0.1em;
+                      color: #a9c97a;
+                    "
+                    >01 · KENYA</span
+                  >
+                  <h2
+                    style="
+                      margin: 0;
+                      font-family:
+                        &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                      font-weight: 800;
+                      font-size: clamp(32px, 4vw, 56px);
+                      line-height: 1;
+                      letter-spacing: -0.03em;
+                    "
+                  >
+                    The whole country, mapped.
+                  </h2>
+                  <p
+                    style="
+                      margin: 0;
+                      font-size: 18px;
+                      line-height: 1.55;
+                      color: #b9b2a1;
+                      max-width: 400px;
+                    "
+                  >
+                    Green points show land that has been plotted. Start anywhere.
+                  </p>
+                </div>
+
+                <div
+                  style="
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    gap: 16px;
+                    opacity: var(--t1);
+                    transform: translateY(calc((1 - var(--t1)) * 16px));
+                  "
+                >
+                  <span
+                    style="
+                      font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                      font-size: 12px;
+                      letter-spacing: 0.1em;
+                      color: #a9c97a;
+                    "
+                    >02 · COUNTY</span
+                  >
+                  <h2
+                    style="
+                      margin: 0;
+                      font-family:
+                        &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                      font-weight: 800;
+                      font-size: clamp(32px, 4vw, 56px);
+                      line-height: 1;
+                      letter-spacing: -0.03em;
+                    "
+                  >
+                    Zoom into any area.
+                  </h2>
+                  <p
+                    style="
+                      margin: 0;
+                      font-size: 18px;
+                      line-height: 1.55;
+                      color: #b9b2a1;
+                      max-width: 400px;
+                    "
+                  >
+                    From all of Kenya to a single neighbourhood in one gesture.
+                  </p>
+                </div>
+
+                <div
+                  style="
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    gap: 16px;
+                    opacity: var(--t2);
+                    transform: translateY(calc((1 - var(--t2)) * 16px));
+                  "
+                >
+                  <span
+                    style="
+                      font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                      font-size: 12px;
+                      letter-spacing: 0.1em;
+                      color: #a9c97a;
+                    "
+                    >03 · BOUNDARIES</span
+                  >
+                  <h2
+                    style="
+                      margin: 0;
+                      font-family:
+                        &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                      font-weight: 800;
+                      font-size: clamp(32px, 4vw, 56px);
+                      line-height: 1;
+                      letter-spacing: -0.03em;
+                    "
+                  >
+                    See every boundary.
+                  </h2>
+                  <p
+                    style="
+                      margin: 0;
+                      font-size: 18px;
+                      line-height: 1.55;
+                      color: #b9b2a1;
+                      max-width: 400px;
+                    "
+                  >
+                    Plots drawn on the map, so you know exactly where the land ends.
+                  </p>
+                </div>
+
+                <div
+                  style="
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    gap: 16px;
+                    opacity: var(--t3);
+                    transform: translateY(calc((1 - var(--t3)) * 16px));
+                  "
+                >
+                  <span
+                    style="
+                      font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                      font-size: 12px;
+                      letter-spacing: 0.1em;
+                      color: #a9c97a;
+                    "
+                    >04 · YOUR PLOT</span
+                  >
+                  <h2
+                    style="
+                      margin: 0;
+                      font-family:
+                        &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                      font-weight: 800;
+                      font-size: clamp(32px, 4vw, 56px);
+                      line-height: 1;
+                      letter-spacing: -0.03em;
+                    "
+                  >
+                    Pin it. Verify it. Own it.
+                  </h2>
+                  <p
+                    style="
+                      margin: 0;
+                      font-size: 18px;
+                      line-height: 1.55;
+                      color: #b9b2a1;
+                      max-width: 400px;
+                    "
+                  >
+                    Check its status, message the owner and book a viewing.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- visual -->
+            <div
+              class="gp-vis"
+              style="
+                position: relative;
+                flex: 1.25 1 480px;
+                min-width: 0;
+                max-width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+              "
+            >
+              <div
+                class="gp-doodle"
+                aria-hidden="true"
+                style="
+                  position: absolute;
+                  left: -8px;
+                  top: 9%;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: flex-start;
+                  gap: 0;
+                  opacity: calc(var(--t0) + var(--t3));
+                  pointer-events: none;
+                  z-index: 2;
+                "
+              >
+                <span style="display: grid; transform: rotate(-6deg)">
+                  <span
+                    style="
+                      grid-area: 1 / 1;
+                      font-family: &quot;Caveat&quot;, &quot;Segoe Print&quot;, cursive;
+                      font-weight: 700;
+                      font-size: 26px;
+                      color: #f1e7d2;
+                      white-space: nowrap;
+                      opacity: var(--t0);
+                    "
+                    >green = mapped land</span
+                  >
+                  <span
+                    style="
+                      grid-area: 1 / 1;
+                      font-family: &quot;Caveat&quot;, &quot;Segoe Print&quot;, cursive;
+                      font-weight: 700;
+                      font-size: 26px;
+                      color: #f1e7d2;
+                      white-space: nowrap;
+                      opacity: var(--t3);
+                    "
+                    >this one could be yours!</span
+                  >
+                </span>
+                <svg
+                  class="gp-anim"
+                  width="96"
+                  height="60"
+                  viewBox="0 0 96 60"
+                  fill="none"
+                  style="
+                    margin-left: 34px;
+                    transform-origin: left top;
+                    animation: gpWiggle 3.2s ease-in-out infinite;
+                  "
+                >
+                  <path
+                    d="M4 6 C 20 40, 50 50, 84 40"
+                    stroke="#A9C97A"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  ></path>
+                  <path
+                    d="M72 30 L 86 40 L 72 50"
+                    stroke="#A9C97A"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  ></path>
+                </svg>
+              </div>
+              <div
+                style="
+                  position: relative;
+                  height: 100%;
+                  max-width: 100%;
+                  aspect-ratio: 840 / 1010;
+                  border-radius: 48px;
+                  overflow: hidden;
+                  background: #1d1b14;
+                  border: 1px solid rgba(241, 231, 210, 0.16);
+                "
+              >
+                <!-- country mesh (zooms) -->
+                <div
+                  style="
+                    position: absolute;
+                    inset: 0;
+                    transform-origin: 37.14% 65.25%;
+                    transform: translate(calc(12.86% * var(--z)), calc(-15.25% * var(--z)))
+                      scale(calc(1 + 3.5 * var(--z)));
+                    opacity: var(--mesh);
+                    will-change: transform, opacity;
+                  "
+                >
+                  <svg
+                    viewBox="0 0 840 1010"
+                    preserveAspectRatio="none"
+                    role="img"
+                    aria-label="Mesh map of Kenya with mapped land as green dots"
+                    style="
+                      position: absolute;
+                      inset: 6%;
+                      width: 88%;
+                      height: 88%;
+                      overflow: visible;
+                    "
+                  >
+                    <path
+                      d="M25 630L35 510L90 410L130 330L120 230L70 160L30 110L160 30L220 70L310 90L440 170L580 190L710 130L820 130L730 250L730 620L790 700L730 730L650 810L590 890L550 1000L400 835Z"
+                      fill="rgba(169,201,122,0.035)"
+                      stroke="rgba(196,214,160,0.3)"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                      style="vector-effect: non-scaling-stroke"
+                    ></path>
+                    <path
+                      d="M151.9 51.6L180.9 46.7M151.9 51.6L137.4 73M151.9 51.6L161.5 75.4M180.9 46.7L161.5 75.4M180.9 46.7L199.3 81.6M105 80.7L137.4 73M105 80.7L92.9 106.3M105 80.7L115.4 106.5M137.4 73L161.5 75.4M137.4 73L115.4 106.5M137.4 73L153.6 106.9M161.5 75.4L199.3 81.6M161.5 75.4L153.6 106.9M161.5 75.4L181 102.1M199.3 81.6L226.4 78.1M199.3 81.6L181 102.1M199.3 81.6L208.3 100.4M226.4 78.1L256.5 83.1M226.4 78.1L208.3 100.4M226.4 78.1L239.4 99.5M256.5 83.1L239.4 99.5M256.5 83.1L268.2 101.4M63.5 100L92.9 106.3M63.5 100L71.1 129.9M92.9 106.3L115.4 106.5M92.9 106.3L71.1 129.9M92.9 106.3L109.8 132.8M115.4 106.5L153.6 106.9M115.4 106.5L109.8 132.8M115.4 106.5L133.1 133.5M153.6 106.9L181 102.1M153.6 106.9L133.1 133.5M153.6 106.9L166.2 134.2M181 102.1L208.3 100.4M181 102.1L166.2 134.2M181 102.1L194.9 133.9M208.3 100.4L239.4 99.5M208.3 100.4L194.9 133.9M208.3 100.4L226.7 125.9M239.4 99.5L268.2 101.4M239.4 99.5L226.7 125.9M239.4 99.5L252.5 127.4M268.2 101.4L300.6 103.9M268.2 101.4L252.5 127.4M268.2 101.4L286.4 132.5M300.6 103.9L332.9 102.3M300.6 103.9L286.4 132.5M300.6 103.9L315.3 131.8M332.9 102.3L315.3 131.8M332.9 102.3L344 128.3M71.1 129.9L109.8 132.8M71.1 129.9L93.5 156.6M109.8 132.8L133.1 133.5M109.8 132.8L93.5 156.6M109.8 132.8L122.5 150.6M133.1 133.5L166.2 134.2M133.1 133.5L122.5 150.6M133.1 133.5L153.2 155.9M166.2 134.2L194.9 133.9M166.2 134.2L153.2 155.9M166.2 134.2L183.7 151.3M194.9 133.9L226.7 125.9M194.9 133.9L183.7 151.3M194.9 133.9L208.1 156.1M226.7 125.9L252.5 127.4M226.7 125.9L208.1 156.1M226.7 125.9L242.1 154.4M252.5 127.4L286.4 132.5M252.5 127.4L242.1 154.4M252.5 127.4L274.7 153M286.4 132.5L315.3 131.8M286.4 132.5L274.7 153M286.4 132.5L303.1 150.9M315.3 131.8L344 128.3M315.3 131.8L303.1 150.9M315.3 131.8L327.7 154.8M344 128.3L327.7 154.8M344 128.3L357.7 154.1M93.5 156.6L122.5 150.6M93.5 156.6L108 186.6M122.5 150.6L153.2 155.9M122.5 150.6L108 186.6M122.5 150.6L138.3 178.3M153.2 155.9L183.7 151.3M153.2 155.9L138.3 178.3M153.2 155.9L169.1 181.5M183.7 151.3L208.1 156.1M183.7 151.3L169.1 181.5M183.7 151.3L196.1 178.1M208.1 156.1L242.1 154.4M208.1 156.1L196.1 178.1M208.1 156.1L219.7 178.9M242.1 154.4L274.7 153M242.1 154.4L219.7 178.9M242.1 154.4L249.8 184.4M274.7 153L303.1 150.9M274.7 153L249.8 184.4M274.7 153L286.7 182.8M303.1 150.9L327.7 154.8M303.1 150.9L286.7 182.8M303.1 150.9L313.7 176.6M327.7 154.8L357.7 154.1M327.7 154.8L313.7 176.6M327.7 154.8L345.4 179.4M357.7 154.1L395.4 156.6M357.7 154.1L345.4 179.4M357.7 154.1L373.9 178.1M395.4 156.6L373.9 178.1M395.4 156.6L407.7 177.9M656.8 156.7L685.8 155.7M656.8 156.7L649.4 184M656.8 156.7L675.8 184.1M685.8 155.7L714.6 152.7M685.8 155.7L675.8 184.1M685.8 155.7L710.3 179.7M714.6 152.7L751.4 161.1M714.6 152.7L710.3 179.7M714.6 152.7L739.7 179.5M751.4 161.1L779.3 153.6M751.4 161.1L739.7 179.5M751.4 161.1L765.3 185.9M779.3 153.6L765.3 185.9M108 186.6L138.3 178.3M108 186.6L125.2 206.6M138.3 178.3L169.1 181.5M138.3 178.3L125.2 206.6M138.3 178.3L146.8 213.1M169.1 181.5L196.1 178.1M169.1 181.5L146.8 213.1M169.1 181.5L179.9 204.7M196.1 178.1L219.7 178.9M196.1 178.1L179.9 204.7M196.1 178.1L207.6 211.5M219.7 178.9L249.8 184.4M219.7 178.9L207.6 211.5M219.7 178.9L240.7 206.1M249.8 184.4L286.7 182.8M249.8 184.4L240.7 206.1M249.8 184.4L275 209M286.7 182.8L313.7 176.6M286.7 182.8L275 209M286.7 182.8L300.1 205.1M313.7 176.6L345.4 179.4M313.7 176.6L300.1 205.1M313.7 176.6L330.4 213.2M345.4 179.4L373.9 178.1M345.4 179.4L330.4 213.2M345.4 179.4L365.3 206.4M373.9 178.1L407.7 177.9M373.9 178.1L365.3 206.4M373.9 178.1L386 212.1M407.7 177.9L435 179.8M407.7 177.9L386 212.1M407.7 177.9L423.1 204.4M435 179.8L469.3 181.1M435 179.8L423.1 204.4M435 179.8L454.1 211.1M469.3 181.1L497.6 186.2M469.3 181.1L454.1 211.1M469.3 181.1L484.3 202.6M497.6 186.2L484.3 202.6M497.6 186.2L505.9 211.3M611 182.8L649.4 184M611 182.8L598.5 203.2M611 182.8L632.6 212.2M649.4 184L675.8 184.1M649.4 184L632.6 212.2M649.4 184L661.4 207.8M675.8 184.1L710.3 179.7M675.8 184.1L661.4 207.8M675.8 184.1L695.1 209.1M710.3 179.7L739.7 179.5M710.3 179.7L695.1 209.1M710.3 179.7L714.7 203.6M739.7 179.5L765.3 185.9M739.7 179.5L714.7 203.6M739.7 179.5L752 209.8M765.3 185.9L752 209.8M125.2 206.6L146.8 213.1M125.2 206.6L137.4 235M146.8 213.1L179.9 204.7M146.8 213.1L137.4 235M146.8 213.1L169 238.1M179.9 204.7L207.6 211.5M179.9 204.7L169 238.1M179.9 204.7L195.9 233.6M207.6 211.5L240.7 206.1M207.6 211.5L195.9 233.6M207.6 211.5L223.7 236.1M240.7 206.1L275 209M240.7 206.1L223.7 236.1M240.7 206.1L256.3 230.4M275 209L300.1 205.1M275 209L256.3 230.4M275 209L282.8 233.7M300.1 205.1L330.4 213.2M300.1 205.1L282.8 233.7M300.1 205.1L316.3 238.2M330.4 213.2L365.3 206.4M330.4 213.2L316.3 238.2M330.4 213.2L344.6 238.7M365.3 206.4L386 212.1M365.3 206.4L344.6 238.7M365.3 206.4L369.9 236.2M386 212.1L423.1 204.4M386 212.1L369.9 236.2M386 212.1L409.3 237.6M423.1 204.4L454.1 211.1M423.1 204.4L409.3 237.6M423.1 204.4L435.8 232.5M454.1 211.1L484.3 202.6M454.1 211.1L435.8 232.5M454.1 211.1L459.9 232.8M484.3 202.6L505.9 211.3M484.3 202.6L459.9 232.8M484.3 202.6L499.2 231M505.9 211.3L537 209.3M505.9 211.3L499.2 231M505.9 211.3L528.5 230.5M537 209.3L571.6 203.5M537 209.3L528.5 230.5M537 209.3L549.9 239.1M571.6 203.5L598.5 203.2M571.6 203.5L549.9 239.1M571.6 203.5L588 239.2M598.5 203.2L632.6 212.2M598.5 203.2L588 239.2M598.5 203.2L619.1 233.5M632.6 212.2L661.4 207.8M632.6 212.2L619.1 233.5M632.6 212.2L641.7 233.7M661.4 207.8L695.1 209.1M661.4 207.8L641.7 233.7M661.4 207.8L672.9 239M695.1 209.1L714.7 203.6M695.1 209.1L672.9 239M695.1 209.1L701.9 238.3M714.7 203.6L752 209.8M714.7 203.6L701.9 238.3M714.7 203.6L733.5 232M752 209.8L733.5 232M137.4 235L169 238.1M137.4 235L150 261.2M169 238.1L195.9 233.6M169 238.1L150 261.2M169 238.1L184 258.8M195.9 233.6L223.7 236.1M195.9 233.6L184 258.8M195.9 233.6L208.2 265.2M223.7 236.1L256.3 230.4M223.7 236.1L208.2 265.2M223.7 236.1L244.1 257.1M256.3 230.4L282.8 233.7M256.3 230.4L244.1 257.1M256.3 230.4L271.7 256.9M282.8 233.7L316.3 238.2M282.8 233.7L271.7 256.9M282.8 233.7L304.8 262.1M316.3 238.2L344.6 238.7M316.3 238.2L304.8 262.1M316.3 238.2L326.7 262.9M344.6 238.7L369.9 236.2M344.6 238.7L326.7 262.9M344.6 238.7L354.8 264M369.9 236.2L409.3 237.6M369.9 236.2L354.8 264M369.9 236.2L393.2 264M409.3 237.6L435.8 232.5M409.3 237.6L393.2 264M409.3 237.6L417.6 261.1M435.8 232.5L459.9 232.8M435.8 232.5L417.6 261.1M435.8 232.5L455.3 260.2M459.9 232.8L499.2 231M459.9 232.8L455.3 260.2M459.9 232.8L485.4 262.8M499.2 231L528.5 230.5M499.2 231L485.4 262.8M499.2 231L514.4 254.8M528.5 230.5L549.9 239.1M528.5 230.5L514.4 254.8M528.5 230.5L543.8 264.3M549.9 239.1L588 239.2M549.9 239.1L543.8 264.3M549.9 239.1L574.7 258.7M588 239.2L619.1 233.5M588 239.2L574.7 258.7M588 239.2L600.5 263.8M619.1 233.5L641.7 233.7M619.1 233.5L600.5 263.8M619.1 233.5L630.7 259.8M641.7 233.7L672.9 239M641.7 233.7L630.7 259.8M641.7 233.7L658.4 258.3M672.9 239L701.9 238.3M672.9 239L658.4 258.3M672.9 239L690.8 258.9M701.9 238.3L733.5 232M701.9 238.3L690.8 258.9M701.9 238.3L715.7 254.3M733.5 232L715.7 254.3M150 261.2L184 258.8M150 261.2L131.4 291.2M150 261.2L167.6 284.6M184 258.8L208.2 265.2M184 258.8L167.6 284.6M184 258.8L200.2 288.7M208.2 265.2L244.1 257.1M208.2 265.2L200.2 288.7M208.2 265.2L225.7 283.1M244.1 257.1L271.7 256.9M244.1 257.1L225.7 283.1M244.1 257.1L253.1 284.2M271.7 256.9L304.8 262.1M271.7 256.9L253.1 284.2M271.7 256.9L289.2 283.6M304.8 262.1L326.7 262.9M304.8 262.1L289.2 283.6M304.8 262.1L320.2 289.9M326.7 262.9L354.8 264M326.7 262.9L320.2 289.9M326.7 262.9L345.3 290.8M354.8 264L393.2 264M354.8 264L345.3 290.8M354.8 264L370.4 288.9M393.2 264L417.6 261.1M393.2 264L370.4 288.9M393.2 264L407.2 288.7M417.6 261.1L455.3 260.2M417.6 261.1L407.2 288.7M417.6 261.1L436.5 283.5M455.3 260.2L485.4 262.8M455.3 260.2L436.5 283.5M455.3 260.2L460.3 287M485.4 262.8L514.4 254.8M485.4 262.8L460.3 287M485.4 262.8L492.7 284.2M514.4 254.8L543.8 264.3M514.4 254.8L492.7 284.2M514.4 254.8L523.1 287.3M543.8 264.3L574.7 258.7M543.8 264.3L523.1 287.3M543.8 264.3L551.7 287.8M574.7 258.7L600.5 263.8M574.7 258.7L551.7 287.8M574.7 258.7L585.8 288.9M600.5 263.8L630.7 259.8M600.5 263.8L585.8 288.9M600.5 263.8L615.8 285.5M630.7 259.8L658.4 258.3M630.7 259.8L615.8 285.5M630.7 259.8L648 282.6M658.4 258.3L690.8 258.9M658.4 258.3L648 282.6M658.4 258.3L672.3 284.5M690.8 258.9L715.7 254.3M690.8 258.9L672.3 284.5M690.8 258.9L701.1 280.9M715.7 254.3L701.1 280.9M131.4 291.2L167.6 284.6M131.4 291.2L148.9 314.5M167.6 284.6L200.2 288.7M167.6 284.6L148.9 314.5M167.6 284.6L178.9 317M200.2 288.7L225.7 283.1M200.2 288.7L178.9 317M200.2 288.7L207.8 310.4M225.7 283.1L253.1 284.2M225.7 283.1L207.8 310.4M225.7 283.1L242.9 306.6M253.1 284.2L289.2 283.6M253.1 284.2L242.9 306.6M253.1 284.2L265.7 313.2M289.2 283.6L320.2 289.9M289.2 283.6L265.7 313.2M289.2 283.6L297.2 310.5M320.2 289.9L345.3 290.8M320.2 289.9L297.2 310.5M320.2 289.9L328.2 308.9M345.3 290.8L370.4 288.9M345.3 290.8L328.2 308.9M345.3 290.8L357.2 307.7M370.4 288.9L407.2 288.7M370.4 288.9L357.2 307.7M370.4 288.9L387.8 306.7M407.2 288.7L436.5 283.5M407.2 288.7L387.8 306.7M407.2 288.7L417 314.5M436.5 283.5L460.3 287M436.5 283.5L417 314.5M436.5 283.5L447.1 315.9M460.3 287L492.7 284.2M460.3 287L447.1 315.9M460.3 287L478.5 308.9M492.7 284.2L523.1 287.3M492.7 284.2L478.5 308.9M492.7 284.2L514.6 314M523.1 287.3L551.7 287.8M523.1 287.3L514.6 314M523.1 287.3L543 306.4M551.7 287.8L585.8 288.9M551.7 287.8L543 306.4M551.7 287.8L569.8 316.2M585.8 288.9L615.8 285.5M585.8 288.9L569.8 316.2M585.8 288.9L601.9 312.6M615.8 285.5L648 282.6M615.8 285.5L601.9 312.6M615.8 285.5L625.4 308.8M648 282.6L672.3 284.5M648 282.6L625.4 308.8M648 282.6L654.7 317.1M672.3 284.5L701.1 280.9M672.3 284.5L654.7 317.1M672.3 284.5L685.9 316.1M701.1 280.9L685.9 316.1M701.1 280.9L718.7 309.2M148.9 314.5L178.9 317M148.9 314.5L132 337.6M148.9 314.5L167.7 335.9M178.9 317L207.8 310.4M178.9 317L167.7 335.9M178.9 317L198.5 337.1M207.8 310.4L242.9 306.6M207.8 310.4L198.5 337.1M207.8 310.4L227.5 340.3M242.9 306.6L265.7 313.2M242.9 306.6L227.5 340.3M242.9 306.6L259.2 337.2M265.7 313.2L297.2 310.5M265.7 313.2L259.2 337.2M265.7 313.2L289.8 340.2M297.2 310.5L328.2 308.9M297.2 310.5L289.8 340.2M297.2 310.5L317.5 337.2M328.2 308.9L357.2 307.7M328.2 308.9L317.5 337.2M328.2 308.9L340.7 341.6M357.2 307.7L387.8 306.7M357.2 307.7L340.7 341.6M357.2 307.7L376.5 342M387.8 306.7L417 314.5M387.8 306.7L376.5 342M387.8 306.7L409.9 334.2M417 314.5L447.1 315.9M417 314.5L409.9 334.2M417 314.5L432.7 340.6M447.1 315.9L478.5 308.9M447.1 315.9L432.7 340.6M447.1 315.9L466.5 341M478.5 308.9L514.6 314M478.5 308.9L466.5 341M478.5 308.9L493 341.3M514.6 314L543 306.4M514.6 314L493 341.3M514.6 314L524.4 339.2M543 306.4L569.8 316.2M543 306.4L524.4 339.2M543 306.4L556 339.9M569.8 316.2L601.9 312.6M569.8 316.2L556 339.9M569.8 316.2L590.3 338.5M601.9 312.6L625.4 308.8M601.9 312.6L590.3 338.5M601.9 312.6L610.6 342M625.4 308.8L654.7 317.1M625.4 308.8L610.6 342M625.4 308.8L646.9 342.2M654.7 317.1L685.9 316.1M654.7 317.1L646.9 342.2M654.7 317.1L676.4 341.2M685.9 316.1L718.7 309.2M685.9 316.1L676.4 341.2M685.9 316.1L703 334.4M718.7 309.2L703 334.4M132 337.6L167.7 335.9M132 337.6L117.7 368.8M132 337.6L145 364.1M167.7 335.9L198.5 337.1M167.7 335.9L145 364.1M167.7 335.9L178.5 362.3M198.5 337.1L227.5 340.3M198.5 337.1L178.5 362.3M198.5 337.1L215 360.7M227.5 340.3L259.2 337.2M227.5 340.3L215 360.7M227.5 340.3L240.5 362.1M259.2 337.2L289.8 340.2M259.2 337.2L240.5 362.1M259.2 337.2L269 367.7M289.8 340.2L317.5 337.2M289.8 340.2L269 367.7M289.8 340.2L304 366.4M317.5 337.2L340.7 341.6M317.5 337.2L304 366.4M317.5 337.2L332.4 361.6M340.7 341.6L376.5 342M340.7 341.6L332.4 361.6M340.7 341.6L362.3 360.6M376.5 342L409.9 334.2M376.5 342L362.3 360.6M376.5 342L390.8 367.7M409.9 334.2L432.7 340.6M409.9 334.2L390.8 367.7M409.9 334.2L415.1 361.9M432.7 340.6L466.5 341M432.7 340.6L415.1 361.9M432.7 340.6L445.6 358.5M466.5 341L493 341.3M466.5 341L445.6 358.5M466.5 341L483.7 359.7M493 341.3L524.4 339.2M493 341.3L483.7 359.7M493 341.3L506.4 364.5M524.4 339.2L556 339.9M524.4 339.2L506.4 364.5M524.4 339.2L539.6 365M556 339.9L590.3 338.5M556 339.9L539.6 365M556 339.9L568.1 368.4M590.3 338.5L610.6 342M590.3 338.5L568.1 368.4M590.3 338.5L603.9 365.9M610.6 342L646.9 342.2M610.6 342L603.9 365.9M610.6 342L629.5 365.4M646.9 342.2L676.4 341.2M646.9 342.2L629.5 365.4M646.9 342.2L655.6 361.6M676.4 341.2L703 334.4M676.4 341.2L655.6 361.6M676.4 341.2L694 359.6M703 334.4L694 359.6M703 334.4L718.1 368.3M117.7 368.8L145 364.1M117.7 368.8L101.2 387.7M117.7 368.8L133.9 391M145 364.1L178.5 362.3M145 364.1L133.9 391M145 364.1L166.3 393.8M178.5 362.3L215 360.7M178.5 362.3L166.3 393.8M178.5 362.3L195.2 394M215 360.7L240.5 362.1M215 360.7L195.2 394M215 360.7L228.1 394.3M240.5 362.1L269 367.7M240.5 362.1L228.1 394.3M240.5 362.1L253.6 387.8M269 367.7L304 366.4M269 367.7L253.6 387.8M269 367.7L280.8 388.3M304 366.4L332.4 361.6M304 366.4L280.8 388.3M304 366.4L316.5 394.5M332.4 361.6L362.3 360.6M332.4 361.6L316.5 394.5M332.4 361.6L348.6 394.9M362.3 360.6L390.8 367.7M362.3 360.6L348.6 394.9M362.3 360.6L376.9 389.3M390.8 367.7L415.1 361.9M390.8 367.7L376.9 389.3M390.8 367.7L410.2 388.6M415.1 361.9L445.6 358.5M415.1 361.9L410.2 388.6M415.1 361.9L430.1 392.1M445.6 358.5L483.7 359.7M445.6 358.5L430.1 392.1M445.6 358.5L460.2 389.4M483.7 359.7L506.4 364.5M483.7 359.7L460.2 389.4M483.7 359.7L494.6 393.6M506.4 364.5L539.6 365M506.4 364.5L494.6 393.6M506.4 364.5L530.4 394.4M539.6 365L568.1 368.4M539.6 365L530.4 394.4M539.6 365L551.2 393.2M568.1 368.4L603.9 365.9M568.1 368.4L551.2 393.2M568.1 368.4L588.6 389.8M603.9 365.9L629.5 365.4M603.9 365.9L588.6 389.8M603.9 365.9L616.7 388.2M629.5 365.4L655.6 361.6M629.5 365.4L616.7 388.2M629.5 365.4L641.4 388.7M655.6 361.6L694 359.6M655.6 361.6L641.4 388.7M655.6 361.6L674.4 390.9M694 359.6L718.1 368.3M694 359.6L674.4 390.9M694 359.6L704.2 389.8M718.1 368.3L704.2 389.8M101.2 387.7L133.9 391M101.2 387.7L91.5 420.3M101.2 387.7L117.1 411.5M133.9 391L166.3 393.8M133.9 391L117.1 411.5M133.9 391L147.3 413.4M166.3 393.8L195.2 394M166.3 393.8L147.3 413.4M166.3 393.8L177.7 420.7M195.2 394L228.1 394.3M195.2 394L177.7 420.7M195.2 394L213.5 418.6M228.1 394.3L253.6 387.8M228.1 394.3L213.5 418.6M228.1 394.3L238.7 417.4M253.6 387.8L280.8 388.3M253.6 387.8L238.7 417.4M253.6 387.8L266.9 415.8M280.8 388.3L316.5 394.5M280.8 388.3L266.9 415.8M280.8 388.3L298.2 413.3M316.5 394.5L348.6 394.9M316.5 394.5L298.2 413.3M316.5 394.5L332.1 411.6M348.6 394.9L376.9 389.3M348.6 394.9L332.1 411.6M348.6 394.9L364.4 418.6M376.9 389.3L410.2 388.6M376.9 389.3L364.4 418.6M376.9 389.3L388.9 418.3M410.2 388.6L430.1 392.1M410.2 388.6L388.9 418.3M410.2 388.6L418.2 416.3M430.1 392.1L460.2 389.4M430.1 392.1L418.2 416.3M430.1 392.1L452.4 414.8M460.2 389.4L494.6 393.6M460.2 389.4L452.4 414.8M460.2 389.4L481.5 418.5M494.6 393.6L530.4 394.4M494.6 393.6L481.5 418.5M494.6 393.6L513.1 415.6M530.4 394.4L551.2 393.2M530.4 394.4L513.1 415.6M530.4 394.4L537.3 411.2M551.2 393.2L588.6 389.8M551.2 393.2L537.3 411.2M551.2 393.2L572.2 414.4M588.6 389.8L616.7 388.2M588.6 389.8L572.2 414.4M588.6 389.8L599.7 416.2M616.7 388.2L641.4 388.7M616.7 388.2L599.7 416.2M616.7 388.2L628.9 410.9M641.4 388.7L674.4 390.9M641.4 388.7L628.9 410.9M641.4 388.7L664.8 413.6M674.4 390.9L704.2 389.8M674.4 390.9L664.8 413.6M674.4 390.9L685 413.8M704.2 389.8L685 413.8M704.2 389.8L719.5 410.5M91.5 420.3L117.1 411.5M91.5 420.3L74.6 442.9M91.5 420.3L108.5 445.1M117.1 411.5L147.3 413.4M117.1 411.5L108.5 445.1M117.1 411.5L130.7 442.4M147.3 413.4L177.7 420.7M147.3 413.4L130.7 442.4M147.3 413.4L165.1 443M177.7 420.7L213.5 418.6M177.7 420.7L165.1 443M177.7 420.7L197.3 443.3M213.5 418.6L238.7 417.4M213.5 418.6L197.3 443.3M213.5 418.6L223.1 442M238.7 417.4L266.9 415.8M238.7 417.4L223.1 442M238.7 417.4L251 441.6M266.9 415.8L298.2 413.3M266.9 415.8L251 441.6M266.9 415.8L288.5 441.4M298.2 413.3L332.1 411.6M298.2 413.3L288.5 441.4M298.2 413.3L318.3 443.3M332.1 411.6L364.4 418.6M332.1 411.6L318.3 443.3M332.1 411.6L342.8 445.8M364.4 418.6L388.9 418.3M364.4 418.6L342.8 445.8M364.4 418.6L371.8 445.2M388.9 418.3L418.2 416.3M388.9 418.3L371.8 445.2M388.9 418.3L403.7 444.5M418.2 416.3L452.4 414.8M418.2 416.3L403.7 444.5M418.2 416.3L435.5 446.3M452.4 414.8L481.5 418.5M452.4 414.8L435.5 446.3M452.4 414.8L462.5 444.9M481.5 418.5L513.1 415.6M481.5 418.5L462.5 444.9M481.5 418.5L494.7 439.5M513.1 415.6L537.3 411.2M513.1 415.6L494.7 439.5M513.1 415.6L523.2 440.6M537.3 411.2L572.2 414.4M537.3 411.2L523.2 440.6M537.3 411.2L553.8 436.8M572.2 414.4L599.7 416.2M572.2 414.4L553.8 436.8M572.2 414.4L590.1 438.8M599.7 416.2L628.9 410.9M599.7 416.2L590.1 438.8M599.7 416.2L609.8 447.1M628.9 410.9L664.8 413.6M628.9 410.9L609.8 447.1M628.9 410.9L648.8 437.6M664.8 413.6L685 413.8M664.8 413.6L648.8 437.6M664.8 413.6L674.3 443.5M685 413.8L719.5 410.5M685 413.8L674.3 443.5M685 413.8L701.8 442M719.5 410.5L701.8 442M74.6 442.9L108.5 445.1M74.6 442.9L59.5 465.2M74.6 442.9L88.5 469.7M108.5 445.1L130.7 442.4M108.5 445.1L88.5 469.7M108.5 445.1L122.9 465.9M130.7 442.4L165.1 443M130.7 442.4L122.9 465.9M130.7 442.4L145.8 468.7M165.1 443L197.3 443.3M165.1 443L145.8 468.7M165.1 443L179.1 470M197.3 443.3L223.1 442M197.3 443.3L179.1 470M197.3 443.3L213.8 464.3M223.1 442L251 441.6M223.1 442L213.8 464.3M223.1 442L237.8 472.2M251 441.6L288.5 441.4M251 441.6L237.8 472.2M251 441.6L271 464.6M288.5 441.4L318.3 443.3M288.5 441.4L271 464.6M288.5 441.4L300.9 466.9M318.3 443.3L342.8 445.8M318.3 443.3L300.9 466.9M318.3 443.3L324.6 468.8M342.8 445.8L371.8 445.2M342.8 445.8L324.6 468.8M342.8 445.8L357.8 471.5M371.8 445.2L403.7 444.5M371.8 445.2L357.8 471.5M371.8 445.2L394.7 465.5M403.7 444.5L435.5 446.3M403.7 444.5L394.7 465.5M403.7 444.5L425.2 469.5M435.5 446.3L462.5 444.9M435.5 446.3L425.2 469.5M435.5 446.3L450.1 472.5M462.5 444.9L494.7 439.5M462.5 444.9L450.1 472.5M462.5 444.9L479.8 469.2M494.7 439.5L523.2 440.6M494.7 439.5L479.8 469.2M494.7 439.5L509.3 462.5M523.2 440.6L553.8 436.8M523.2 440.6L509.3 462.5M523.2 440.6L536.2 470.2M553.8 436.8L590.1 438.8M553.8 436.8L536.2 470.2M553.8 436.8L570.1 466.6M590.1 438.8L609.8 447.1M590.1 438.8L570.1 466.6M590.1 438.8L600 469.8M609.8 447.1L648.8 437.6M609.8 447.1L600 469.8M609.8 447.1L625.5 471.2M648.8 437.6L674.3 443.5M648.8 437.6L625.5 471.2M648.8 437.6L660.1 469.8M674.3 443.5L701.8 442M674.3 443.5L660.1 469.8M674.3 443.5L688.8 470M701.8 442L688.8 470M701.8 442L715.4 470.6M59.5 465.2L88.5 469.7M59.5 465.2L41.5 495.1M59.5 465.2L76.4 494M88.5 469.7L122.9 465.9M88.5 469.7L76.4 494M88.5 469.7L100.3 493.1M122.9 465.9L145.8 468.7M122.9 465.9L100.3 493.1M122.9 465.9L133.4 497.1M145.8 468.7L179.1 470M145.8 468.7L133.4 497.1M145.8 468.7L162.1 498.9M179.1 470L213.8 464.3M179.1 470L162.1 498.9M179.1 470L199.6 492M213.8 464.3L237.8 472.2M213.8 464.3L199.6 492M213.8 464.3L227 492.3M237.8 472.2L271 464.6M237.8 472.2L227 492.3M237.8 472.2L249.8 495.3M271 464.6L300.9 466.9M271 464.6L249.8 495.3M271 464.6L287.8 494.6M300.9 466.9L324.6 468.8M300.9 466.9L287.8 494.6M300.9 466.9L318.9 491.8M324.6 468.8L357.8 471.5M324.6 468.8L318.9 491.8M324.6 468.8L344.8 496M357.8 471.5L394.7 465.5M357.8 471.5L344.8 496M357.8 471.5L371.9 490.8M394.7 465.5L425.2 469.5M394.7 465.5L371.9 490.8M394.7 465.5L403.7 496.8M425.2 469.5L450.1 472.5M425.2 469.5L403.7 496.8M425.2 469.5L434.5 496.7M450.1 472.5L479.8 469.2M450.1 472.5L434.5 496.7M450.1 472.5L463.5 497.4M479.8 469.2L509.3 462.5M479.8 469.2L463.5 497.4M479.8 469.2L498.6 496.6M509.3 462.5L536.2 470.2M509.3 462.5L498.6 496.6M509.3 462.5L528 491.6M536.2 470.2L570.1 466.6M536.2 470.2L528 491.6M536.2 470.2L555.5 495.2M570.1 466.6L600 469.8M570.1 466.6L555.5 495.2M570.1 466.6L584.1 493.7M600 469.8L625.5 471.2M600 469.8L584.1 493.7M600 469.8L612.5 490.8M625.5 471.2L660.1 469.8M625.5 471.2L612.5 490.8M625.5 471.2L643.8 494.4M660.1 469.8L688.8 470M660.1 469.8L643.8 494.4M660.1 469.8L678.3 498.6M688.8 470L715.4 470.6M688.8 470L678.3 498.6M688.8 470L707.9 492.7M715.4 470.6L707.9 492.7M41.5 495.1L76.4 494M41.5 495.1L60.2 523.8M76.4 494L100.3 493.1M76.4 494L60.2 523.8M76.4 494L88.9 515.2M100.3 493.1L133.4 497.1M100.3 493.1L88.9 515.2M100.3 493.1L124.6 523.7M133.4 497.1L162.1 498.9M133.4 497.1L124.6 523.7M133.4 497.1L147.9 521.6M162.1 498.9L199.6 492M162.1 498.9L147.9 521.6M162.1 498.9L182.4 515.6M199.6 492L227 492.3M199.6 492L182.4 515.6M199.6 492L212.7 515.4M227 492.3L249.8 495.3M227 492.3L212.7 515.4M227 492.3L241.7 522.1M249.8 495.3L287.8 494.6M249.8 495.3L241.7 522.1M249.8 495.3L271.6 519.9M287.8 494.6L318.9 491.8M287.8 494.6L271.6 519.9M287.8 494.6L302.3 514.5M318.9 491.8L344.8 496M318.9 491.8L302.3 514.5M318.9 491.8L333.2 522.3M344.8 496L371.9 490.8M344.8 496L333.2 522.3M344.8 496L359.9 521.5M371.9 490.8L403.7 496.8M371.9 490.8L359.9 521.5M371.9 490.8L384.5 522.9M403.7 496.8L434.5 496.7M403.7 496.8L384.5 522.9M403.7 496.8L421.2 516.7M434.5 496.7L463.5 497.4M434.5 496.7L421.2 516.7M434.5 496.7L449.6 519.1M463.5 497.4L498.6 496.6M463.5 497.4L449.6 519.1M463.5 497.4L483 520.8M498.6 496.6L528 491.6M498.6 496.6L483 520.8M498.6 496.6L513.7 514.2M528 491.6L555.5 495.2M528 491.6L513.7 514.2M528 491.6L540.3 524.3M555.5 495.2L584.1 493.7M555.5 495.2L540.3 524.3M555.5 495.2L568.9 521.6M584.1 493.7L612.5 490.8M584.1 493.7L568.9 521.6M584.1 493.7L596.2 519.2M612.5 490.8L643.8 494.4M612.5 490.8L596.2 519.2M612.5 490.8L635.3 519.4M643.8 494.4L678.3 498.6M643.8 494.4L635.3 519.4M643.8 494.4L654.6 522.7M678.3 498.6L707.9 492.7M678.3 498.6L654.6 522.7M678.3 498.6L691.7 519.2M707.9 492.7L691.7 519.2M707.9 492.7L715.5 519.4M60.2 523.8L88.9 515.2M60.2 523.8L50.2 543.5M60.2 523.8L74.2 544.7M88.9 515.2L124.6 523.7M88.9 515.2L74.2 544.7M88.9 515.2L106.9 549.1M124.6 523.7L147.9 521.6M124.6 523.7L106.9 549.1M124.6 523.7L132.3 546.1M147.9 521.6L182.4 515.6M147.9 521.6L132.3 546.1M147.9 521.6L169.3 541.2M182.4 515.6L212.7 515.4M182.4 515.6L169.3 541.2M182.4 515.6L199.1 550.3M212.7 515.4L241.7 522.1M212.7 515.4L199.1 550.3M212.7 515.4L228.2 546M241.7 522.1L271.6 519.9M241.7 522.1L228.2 546M241.7 522.1L251.5 543.3M271.6 519.9L302.3 514.5M271.6 519.9L251.5 543.3M271.6 519.9L286.2 540.8M302.3 514.5L333.2 522.3M302.3 514.5L286.2 540.8M302.3 514.5L315.9 544.9M333.2 522.3L359.9 521.5M333.2 522.3L315.9 544.9M333.2 522.3L344.7 543.7M359.9 521.5L384.5 522.9M359.9 521.5L344.7 543.7M359.9 521.5L370.5 540.5M384.5 522.9L421.2 516.7M384.5 522.9L370.5 540.5M384.5 522.9L405.5 550.9M421.2 516.7L449.6 519.1M421.2 516.7L405.5 550.9M421.2 516.7L433.4 545.3M449.6 519.1L483 520.8M449.6 519.1L433.4 545.3M449.6 519.1L468.6 540.8M483 520.8L513.7 514.2M483 520.8L468.6 540.8M483 520.8L494 546.1M513.7 514.2L540.3 524.3M513.7 514.2L494 546.1M513.7 514.2L529.4 545.1M540.3 524.3L568.9 521.6M540.3 524.3L529.4 545.1M540.3 524.3L559.6 543.1M568.9 521.6L596.2 519.2M568.9 521.6L559.6 543.1M568.9 521.6L589.7 545.2M596.2 519.2L635.3 519.4M596.2 519.2L589.7 545.2M596.2 519.2L614.5 545M635.3 519.4L654.6 522.7M635.3 519.4L614.5 545M635.3 519.4L641.2 542.3M654.6 522.7L691.7 519.2M654.6 522.7L641.2 542.3M654.6 522.7L677.3 548.5M691.7 519.2L715.5 519.4M691.7 519.2L677.3 548.5M691.7 519.2L704.4 541.6M715.5 519.4L704.4 541.6M50.2 543.5L74.2 544.7M50.2 543.5L25.4 574.1M50.2 543.5L65.4 569.6M74.2 544.7L106.9 549.1M74.2 544.7L65.4 569.6M74.2 544.7L94.9 569.4M106.9 549.1L132.3 546.1M106.9 549.1L94.9 569.4M106.9 549.1L119.3 570.2M132.3 546.1L169.3 541.2M132.3 546.1L119.3 570.2M132.3 546.1L154.9 570.6M169.3 541.2L199.1 550.3M169.3 541.2L154.9 570.6M169.3 541.2L184 568.4M199.1 550.3L228.2 546M199.1 550.3L184 568.4M199.1 550.3L208.7 570.1M228.2 546L251.5 543.3M228.2 546L208.7 570.1M228.2 546L240.8 575.4M251.5 543.3L286.2 540.8M251.5 543.3L240.8 575.4M251.5 543.3L267.2 574.3M286.2 540.8L315.9 544.9M286.2 540.8L267.2 574.3M286.2 540.8L304.7 576.5M315.9 544.9L344.7 543.7M315.9 544.9L304.7 576.5M315.9 544.9L329.3 568.8M344.7 543.7L370.5 540.5M344.7 543.7L329.3 568.8M344.7 543.7L359.1 570.8M370.5 540.5L405.5 550.9M370.5 540.5L359.1 570.8M370.5 540.5L389 571.5M405.5 550.9L433.4 545.3M405.5 550.9L389 571.5M405.5 550.9L422 576.2M433.4 545.3L468.6 540.8M433.4 545.3L422 576.2M433.4 545.3L444.8 569.8M468.6 540.8L494 546.1M468.6 540.8L444.8 569.8M468.6 540.8L482 567.1M494 546.1L529.4 545.1M494 546.1L482 567.1M494 546.1L509.1 570M529.4 545.1L559.6 543.1M529.4 545.1L509.1 570M529.4 545.1L537.6 576M559.6 543.1L589.7 545.2M559.6 543.1L537.6 576M559.6 543.1L574.5 568.5M589.7 545.2L614.5 545M589.7 545.2L574.5 568.5M589.7 545.2L595 575.1M614.5 545L641.2 542.3M614.5 545L595 575.1M614.5 545L629.4 571.6M641.2 542.3L677.3 548.5M641.2 542.3L629.4 571.6M641.2 542.3L664 569.4M677.3 548.5L704.4 541.6M677.3 548.5L664 569.4M677.3 548.5L685.2 568.5M704.4 541.6L685.2 568.5M704.4 541.6L715.7 568.7M25.4 574.1L65.4 569.6M25.4 574.1L45.7 602.2M65.4 569.6L94.9 569.4M65.4 569.6L45.7 602.2M65.4 569.6L77.6 598.2M94.9 569.4L119.3 570.2M94.9 569.4L77.6 598.2M94.9 569.4L110.4 596.9M119.3 570.2L154.9 570.6M119.3 570.2L110.4 596.9M119.3 570.2L139.1 601.9M154.9 570.6L184 568.4M154.9 570.6L139.1 601.9M154.9 570.6L160.6 601.2M184 568.4L208.7 570.1M184 568.4L160.6 601.2M184 568.4L191.6 592.4M208.7 570.1L240.8 575.4M208.7 570.1L191.6 592.4M208.7 570.1L229.2 600.1M240.8 575.4L267.2 574.3M240.8 575.4L229.2 600.1M240.8 575.4L254.3 594.6M267.2 574.3L304.7 576.5M267.2 574.3L254.3 594.6M267.2 574.3L282 598.4M304.7 576.5L329.3 568.8M304.7 576.5L282 598.4M304.7 576.5L318.2 597.3M329.3 568.8L359.1 570.8M329.3 568.8L318.2 597.3M329.3 568.8L344.9 594.3M359.1 570.8L389 571.5M359.1 570.8L344.9 594.3M359.1 570.8L370.2 602.8M389 571.5L422 576.2M389 571.5L370.2 602.8M389 571.5L409.2 595.3M422 576.2L444.8 569.8M422 576.2L409.2 595.3M422 576.2L439.6 592.9M444.8 569.8L482 567.1M444.8 569.8L439.6 592.9M444.8 569.8L470 601.8M482 567.1L509.1 570M482 567.1L470 601.8M482 567.1L494.9 597M509.1 570L537.6 576M509.1 570L494.9 597M509.1 570L523.4 600.6M537.6 576L574.5 568.5M537.6 576L523.4 600.6M537.6 576L558.4 594.4M574.5 568.5L595 575.1M574.5 568.5L558.4 594.4M574.5 568.5L584 593.8M595 575.1L629.4 571.6M595 575.1L584 593.8M595 575.1L610.6 596.5M629.4 571.6L664 569.4M629.4 571.6L610.6 596.5M629.4 571.6L643.4 599.7M664 569.4L685.2 568.5M664 569.4L643.4 599.7M664 569.4L673.1 595.1M685.2 568.5L715.7 568.7M685.2 568.5L673.1 595.1M685.2 568.5L709.4 600.4M715.7 568.7L709.4 600.4M45.7 602.2L77.6 598.2M45.7 602.2L29.6 621.5M45.7 602.2L63.8 622.8M77.6 598.2L110.4 596.9M77.6 598.2L63.8 622.8M77.6 598.2L84.8 627.9M110.4 596.9L139.1 601.9M110.4 596.9L84.8 627.9M110.4 596.9L124.4 627M139.1 601.9L160.6 601.2M139.1 601.9L124.4 627M139.1 601.9L148.3 624.4M160.6 601.2L191.6 592.4M160.6 601.2L148.3 624.4M160.6 601.2L178.4 625.1M191.6 592.4L229.2 600.1M191.6 592.4L178.4 625.1M191.6 592.4L213.5 624.5M229.2 600.1L254.3 594.6M229.2 600.1L213.5 624.5M229.2 600.1L244.2 625.6M254.3 594.6L282 598.4M254.3 594.6L244.2 625.6M254.3 594.6L272.8 625.8M282 598.4L318.2 597.3M282 598.4L272.8 625.8M282 598.4L297.3 621.4M318.2 597.3L344.9 594.3M318.2 597.3L297.3 621.4M318.2 597.3L328.5 621.1M344.9 594.3L370.2 602.8M344.9 594.3L328.5 621.1M344.9 594.3L358.5 627.6M370.2 602.8L409.2 595.3M370.2 602.8L358.5 627.6M370.2 602.8L394.7 621.8M409.2 595.3L439.6 592.9M409.2 595.3L394.7 621.8M409.2 595.3L419.4 624.5M439.6 592.9L470 601.8M439.6 592.9L419.4 624.5M439.6 592.9L455.4 621.9M470 601.8L494.9 597M470 601.8L455.4 621.9M470 601.8L481.8 628.9M494.9 597L523.4 600.6M494.9 597L481.8 628.9M494.9 597L512.9 621.9M523.4 600.6L558.4 594.4M523.4 600.6L512.9 621.9M523.4 600.6L534.9 618.8M558.4 594.4L584 593.8M558.4 594.4L534.9 618.8M558.4 594.4L570.8 621.1M584 593.8L610.6 596.5M584 593.8L570.8 621.1M584 593.8L594.9 623.5M610.6 596.5L643.4 599.7M610.6 596.5L594.9 623.5M610.6 596.5L631.4 627.9M643.4 599.7L673.1 595.1M643.4 599.7L631.4 627.9M643.4 599.7L658.6 624M673.1 595.1L709.4 600.4M673.1 595.1L658.6 624M673.1 595.1L690.1 628.7M709.4 600.4L690.1 628.7M709.4 600.4L723.3 625.2M29.6 621.5L63.8 622.8M63.8 622.8L84.8 627.9M63.8 622.8L74 652.7M84.8 627.9L124.4 627M84.8 627.9L74 652.7M84.8 627.9L106.3 644.3M124.4 627L148.3 624.4M124.4 627L106.3 644.3M124.4 627L139.2 653M148.3 624.4L178.4 625.1M148.3 624.4L139.2 653M148.3 624.4L169.3 651M178.4 625.1L213.5 624.5M178.4 625.1L169.3 651M178.4 625.1L198.8 645.2M213.5 624.5L244.2 625.6M213.5 624.5L198.8 645.2M213.5 624.5L222 644.9M244.2 625.6L272.8 625.8M244.2 625.6L222 644.9M244.2 625.6L257.6 653.8M272.8 625.8L297.3 621.4M272.8 625.8L257.6 653.8M272.8 625.8L287 649.5M297.3 621.4L328.5 621.1M297.3 621.4L287 649.5M297.3 621.4L317.8 650.8M328.5 621.1L358.5 627.6M328.5 621.1L317.8 650.8M328.5 621.1L344.8 645.3M358.5 627.6L394.7 621.8M358.5 627.6L344.8 645.3M358.5 627.6L373.7 651.4M394.7 621.8L419.4 624.5M394.7 621.8L373.7 651.4M394.7 621.8L400.9 655M419.4 624.5L455.4 621.9M419.4 624.5L400.9 655M419.4 624.5L435.8 645.7M455.4 621.9L481.8 628.9M455.4 621.9L435.8 645.7M455.4 621.9L462.6 648.2M481.8 628.9L512.9 621.9M481.8 628.9L462.6 648.2M481.8 628.9L499.9 648.9M512.9 621.9L534.9 618.8M512.9 621.9L499.9 648.9M512.9 621.9L528.1 644.3M534.9 618.8L570.8 621.1M534.9 618.8L528.1 644.3M534.9 618.8L552.2 652.5M570.8 621.1L594.9 623.5M570.8 621.1L552.2 652.5M570.8 621.1L580.4 648.8M594.9 623.5L631.4 627.9M594.9 623.5L580.4 648.8M594.9 623.5L616.8 646.8M631.4 627.9L658.6 624M631.4 627.9L616.8 646.8M631.4 627.9L648.9 647.6M658.6 624L690.1 628.7M658.6 624L648.9 647.6M658.6 624L671.3 651.4M690.1 628.7L723.3 625.2M690.1 628.7L671.3 651.4M690.1 628.7L702.8 650.2M723.3 625.2L702.8 650.2M723.3 625.2L731.9 650.9M74 652.7L106.3 644.3M106.3 644.3L139.2 653M106.3 644.3L117 672.2M139.2 653L169.3 651M139.2 653L117 672.2M139.2 653L155.3 680.8M169.3 651L198.8 645.2M169.3 651L155.3 680.8M169.3 651L184.4 680.8M198.8 645.2L222 644.9M198.8 645.2L184.4 680.8M198.8 645.2L212.7 675.1M222 644.9L257.6 653.8M222 644.9L212.7 675.1M222 644.9L243.5 675.4M257.6 653.8L287 649.5M257.6 653.8L243.5 675.4M257.6 653.8L275 680.7M287 649.5L317.8 650.8M287 649.5L275 680.7M287 649.5L300 679.9M317.8 650.8L344.8 645.3M317.8 650.8L300 679.9M317.8 650.8L330.1 673.7M344.8 645.3L373.7 651.4M344.8 645.3L330.1 673.7M344.8 645.3L354.6 674.2M373.7 651.4L400.9 655M373.7 651.4L354.6 674.2M373.7 651.4L388.7 679.6M400.9 655L435.8 645.7M400.9 655L388.7 679.6M400.9 655L419.7 673.9M435.8 645.7L462.6 648.2M435.8 645.7L419.7 673.9M435.8 645.7L452.9 674M462.6 648.2L499.9 648.9M462.6 648.2L452.9 674M462.6 648.2L477.6 675.2M499.9 648.9L528.1 644.3M499.9 648.9L477.6 675.2M499.9 648.9L509.4 680.9M528.1 644.3L552.2 652.5M528.1 644.3L509.4 680.9M528.1 644.3L543.1 676.5M552.2 652.5L580.4 648.8M552.2 652.5L543.1 676.5M552.2 652.5L572.7 676.3M580.4 648.8L616.8 646.8M580.4 648.8L572.7 676.3M580.4 648.8L605.4 679.6M616.8 646.8L648.9 647.6M616.8 646.8L605.4 679.6M616.8 646.8L630.4 679.9M648.9 647.6L671.3 651.4M648.9 647.6L630.4 679.9M648.9 647.6L658.2 670.2M671.3 651.4L702.8 650.2M671.3 651.4L658.2 670.2M671.3 651.4L688.3 680.1M702.8 650.2L731.9 650.9M702.8 650.2L688.3 680.1M702.8 650.2L715.9 678.3M731.9 650.9L715.9 678.3M731.9 650.9L746.9 676.7M117 672.2L155.3 680.8M155.3 680.8L184.4 680.8M155.3 680.8L164.5 706M184.4 680.8L212.7 675.1M184.4 680.8L164.5 706M184.4 680.8L199.6 700.4M212.7 675.1L243.5 675.4M212.7 675.1L199.6 700.4M212.7 675.1L219.8 705.5M243.5 675.4L275 680.7M243.5 675.4L219.8 705.5M243.5 675.4L256.5 701.4M275 680.7L300 679.9M275 680.7L256.5 701.4M275 680.7L284.1 700M300 679.9L330.1 673.7M300 679.9L284.1 700M300 679.9L320.3 700.6M330.1 673.7L354.6 674.2M330.1 673.7L320.3 700.6M330.1 673.7L343.2 696M354.6 674.2L388.7 679.6M354.6 674.2L343.2 696M354.6 674.2L372.9 706.7M388.7 679.6L419.7 673.9M388.7 679.6L372.9 706.7M388.7 679.6L402.2 703.9M419.7 673.9L452.9 674M419.7 673.9L402.2 703.9M419.7 673.9L430.3 705.2M452.9 674L477.6 675.2M452.9 674L430.3 705.2M452.9 674L469.8 706M477.6 675.2L509.4 680.9M477.6 675.2L469.8 706M477.6 675.2L495.4 705.3M509.4 680.9L543.1 676.5M509.4 680.9L495.4 705.3M509.4 680.9L525.3 703M543.1 676.5L572.7 676.3M543.1 676.5L525.3 703M543.1 676.5L554.1 699M572.7 676.3L605.4 679.6M572.7 676.3L554.1 699M572.7 676.3L584.9 701.4M605.4 679.6L630.4 679.9M605.4 679.6L584.9 701.4M605.4 679.6L620 706.8M630.4 679.9L658.2 670.2M630.4 679.9L620 706.8M630.4 679.9L646.6 706.4M658.2 670.2L688.3 680.1M658.2 670.2L646.6 706.4M658.2 670.2L675.8 699.8M688.3 680.1L715.9 678.3M688.3 680.1L675.8 699.8M688.3 680.1L707.9 700.5M715.9 678.3L746.9 676.7M715.9 678.3L707.9 700.5M715.9 678.3L736.5 696.8M746.9 676.7L736.5 696.8M746.9 676.7L769.2 697M164.5 706L199.6 700.4M199.6 700.4L219.8 705.5M199.6 700.4L214.1 727.1M219.8 705.5L256.5 701.4M219.8 705.5L214.1 727.1M219.8 705.5L242.8 724.3M256.5 701.4L284.1 700M256.5 701.4L242.8 724.3M256.5 701.4L274 726.1M284.1 700L320.3 700.6M284.1 700L274 726.1M284.1 700L303.5 722.5M320.3 700.6L343.2 696M320.3 700.6L303.5 722.5M320.3 700.6L331.2 729M343.2 696L372.9 706.7M343.2 696L331.2 729M343.2 696L356.2 725.2M372.9 706.7L402.2 703.9M372.9 706.7L356.2 725.2M372.9 706.7L387.5 731M402.2 703.9L430.3 705.2M402.2 703.9L387.5 731M402.2 703.9L422.3 724.8M430.3 705.2L469.8 706M430.3 705.2L422.3 724.8M430.3 705.2L452.1 725.5M469.8 706L495.4 705.3M469.8 706L452.1 725.5M469.8 706L478.3 723.3M495.4 705.3L525.3 703M495.4 705.3L478.3 723.3M495.4 705.3L513.4 731.4M525.3 703L554.1 699M525.3 703L513.4 731.4M525.3 703L544.6 730.7M554.1 699L584.9 701.4M554.1 699L544.6 730.7M554.1 699L570 725.8M584.9 701.4L620 706.8M584.9 701.4L570 725.8M584.9 701.4L597.5 726.8M620 706.8L646.6 706.4M620 706.8L597.5 726.8M620 706.8L634.9 722.4M646.6 706.4L675.8 699.8M646.6 706.4L634.9 722.4M646.6 706.4L659.4 731.9M675.8 699.8L707.9 700.5M675.8 699.8L659.4 731.9M675.8 699.8L694.6 723.7M707.9 700.5L736.5 696.8M707.9 700.5L694.6 723.7M707.9 700.5L720.9 722.9M736.5 696.8L769.2 697M736.5 696.8L720.9 722.9M214.1 727.1L242.8 724.3M242.8 724.3L274 726.1M242.8 724.3L255.6 750.5M274 726.1L303.5 722.5M274 726.1L255.6 750.5M274 726.1L279.9 758.7M303.5 722.5L331.2 729M303.5 722.5L279.9 758.7M303.5 722.5L319.5 757.7M331.2 729L356.2 725.2M331.2 729L319.5 757.7M331.2 729L346.7 750.9M356.2 725.2L387.5 731M356.2 725.2L346.7 750.9M356.2 725.2L375.1 758M387.5 731L422.3 724.8M387.5 731L375.1 758M387.5 731L403.4 758M422.3 724.8L452.1 725.5M422.3 724.8L403.4 758M422.3 724.8L430.4 748.3M452.1 725.5L478.3 723.3M452.1 725.5L430.4 748.3M452.1 725.5L466 748.8M478.3 723.3L513.4 731.4M478.3 723.3L466 748.8M478.3 723.3L492.2 758.2M513.4 731.4L544.6 730.7M513.4 731.4L492.2 758.2M513.4 731.4L523.4 758.3M544.6 730.7L570 725.8M544.6 730.7L523.4 758.3M544.6 730.7L559.1 751.8M570 725.8L597.5 726.8M570 725.8L559.1 751.8M570 725.8L584.1 758.1M597.5 726.8L634.9 722.4M597.5 726.8L584.1 758.1M597.5 726.8L613.3 752.5M634.9 722.4L659.4 731.9M634.9 722.4L613.3 752.5M634.9 722.4L640.8 748.3M659.4 731.9L694.6 723.7M659.4 731.9L640.8 748.3M659.4 731.9L672.7 749.8M694.6 723.7L720.9 722.9M694.6 723.7L672.7 749.8M694.6 723.7L709.7 754.8M720.9 722.9L709.7 754.8M255.6 750.5L279.9 758.7M279.9 758.7L319.5 757.7M279.9 758.7L299.5 776M319.5 757.7L346.7 750.9M319.5 757.7L299.5 776M319.5 757.7L335.5 778.7M346.7 750.9L375.1 758M346.7 750.9L335.5 778.7M346.7 750.9L359.3 776.9M375.1 758L403.4 758M375.1 758L359.3 776.9M375.1 758L392.2 779.1M403.4 758L430.4 748.3M403.4 758L392.2 779.1M403.4 758L419 784.8M430.4 748.3L466 748.8M430.4 748.3L419 784.8M430.4 748.3L453.2 781.4M466 748.8L492.2 758.2M466 748.8L453.2 781.4M466 748.8L475.7 783.1M492.2 758.2L523.4 758.3M492.2 758.2L475.7 783.1M492.2 758.2L510.2 775.6M523.4 758.3L559.1 751.8M523.4 758.3L510.2 775.6M523.4 758.3L541.2 781.6M559.1 751.8L584.1 758.1M559.1 751.8L541.2 781.6M559.1 751.8L571 783.3M584.1 758.1L613.3 752.5M584.1 758.1L571 783.3M584.1 758.1L602.5 774.8M613.3 752.5L640.8 748.3M613.3 752.5L602.5 774.8M613.3 752.5L631.4 777.8M640.8 748.3L672.7 749.8M640.8 748.3L631.4 777.8M640.8 748.3L658.2 784.5M672.7 749.8L709.7 754.8M672.7 749.8L658.2 784.5M299.5 776L335.5 778.7M335.5 778.7L359.3 776.9M359.3 776.9L392.2 779.1M359.3 776.9L380.4 809M392.2 779.1L419 784.8M392.2 779.1L380.4 809M392.2 779.1L399.9 808.9M419 784.8L453.2 781.4M419 784.8L399.9 808.9M419 784.8L429.9 803.6M453.2 781.4L475.7 783.1M453.2 781.4L429.9 803.6M453.2 781.4L462 801.6M475.7 783.1L510.2 775.6M475.7 783.1L462 801.6M475.7 783.1L500 810.6M510.2 775.6L541.2 781.6M510.2 775.6L500 810.6M510.2 775.6L528.8 806.1M541.2 781.6L571 783.3M541.2 781.6L528.8 806.1M541.2 781.6L555.7 802.1M571 783.3L602.5 774.8M571 783.3L555.7 802.1M571 783.3L585.4 806.2M602.5 774.8L631.4 777.8M602.5 774.8L585.4 806.2M602.5 774.8L610.2 803.1M631.4 777.8L658.2 784.5M631.4 777.8L610.2 803.1M631.4 777.8L645.4 803.5M658.2 784.5L645.4 803.5M380.4 809L399.9 808.9M399.9 808.9L429.9 803.6M399.9 808.9L424 836.1M429.9 803.6L462 801.6M429.9 803.6L424 836.1M429.9 803.6L448.1 829.8M462 801.6L500 810.6M462 801.6L448.1 829.8M462 801.6L483.5 829.8M500 810.6L528.8 806.1M500 810.6L483.5 829.8M500 810.6L512.8 835.3M528.8 806.1L555.7 802.1M528.8 806.1L512.8 835.3M528.8 806.1L539.4 832.5M555.7 802.1L585.4 806.2M555.7 802.1L539.4 832.5M555.7 802.1L568.8 835.2M585.4 806.2L610.2 803.1M585.4 806.2L568.8 835.2M585.4 806.2L599.4 835.4M610.2 803.1L645.4 803.5M610.2 803.1L599.4 835.4M610.2 803.1L625.4 831.3M645.4 803.5L625.4 831.3M424 836.1L448.1 829.8M424 836.1L432.8 853.1M448.1 829.8L483.5 829.8M448.1 829.8L432.8 853.1M448.1 829.8L470.3 855.4M483.5 829.8L512.8 835.3M483.5 829.8L470.3 855.4M483.5 829.8L496.1 853.1M512.8 835.3L539.4 832.5M512.8 835.3L496.1 853.1M512.8 835.3L526.4 860.7M539.4 832.5L568.8 835.2M539.4 832.5L526.4 860.7M539.4 832.5L553.9 860.5M568.8 835.2L599.4 835.4M568.8 835.2L553.9 860.5M568.8 835.2L590.1 858.1M599.4 835.4L625.4 831.3M599.4 835.4L590.1 858.1M432.8 853.1L470.3 855.4M432.8 853.1L447.7 886.5M470.3 855.4L496.1 853.1M470.3 855.4L447.7 886.5M470.3 855.4L484.6 886.8M496.1 853.1L526.4 860.7M496.1 853.1L484.6 886.8M496.1 853.1L508.1 888M526.4 860.7L553.9 860.5M526.4 860.7L508.1 888M526.4 860.7L542.3 880.8M553.9 860.5L590.1 858.1M553.9 860.5L542.3 880.8M553.9 860.5L565.4 887.1M590.1 858.1L565.4 887.1M447.7 886.5L484.6 886.8M484.6 886.8L508.1 888M484.6 886.8L496.2 909M508.1 888L542.3 880.8M508.1 888L496.2 909M508.1 888L524.2 908.8M542.3 880.8L565.4 887.1M542.3 880.8L524.2 908.8M542.3 880.8L555.6 904M565.4 887.1L555.6 904M496.2 909L524.2 908.8M496.2 909L511.2 940.6M524.2 908.8L555.6 904M524.2 908.8L511.2 940.6M524.2 908.8L541.1 936.5M555.6 904L541.1 936.5M555.6 904L566.2 937.5M511.2 940.6L541.1 936.5M511.2 940.6L519.6 962M541.1 936.5L566.2 937.5M541.1 936.5L519.6 962M541.1 936.5L556.4 960.3M566.2 937.5L556.4 960.3M519.6 962L556.4 960.3M519.6 962L540.3 986.6M556.4 960.3L540.3 986.6"
+                      fill="none"
+                      stroke="rgba(214,198,160,0.16)"
+                      stroke-width="1"
+                      style="vector-effect: non-scaling-stroke"
+                    ></path>
+                    <path
+                      d="M150.1 51.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M179.1 46.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M103.2 80.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M135.6 73a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M159.7 75.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M197.5 81.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M224.6 78.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M254.7 83.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M61.7 100a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M91.1 106.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M113.6 106.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M151.8 106.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M179.2 102.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M206.5 100.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M237.6 99.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M266.4 101.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M298.8 103.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M331.1 102.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M69.3 129.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M108 132.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M131.3 133.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M164.4 134.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M193.1 133.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M224.9 125.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M250.7 127.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M284.6 132.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M313.5 131.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M342.2 128.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M91.7 156.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M120.7 150.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M151.4 155.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M181.9 151.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M206.3 156.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M240.3 154.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M272.9 153a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M301.3 150.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M325.9 154.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M355.9 154.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M393.6 156.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M655 156.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M684 155.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M712.8 152.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M749.6 161.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M777.5 153.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M106.2 186.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M136.5 178.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M167.3 181.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M194.3 178.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M217.9 178.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M248 184.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M284.9 182.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M311.9 176.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M343.6 179.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M372.1 178.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M405.9 177.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M433.2 179.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M467.5 181.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M495.8 186.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M609.2 182.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M647.6 184a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M674 184.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M708.5 179.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M737.9 179.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M763.5 185.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M123.4 206.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M145 213.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M178.1 204.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M205.8 211.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M238.9 206.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M273.2 209a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M298.3 205.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M328.6 213.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M363.5 206.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M384.2 212.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M421.3 204.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M452.3 211.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M482.5 202.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M504.1 211.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M535.2 209.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M569.8 203.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M596.7 203.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M630.8 212.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M659.6 207.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M693.3 209.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M712.9 203.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M750.2 209.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M135.6 235a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M167.2 238.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M194.1 233.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M221.9 236.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M254.5 230.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M281 233.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M314.5 238.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M342.8 238.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M368.1 236.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M407.5 237.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M434 232.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M458.1 232.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M497.4 231a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M526.7 230.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M548.1 239.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M586.2 239.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M617.3 233.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M639.9 233.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M671.1 239a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M700.1 238.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M731.7 232a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M148.2 261.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M182.2 258.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M206.4 265.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M242.3 257.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M269.9 256.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M303 262.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M324.9 262.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M353 264a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M391.4 264a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M415.8 261.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M453.5 260.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M483.6 262.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M512.6 254.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M542 264.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M572.9 258.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M598.7 263.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M628.9 259.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M656.6 258.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M689 258.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M713.9 254.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M129.6 291.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M165.8 284.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M198.4 288.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M223.9 283.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M251.3 284.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M287.4 283.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M318.4 289.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M343.5 290.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M368.6 288.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M405.4 288.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M434.7 283.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M458.5 287a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M490.9 284.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M521.3 287.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M549.9 287.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M584 288.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M614 285.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M646.2 282.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M670.5 284.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M699.3 280.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M147.1 314.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M177.1 317a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M206 310.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M241.1 306.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M263.9 313.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M295.4 310.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M326.4 308.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M355.4 307.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M386 306.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M415.2 314.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M445.3 315.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M476.7 308.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M512.8 314a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M541.2 306.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M568 316.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M600.1 312.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M623.6 308.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M652.9 317.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M684.1 316.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M716.9 309.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M130.2 337.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M165.9 335.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M196.7 337.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M225.7 340.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M257.4 337.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M288 340.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M315.7 337.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M338.9 341.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M374.7 342a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M408.1 334.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M430.9 340.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M464.7 341a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M491.2 341.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M522.6 339.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M554.2 339.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M588.5 338.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M608.8 342a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M645.1 342.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M674.6 341.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M701.2 334.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M115.9 368.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M143.2 364.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M176.7 362.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M213.2 360.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M238.7 362.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M267.2 367.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M302.2 366.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M330.6 361.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M360.5 360.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M389 367.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M413.3 361.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M443.8 358.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M481.9 359.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M504.6 364.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M537.8 365a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M566.3 368.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M602.1 365.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M627.7 365.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M653.8 361.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M692.2 359.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M716.3 368.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M99.4 387.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M132.1 391a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M164.5 393.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M193.4 394a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M226.3 394.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M251.8 387.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M279 388.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M314.7 394.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M346.8 394.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M375.1 389.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M408.4 388.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M428.3 392.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M458.4 389.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M492.8 393.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M528.6 394.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M549.4 393.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M586.8 389.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M614.9 388.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M639.6 388.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M672.6 390.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M702.4 389.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M89.7 420.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M115.3 411.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M145.5 413.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M175.9 420.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M211.7 418.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M236.9 417.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M265.1 415.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M296.4 413.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M330.3 411.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M362.6 418.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M387.1 418.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M416.4 416.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M450.6 414.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M479.7 418.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M511.3 415.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M535.5 411.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M570.4 414.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M597.9 416.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M627.1 410.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M663 413.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M683.2 413.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M717.7 410.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M72.8 442.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M106.7 445.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M128.9 442.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M163.3 443a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M195.5 443.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M221.3 442a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M249.2 441.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M286.7 441.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M316.5 443.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M341 445.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M370 445.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M401.9 444.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M433.7 446.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M460.7 444.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M492.9 439.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M521.4 440.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M552 436.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M588.3 438.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M608 447.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M647 437.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M672.5 443.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M700 442a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M57.7 465.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M86.7 469.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M121.1 465.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M144 468.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M177.3 470a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M212 464.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M236 472.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M269.2 464.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M299.1 466.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M322.8 468.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M356 471.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M392.9 465.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M423.4 469.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M448.3 472.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M478 469.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M507.5 462.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M534.4 470.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M568.3 466.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M598.2 469.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M623.7 471.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M658.3 469.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M687 470a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M713.6 470.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M39.7 495.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M74.6 494a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M98.5 493.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M131.6 497.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M160.3 498.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M197.8 492a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M225.2 492.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M248 495.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M286 494.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M317.1 491.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M343 496a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M370.1 490.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M401.9 496.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M432.7 496.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M461.7 497.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M496.8 496.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M526.2 491.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M553.7 495.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M582.3 493.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M610.7 490.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M642 494.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M676.5 498.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M706.1 492.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M58.4 523.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M87.1 515.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M122.8 523.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M146.1 521.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M180.6 515.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M210.9 515.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M239.9 522.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M269.8 519.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M300.5 514.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M331.4 522.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M358.1 521.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M382.7 522.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M419.4 516.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M447.8 519.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M481.2 520.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M511.9 514.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M538.5 524.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M567.1 521.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M594.4 519.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M633.5 519.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M652.8 522.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M689.9 519.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M713.7 519.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M48.4 543.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M72.4 544.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M105.1 549.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M130.5 546.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M167.5 541.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M197.3 550.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M226.4 546a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M249.7 543.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M284.4 540.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M314.1 544.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M342.9 543.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M368.7 540.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M403.7 550.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M431.6 545.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M466.8 540.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M492.2 546.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M527.6 545.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M557.8 543.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M587.9 545.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M612.7 545a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M639.4 542.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M675.5 548.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M702.6 541.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M23.6 574.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M63.6 569.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M93.1 569.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M117.5 570.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M153.1 570.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M182.2 568.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M206.9 570.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M239 575.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M265.4 574.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M302.9 576.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M327.5 568.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M357.3 570.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M387.2 571.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M420.2 576.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M443 569.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M480.2 567.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M507.3 570a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M535.8 576a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M572.7 568.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M593.2 575.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M627.6 571.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M662.2 569.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M683.4 568.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M713.9 568.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M43.9 602.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M75.8 598.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M108.6 596.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M137.3 601.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M158.8 601.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M189.8 592.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M227.4 600.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M252.5 594.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M280.2 598.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M316.4 597.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M343.1 594.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M368.4 602.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M407.4 595.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M437.8 592.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M468.2 601.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M493.1 597a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M521.6 600.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M556.6 594.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M582.2 593.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M608.8 596.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M641.6 599.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M671.3 595.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M707.6 600.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M27.8 621.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M62 622.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M83 627.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M122.6 627a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M146.5 624.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M176.6 625.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M211.7 624.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M242.4 625.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M271 625.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M295.5 621.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M326.7 621.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M356.7 627.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M392.9 621.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M417.6 624.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M453.6 621.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M480 628.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M511.1 621.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M533.1 618.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M569 621.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M593.1 623.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M629.6 627.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M656.8 624a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M688.3 628.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M721.5 625.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M72.2 652.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M104.5 644.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M137.4 653a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M167.5 651a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M197 645.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M220.2 644.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M255.8 653.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M285.2 649.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M316 650.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M343 645.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M371.9 651.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M399.1 655a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M434 645.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M460.8 648.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M498.1 648.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M526.3 644.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M550.4 652.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M578.6 648.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M615 646.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M647.1 647.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M669.5 651.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M701 650.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M730.1 650.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M115.2 672.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M153.5 680.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M182.6 680.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M210.9 675.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M241.7 675.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M273.2 680.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M298.2 679.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M328.3 673.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M352.8 674.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M386.9 679.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M417.9 673.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M451.1 674a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M475.8 675.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M507.6 680.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M541.3 676.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M570.9 676.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M603.6 679.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M628.6 679.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M656.4 670.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M686.5 680.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M714.1 678.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M745.1 676.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M162.7 706a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M197.8 700.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M218 705.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M254.7 701.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M282.3 700a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M318.5 700.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M341.4 696a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M371.1 706.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M400.4 703.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M428.5 705.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M468 706a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M493.6 705.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M523.5 703a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M552.3 699a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M583.1 701.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M618.2 706.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M644.8 706.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M674 699.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M706.1 700.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M734.7 696.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M767.4 697a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M212.3 727.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M241 724.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M272.2 726.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M301.7 722.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M329.4 729a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M354.4 725.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M385.7 731a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M420.5 724.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M450.3 725.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M476.5 723.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M511.6 731.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M542.8 730.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M568.2 725.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M595.7 726.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M633.1 722.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M657.6 731.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M692.8 723.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M719.1 722.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M253.8 750.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M278.1 758.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M317.7 757.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M344.9 750.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M373.3 758a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M401.6 758a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M428.6 748.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M464.2 748.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M490.4 758.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M521.6 758.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M557.3 751.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M582.3 758.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M611.5 752.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M639 748.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M670.9 749.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M707.9 754.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M297.7 776a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M333.7 778.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M357.5 776.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M390.4 779.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M417.2 784.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M451.4 781.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M473.9 783.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M508.4 775.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M539.4 781.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M569.2 783.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M600.7 774.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M629.6 777.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M656.4 784.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M378.6 809a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M398.1 808.9a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M428.1 803.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M460.2 801.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M498.2 810.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M527 806.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M553.9 802.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M583.6 806.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M608.4 803.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M643.6 803.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M422.2 836.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M446.3 829.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M481.7 829.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M511 835.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M537.6 832.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M567 835.2a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M597.6 835.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M623.6 831.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M431 853.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M468.5 855.4a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M494.3 853.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M524.6 860.7a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M552.1 860.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M588.3 858.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M445.9 886.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M482.8 886.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M506.3 888a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M540.5 880.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M563.6 887.1a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M494.4 909a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M522.4 908.8a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M553.8 904a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M509.4 940.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M539.3 936.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M564.4 937.5a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M517.8 962a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M554.6 960.3a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0M538.5 986.6a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0 -3.6 0"
+                      fill="rgba(214,198,160,0.4)"
+                    ></path>
+                  </svg>
+                  <div style="position: absolute; inset: 6%">
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 12.91%;
+                        top: 44.07%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 15.56%;
+                        top: 43.8%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.53s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 19.66%;
+                        top: 43.86%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.06s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 10.53%;
+                        top: 46.5%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.59s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 17.36%;
+                        top: 46.41%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.12s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 21.32%;
+                        top: 46.53%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.65s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 9.1%;
+                        top: 48.91%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.18s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 11.94%;
+                        top: 48.83%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.71s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 15.88%;
+                        top: 49.22%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.24s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 19.29%;
+                        top: 49.39%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.77s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 10.58%;
+                        top: 51.01%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.3s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 39.67%;
+                        top: 51.71%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.83s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 42.84%;
+                        top: 51.63%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.36s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 45.77%;
+                        top: 51.77%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.89s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 12.72%;
+                        top: 54.37%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.42s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 15.75%;
+                        top: 54.07%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.95s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 29.94%;
+                        top: 53.79%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.48s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 37.6%;
+                        top: 53.95%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.01s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 41.04%;
+                        top: 53.83%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.54s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 44.1%;
+                        top: 53.51%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.07s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 14.2%;
+                        top: 56.46%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.6s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 18.44%;
+                        top: 56.49%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.13s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 28.67%;
+                        top: 56.97%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.66s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 36.27%;
+                        top: 57.08%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.19s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 39.2%;
+                        top: 56.32%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.72s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 46.31%;
+                        top: 56.58%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.25s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 70.83%;
+                        top: 56.94%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.78s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 27.29%;
+                        top: 59.42%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.31s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 30.27%;
+                        top: 58.87%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.84s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 33.58%;
+                        top: 59.25%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.37s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 41.06%;
+                        top: 58.85%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.9s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 69.53%;
+                        top: 58.79%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.43s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 32.48%;
+                        top: 61.96%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.96s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 35.39%;
+                        top: 61.52%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.49s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 39.11%;
+                        top: 61.5%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.02s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 23.67%;
+                        top: 63.88%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.55s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 26.43%;
+                        top: 63.85%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.08s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 30.66%;
+                        top: 64.74%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.61s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 34.16%;
+                        top: 64.31%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.14s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 37.84%;
+                        top: 64.43%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.67s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 41.04%;
+                        top: 63.89%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.2s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 44.49%;
+                        top: 64.5%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.73s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 32.74%;
+                        top: 67.4%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.26s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 35.71%;
+                        top: 67.32%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.79s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 39.3%;
+                        top: 66.7%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.32s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 42.22%;
+                        top: 66.75%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.85s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 33.82%;
+                        top: 69.31%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.38s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 38.13%;
+                        top: 69.37%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.91s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 71.35%;
+                        top: 82.71%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.44s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 74.45%;
+                        top: 82.3%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 1.97s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 57.69%;
+                        top: 87.8%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 2.5s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 60.49%;
+                        top: 87.92%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.03s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 64.42%;
+                        top: 92.72%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 3.56s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 67.41%;
+                        top: 92.83%;
+                        width: 9px;
+                        height: 9px;
+                        margin: -4.5px 0 0 -4.5px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.09s infinite;
+                      "
+                    ></span>
+
+                    <span
+                      class="gp-anim"
+                      style="
+                        position: absolute;
+                        left: 66.23%;
+                        top: 95.08%;
+                        width: 6px;
+                        height: 6px;
+                        margin: -3px 0 0 -3px;
+                        border-radius: 50%;
+                        background: #a9c97a;
+                        box-shadow: 0 0 10px #a9c97aaa;
+                        animation: gpGlow 4s ease-in-out 0.62s infinite;
+                      "
+                    ></span>
+                  </div>
+                </div>
+
+                <!-- parcels (draw in) -->
+                <div
+                  style="
+                    position: absolute;
+                    inset: 0;
+                    opacity: var(--plots);
+                    transform: scale(calc(1.15 - 0.15 * var(--plots)));
+                    pointer-events: none;
+                  "
+                >
+                  <div
+                    style="
+                      position: absolute;
+                      left: 0;
+                      right: 0;
+                      top: 41%;
+                      height: 3%;
+                      background: #34382a;
+                      border-radius: 999px;
+                    "
+                  ></div>
+                  <div
+                    style="
+                      position: absolute;
+                      top: 0;
+                      bottom: 0;
+                      left: 51%;
+                      width: 3.6%;
+                      background: #34382a;
+                      border-radius: 999px;
+                    "
+                  ></div>
+                  <span
+                    style="
+                      position: absolute;
+                      left: 6%;
+                      top: 41.6%;
+                      font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                      font-size: 11px;
+                      letter-spacing: 0.1em;
+                      color: #b9b2a1;
+                    "
+                    >NAMANGA RD</span
+                  >
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 4%;
+                      top: 6%;
+                      width: 26%;
+                      height: 30%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.09);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 32%;
+                      top: 6%;
+                      width: 17%;
+                      height: 30%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.05);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 56%;
+                      top: 6%;
+                      width: 40%;
+                      height: 30%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.09);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 4%;
+                      top: 47%;
+                      width: 18%;
+                      height: 20%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.05);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 56%;
+                      top: 47%;
+                      width: 18%;
+                      height: 22%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.09);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 76%;
+                      top: 47%;
+                      width: 20%;
+                      height: 22%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.05);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 4%;
+                      top: 70%;
+                      width: 44%;
+                      height: 26%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.09);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 56%;
+                      top: 72%;
+                      width: 40%;
+                      height: 24%;
+                      border-radius: 6px;
+                      border: 1.5px solid rgba(196, 214, 160, 0.45);
+                      background: rgba(169, 201, 122, 0.05);
+                      clip-path: inset(
+                        0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0
+                      );
+                    "
+                  ></div>
+
+                  <div
+                    style="
+                      position: absolute;
+                      left: 24%;
+                      top: 47%;
+                      width: 24%;
+                      height: 20%;
+                      border-radius: 6px;
+                      border: 2.5px solid #a9c97a;
+                      background: rgba(169, 201, 122, calc(0.26 * var(--hi)));
+                      opacity: var(--hi);
+                    "
+                  ></div>
+                  <div
+                    style="
+                      position: absolute;
+                      left: calc(36% - 22px);
+                      top: calc(57% - 54px);
+                      width: 44px;
+                      height: 56px;
+                      opacity: var(--pin);
+                      transform: translateY(calc((1 - var(--pin)) * -140px));
+                    "
+                  >
+                    <svg width="44" height="56" viewBox="0 0 24 30" aria-hidden="true">
+                      <path
+                        d="M12 29s-10-8.6-10-16a10 10 0 0 1 20 0c0 7.4-10 16-10 16z"
+                        fill="#A9C97A"
+                        stroke="#15140F"
+                        stroke-width="1.2"
+                      ></path>
+                      <circle cx="12" cy="12.5" r="3.6" fill="#15140F"></circle>
+                    </svg>
+                  </div>
+                  <span
+                    style="
+                      position: absolute;
+                      left: 6%;
+                      top: 5%;
+                      font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                      font-size: 11px;
+                      letter-spacing: 0.1em;
+                      color: #b9b2a1;
+                    "
+                    >KITENGELA · KAJIADO COUNTY</span
+                  >
+                </div>
+
+                <!-- verified card -->
+                <div
+                  style="
+                    position: absolute;
+                    left: 6%;
+                    right: 6%;
+                    bottom: 6%;
+                    background: rgba(21, 20, 15, 0.9);
+                    border: 1px solid rgba(169, 201, 122, 0.35);
+                    border-radius: 20px;
+                    padding: 18px 20px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                    opacity: var(--card);
+                    transform: translateY(calc((1 - var(--card)) * 24px));
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      gap: 8px;
+                    "
+                  >
+                    <span
+                      style="
+                        font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                        font-size: 11px;
+                        color: #b9b2a1;
+                      "
+                      >PARCEL [LR NO.] · 1.47° S, 36.96° E</span
+                    >
+                    <span
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #15140f;
+                        background: #a9c97a;
+                        border-radius: 999px;
+                        padding: 4px 10px;
+                      "
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#15140F"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m5 12 5 5L20 7"></path>
+                      </svg>
+                      Verified
+                    </span>
+                  </div>
+                  <span
+                    style="
+                      font-family:
+                        &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                      font-weight: 700;
+                      font-size: 20px;
+                    "
+                    >1/8 acre plot, Kitengela</span
+                  >
+                  <span style="font-size: 14px; color: #b9b2a1"
+                    >[PRICE KES] · Message the owner</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATEMENT -->
+      <section
+        id="statement"
+        style="background: #f6f0e2; color: #1e2418; border-radius: 48px 48px 0 0"
+      >
+        <div
+          style="
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 200px 32px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+          "
+        >
+          <h2
+            class="gp-reveal"
+            style="
+              margin: 0;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 800;
+              font-size: clamp(44px, 7vw, 104px);
+              line-height: 1;
+              letter-spacing: -0.04em;
+            "
+          >
+            Know the land<br /><span
+              style="position: relative; display: inline-block; color: #3f5a2a"
+              >before you sign.<svg
+                class="gp-ink-scroll"
+                viewBox="0 0 320 24"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+                style="
+                  position: absolute;
+                  left: -1%;
+                  bottom: -0.14em;
+                  width: 102%;
+                  height: 0.26em;
+                  overflow: visible;
+                  stroke-dasharray: 420;
+                "
+              >
+                <path
+                  d="M4 12 C 70 20, 150 4, 220 10 S 300 14, 316 6"
+                  fill="none"
+                  stroke="#6E8B47"
+                  stroke-width="7"
+                  stroke-linecap="round"
+                ></path></svg
+            ></span>
+          </h2>
+          <p
+            class="gp-reveal"
+            style="margin: 0; font-size: 21px; line-height: 1.55; color: #56594a; max-width: 600px"
+          >
+            Every listing sits on its surveyed boundary, with its verification status right beside
+            it.
+          </p>
+          <span
+            class="gp-reveal"
+            style="
+              font-family: &quot;Caveat&quot;, &quot;Segoe Print&quot;, cursive;
+              font-weight: 700;
+              font-size: 30px;
+              color: #3f5a2a;
+              transform: rotate(-3deg);
+            "
+            >we check, so you can breathe easy ✓</span
+          >
+        </div>
+      </section>
+
+      <!-- LISTINGS -->
+      <section
+        id="listings"
+        style="background: #f6f0e2; color: #1e2418; border-radius: 0 0 48px 48px"
+      >
+        <div
+          style="
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px 160px;
+            display: flex;
+            flex-direction: column;
+            gap: 48px;
+          "
+        >
+          <div
+            class="gp-reveal"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 16px;
+              justify-content: space-between;
+              align-items: flex-end;
+            "
+          >
+            <div style="display: flex; align-items: flex-start; gap: 10px">
+              <h2
+                style="
+                  margin: 0;
+                  font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                  font-weight: 800;
+                  font-size: clamp(32px, 4vw, 52px);
+                  letter-spacing: -0.03em;
+                "
+              >
+                Fresh on the map.
+              </h2>
+              <svg
+                width="34"
+                height="34"
+                viewBox="0 0 34 34"
+                fill="none"
+                aria-hidden="true"
+                style="transform: rotate(12deg)"
+              >
+                <path
+                  d="M17 3 C 18 12, 20 15, 31 17 C 20 19, 18 22, 17 31 C 16 22, 14 19, 3 17 C 14 15, 16 12, 17 3 Z"
+                  stroke="#3F5A2A"
+                  stroke-width="2.4"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+            <a
+              href="#story"
+              style="color: #3f5a2a; font-weight: 600; font-size: 17px; padding: 12px 0"
+              >View all listings ›</a
+            >
+          </div>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+              gap: 24px;
+            "
+          >
+            <a
+              href="#listing"
+              class="gp-reveal"
+              style="
+                text-decoration: none;
+                color: #1e2418;
+                background: #fffaf2;
+                border-radius: 36px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                box-shadow: 0 2px 0 rgba(63, 90, 42, 0.08);
+              "
+            >
+              <div
+                style="
+                  height: 250px;
+                  border-radius: 28px;
+                  background: repeating-linear-gradient(135deg, #ede5d2 0 12px, #e4dac3 12px 24px);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
+              >
+                <span
+                  style="
+                    font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                    font-size: 12px;
+                    color: #56594a;
+                    background: rgba(255, 250, 242, 0.9);
+                    padding: 6px 12px;
+                    border-radius: 999px;
+                  "
+                  >[LISTING PHOTO]</span
+                >
+              </div>
+              <div style="padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 6px">
+                <span
+                  style="
+                    align-self: flex-start;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #3f5a2a;
+                    background: #e3ebd3;
+                    border-radius: 999px;
+                    padding: 4px 12px;
+                  "
+                  >Land</span
+                >
+                <span
+                  style="
+                    font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                    font-weight: 700;
+                    font-size: 23px;
+                  "
+                  >1/8 acre plot</span
+                >
+                <span style="font-size: 16px; color: #56594a">Kitengela, Kajiado County</span>
+                <span style="font-size: 17px; font-weight: 600; margin-top: 10px">[PRICE KES]</span>
+              </div>
+            </a>
+
+            <a
+              href="#listing"
+              class="gp-reveal"
+              style="
+                text-decoration: none;
+                color: #1e2418;
+                background: #fffaf2;
+                border-radius: 36px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                box-shadow: 0 2px 0 rgba(63, 90, 42, 0.08);
+              "
+            >
+              <div
+                style="
+                  height: 250px;
+                  border-radius: 28px;
+                  background: repeating-linear-gradient(135deg, #ede5d2 0 12px, #e4dac3 12px 24px);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
+              >
+                <span
+                  style="
+                    font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                    font-size: 12px;
+                    color: #56594a;
+                    background: rgba(255, 250, 242, 0.9);
+                    padding: 6px 12px;
+                    border-radius: 999px;
+                  "
+                  >[LISTING PHOTO]</span
+                >
+              </div>
+              <div style="padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 6px">
+                <span
+                  style="
+                    align-self: flex-start;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #3f5a2a;
+                    background: #e3ebd3;
+                    border-radius: 999px;
+                    padding: 4px 12px;
+                  "
+                  >For sale</span
+                >
+                <span
+                  style="
+                    font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                    font-weight: 700;
+                    font-size: 23px;
+                  "
+                  >3-bedroom house</span
+                >
+                <span style="font-size: 16px; color: #56594a">Ruiru, Kiambu County</span>
+                <span style="font-size: 17px; font-weight: 600; margin-top: 10px">[PRICE KES]</span>
+              </div>
+            </a>
+
+            <a
+              href="#listing"
+              class="gp-reveal"
+              style="
+                text-decoration: none;
+                color: #1e2418;
+                background: #fffaf2;
+                border-radius: 36px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                box-shadow: 0 2px 0 rgba(63, 90, 42, 0.08);
+              "
+            >
+              <div
+                style="
+                  height: 250px;
+                  border-radius: 28px;
+                  background: repeating-linear-gradient(135deg, #ede5d2 0 12px, #e4dac3 12px 24px);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
+              >
+                <span
+                  style="
+                    font-family: &quot;IBM Plex Mono&quot;, ui-monospace, monospace;
+                    font-size: 12px;
+                    color: #56594a;
+                    background: rgba(255, 250, 242, 0.9);
+                    padding: 6px 12px;
+                    border-radius: 999px;
+                  "
+                  >[LISTING PHOTO]</span
+                >
+              </div>
+              <div style="padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 6px">
+                <span
+                  style="
+                    align-self: flex-start;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #3f5a2a;
+                    background: #e3ebd3;
+                    border-radius: 999px;
+                    padding: 4px 12px;
+                  "
+                  >Rental</span
+                >
+                <span
+                  style="
+                    font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+                    font-weight: 700;
+                    font-size: 23px;
+                  "
+                  >2-bedroom apartment</span
+                >
+                <span style="font-size: 16px; color: #56594a">Kilimani, Nairobi</span>
+                <span style="font-size: 17px; font-weight: 600; margin-top: 10px"
+                  >[RENT KES] / month</span
+                >
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section style="background: #15140f">
+        <div
+          style="
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 160px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 64px;
+          "
+        >
+          <h2
+            class="gp-reveal"
+            style="
+              margin: 0;
+              text-align: center;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 800;
+              font-size: clamp(36px, 5vw, 72px);
+              line-height: 1;
+              letter-spacing: -0.035em;
+            "
+          >
+            More than listings.<br /><span style="color: #a9c97a">Land intelligence.</span>
+          </h2>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+              gap: 48px 40px;
+            "
+          >
+            <div class="gp-reveal" style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  width: 64px;
+                  height: 64px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: #f1e7d2;
+                  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+                "
+                ><svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#2F4520"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"></path>
+                  <path d="M9 3v15M15 6v15"></path></svg
+              ></span>
+              <h3 style="margin: 0; font-size: 21px; font-weight: 600">Plotted parcel maps</h3>
+              <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #b9b2a1">
+                Boundaries on the map, not in a caption.
+              </p>
+            </div>
+            <div class="gp-reveal" style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  width: 64px;
+                  height: 64px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: #f1e7d2;
+                  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+                "
+                ><svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#2F4520"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path>
+                  <path d="m8.5 12 2.5 2.5 4.5-5"></path></svg
+              ></span>
+              <h3 style="margin: 0; font-size: 21px; font-weight: 600">Verified properties</h3>
+              <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #b9b2a1">
+                A clear badge on every checked listing.
+              </p>
+            </div>
+            <div class="gp-reveal" style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  width: 64px;
+                  height: 64px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: #f1e7d2;
+                  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+                "
+                ><svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#2F4520"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 11l9-7 9 7"></path>
+                  <path d="M5 10v10h14V10"></path>
+                  <path d="M10 20v-6h4v6"></path></svg
+              ></span>
+              <h3 style="margin: 0; font-size: 21px; font-weight: 600">Rentals near you</h3>
+              <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #b9b2a1">
+                By neighbourhood, commute and budget.
+              </p>
+            </div>
+            <div class="gp-reveal" style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  width: 64px;
+                  height: 64px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: #f1e7d2;
+                  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+                "
+                ><svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#2F4520"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg
+              ></span>
+              <h3 style="margin: 0; font-size: 21px; font-weight: 600">Area insights</h3>
+              <p style="margin: 0; font-size: 16px; line-height: 1.55; color: #b9b2a1">
+                Roads, water, power and zoning around any pin.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section id="list" style="background: #15140f; padding: 0 24px 120px">
+        <div
+          style="
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 140px 32px;
+            border-radius: 56px;
+            background: #3f5a2a;
+            color: #fff6ea;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+          "
+        >
+          <svg
+            class="gp-doodle"
+            width="64"
+            height="64"
+            viewBox="0 0 34 34"
+            fill="none"
+            aria-hidden="true"
+            style="position: absolute; left: 9%; top: 18%; transform: rotate(-14deg)"
+          >
+            <path
+              d="M17 3 C 18 12, 20 15, 31 17 C 20 19, 18 22, 17 31 C 16 22, 14 19, 3 17 C 14 15, 16 12, 17 3 Z"
+              stroke="#F1E7D2"
+              stroke-width="2"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+          <svg
+            class="gp-doodle"
+            width="40"
+            height="40"
+            viewBox="0 0 34 34"
+            fill="none"
+            aria-hidden="true"
+            style="position: absolute; right: 12%; bottom: 22%; transform: rotate(10deg)"
+          >
+            <path
+              d="M17 3 C 18 12, 20 15, 31 17 C 20 19, 18 22, 17 31 C 16 22, 14 19, 3 17 C 14 15, 16 12, 17 3 Z"
+              stroke="#F1E7D2"
+              stroke-width="2.4"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+          <div
+            class="gp-doodle"
+            aria-hidden="true"
+            style="
+              position: absolute;
+              right: 13%;
+              top: 54%;
+              display: flex;
+              flex-direction: column;
+              align-items: flex-start;
+              pointer-events: none;
+            "
+          >
+            <svg
+              width="110"
+              height="56"
+              viewBox="0 0 110 56"
+              fill="none"
+              style="transform: scaleX(-1)"
+            >
+              <path
+                d="M4 50 C 30 46, 60 30, 84 8"
+                stroke="#F1E7D2"
+                stroke-width="3"
+                stroke-linecap="round"
+              ></path>
+              <path
+                d="M70 10 L 85 7 L 84 22"
+                stroke="#F1E7D2"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+            <span
+              style="
+                font-family: &quot;Caveat&quot;, &quot;Segoe Print&quot;, cursive;
+                font-weight: 700;
+                font-size: 28px;
+                color: #f1e7d2;
+                transform: rotate(-4deg);
+                margin-left: 40px;
+              "
+              >start here</span
+            >
+          </div>
+          <h2
+            class="gp-reveal"
+            style="
+              margin: 0;
+              font-family: &quot;Bricolage Grotesque&quot;, &quot;Segoe UI&quot;, sans-serif;
+              font-weight: 800;
+              font-size: clamp(40px, 6vw, 88px);
+              line-height: 0.96;
+              letter-spacing: -0.04em;
+            "
+          >
+            Own land?<br />Put it on the map.
+          </h2>
+          <div
+            class="gp-reveal"
+            style="display: flex; flex-wrap: wrap; justify-content: center; gap: 14px"
+          >
+            <a
+              href="#signup"
+              style="
+                background: #fff6ea;
+                color: #2f4520;
+                text-decoration: none;
+                font-weight: 600;
+                padding: 17px 32px;
+                border-radius: 999px;
+                font-size: 17px;
+              "
+              >List a property</a
+            >
+            <a
+              href="#agents"
+              style="
+                color: #fff6ea;
+                text-decoration: none;
+                font-weight: 600;
+                padding: 17px 28px;
+                border-radius: 999px;
+                font-size: 17px;
+                border: 1.5px solid rgba(255, 246, 234, 0.6);
+              "
+              >For agents ›</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer style="background: #15140f; border-top: 1px solid rgba(244, 238, 226, 0.08)">
+        <div
+          style="
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 28px 32px 36px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 32px;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #b9b2a1;
+          "
+        >
+          <span>© [YEAR] Geo Pin Properties Kenya · Find. Connect. Own.</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 24px">
+            <a href="#about" style="color: #b9b2a1; text-decoration: none">About</a>
+            <a href="#statement" style="color: #b9b2a1; text-decoration: none">Verification</a>
+            <a href="#contact" style="color: #b9b2a1; text-decoration: none">Contact</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        var story = document.getElementById("story");
+        var stageH = 820,
+          scrollMode = true,
+          loop = null;
+        var reduced = false;
+        try {
+          reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        } catch (e) {}
+
+        function setVars(p) {
+          function ramp(a, b) {
+            var x = Math.min(1, Math.max(0, (p - a) / (b - a)));
+            return x * x * (3 - 2 * x);
+          }
+          function bump(c, w) {
+            return Math.min(1, Math.max(0, (w - Math.abs(p - c)) / 0.05));
+          }
+          var v = {
+            "--p": p,
+            "--z": ramp(0.2, 0.46),
+            "--plots": ramp(0.43, 0.6),
+            "--mesh": 1 - 0.92 * ramp(0.45, 0.6),
+            "--hi": ramp(0.62, 0.7),
+            "--pin": ramp(0.66, 0.77),
+            "--card": ramp(0.75, 0.86),
+            "--t0": p < 0.08 ? 1 : bump(0.08, 0.14),
+            "--t1": bump(0.33, 0.1),
+            "--t2": bump(0.53, 0.08),
+            "--t3": p > 0.84 ? 1 : bump(0.84, 0.16),
+          };
+          for (var k in v) story.style.setProperty(k, String(Math.round(v[k] * 1000) / 1000));
+        }
+        function update() {
+          var r = story.getBoundingClientRect();
+          var span = r.height - stageH;
+          setVars(span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 0);
+        }
+        function measure() {
+          stageH = window.innerHeight || 820;
+          story.style.setProperty("--stage-h", stageH + "px");
+          story.style.setProperty("--story-len", "4");
+          update();
+        }
+        var raf = null;
+        window.addEventListener(
+          "scroll",
+          function () {
+            if (raf) return;
+            raf = requestAnimationFrame(function () {
+              raf = null;
+              update();
+            });
+          },
+          { passive: true },
+        );
+        window.addEventListener("resize", measure);
+        measure();
+
+        // search tabs
+        var hints = [
+          "County, town or parcel number",
+          "Neighbourhood or estate",
+          "Where do you want to live?",
+        ];
+        var tabs = document.querySelectorAll('[role="tab"]');
+        var styleOn =
+          "border: 0; font: inherit; font-size: 15px; font-weight: 600; border-radius: 999px; padding: 0 20px; min-height: 44px; cursor: pointer; background: #F1E7D2; color: #1E2418;";
+        var styleOff =
+          "border: 0; font: inherit; font-size: 15px; font-weight: 600; border-radius: 999px; padding: 0 20px; min-height: 44px; cursor: pointer; background: transparent; color: #B9B2A1;";
+        tabs.forEach(function (btn, i) {
+          btn.addEventListener("click", function () {
+            tabs.forEach(function (b, j) {
+              b.setAttribute("style", j === i ? styleOn : styleOff);
+              b.setAttribute("aria-selected", j === i ? "true" : "false");
+            });
+            document.getElementById("loc3").setAttribute("placeholder", hints[i]);
+          });
+        });
+
+        // mobile menu
+        var menuBtn = document.querySelector('[aria-controls="gp-menu"]');
+        var menu = document.getElementById("gp-menu");
+        var bars = menuBtn.querySelectorAll("span");
+        var barBase =
+          "display: block; width: 20px; height: 2px; border-radius: 2px; background: #F4EEE2; transition: transform .3s cubic-bezier(.2,.7,.2,1); ";
+        function setMenu(open) {
+          menu.hidden = !open;
+          menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+          menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+          bars[0].setAttribute(
+            "style",
+            barBase + (open ? "transform: translateY(4px) rotate(45deg);" : ""),
+          );
+          bars[1].setAttribute(
+            "style",
+            barBase + (open ? "transform: translateY(-4px) rotate(-45deg);" : ""),
+          );
+        }
+        menuBtn.addEventListener("click", function () {
+          setMenu(menu.hidden);
+        });
+        menu.querySelectorAll("a").forEach(function (a) {
+          a.addEventListener("click", function () {
+            setMenu(false);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

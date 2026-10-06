@@ -20,7 +20,7 @@ export function CtaBand() {
             size="lg"
             className="h-11 bg-white px-6 text-base text-primary hover:bg-white/90"
           >
-            <Link to="/land">Explore the map</Link>
+            <Link to="/explore">Explore the map</Link>
           </Button>
           <Button
             asChild

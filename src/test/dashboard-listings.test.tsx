@@ -50,7 +50,7 @@ vi.mock("@/lib/plans", () => ({ usePlans: () => ({ data: [] }), addOns: [] }));
 
 vi.mock("@/components/LandBoundaryMap", () => ({ LandBoundaryMap: () => <div /> }));
 
-const { ListingsTab } = await import("../routes/dashboard.index");
+const { ListingsTab } = await import("@/components/dashboard/ListingsTab");
 
 const land: UserListing = {
   id: "l-1",
@@ -84,7 +84,7 @@ const property: MyProperty = {
 const user = { listings: [land], customReports: false } as unknown as AppUser;
 
 /** The mobile card list — one entry per visible row. */
-const cards = (c: HTMLElement) => Array.from(c.querySelectorAll("div.md\\:hidden > div"));
+const cards = (c: HTMLElement) => Array.from(c.querySelectorAll("ul.md\\:hidden > li"));
 
 describe("ListingsTab — land and rentals in one list", () => {
   beforeEach(() => {
@@ -131,6 +131,19 @@ describe("ListingsTab — land and rentals in one list", () => {
     expect(rental.queryByTitle("Edit")).not.toBeInTheDocument();
     expect(rental.getByTitle("Mark as taken")).toBeInTheDocument();
   });
+
+  /** View counts are an analytics metric, which is part of the paid plan. */
+  it("shows view counts only with analytics access", () => {
+    const { unmount } = render(<ListingsTab />);
+    expect(screen.queryByRole("columnheader", { name: "Views" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/40 views/)).not.toBeInTheDocument();
+    unmount();
+
+    mockUser.mockReturnValue({ ...user, analyticsAccess: true });
+    render(<ListingsTab />);
+    expect(screen.getByRole("columnheader", { name: "Views" })).toBeInTheDocument();
+    expect(screen.getByText(/40 views/)).toBeInTheDocument();
+  });
 });
 
 describe("ListingsTab — confirmations", () => {
@@ -154,14 +167,14 @@ describe("ListingsTab — confirmations", () => {
 
     await userEvent.click(screen.getAllByLabelText(`Delete ${property.title}`)[0]);
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }),
     );
     expect(mockDeleteProperty).toHaveBeenCalledWith(property.id);
     expect(mockRemoveListing).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getAllByLabelText(`Delete ${land.parcelNumber}`)[0]);
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }),
     );
     expect(mockRemoveListing).toHaveBeenCalledWith(land.id);
   });
@@ -171,11 +184,22 @@ describe("ListingsTab — confirmations", () => {
 
     await userEvent.click(screen.getAllByLabelText(`Delete ${land.parcelNumber}`)[0]);
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }),
     );
 
     expect(mockRemoveListing).not.toHaveBeenCalled();
     expect(screen.queryByText("Delete this listing?")).not.toBeInTheDocument();
+  });
+
+  it("closes on Escape without deleting", async () => {
+    render(<ListingsTab />);
+
+    await userEvent.click(screen.getAllByLabelText(`Delete ${land.parcelNumber}`)[0]);
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mockRemoveListing).not.toHaveBeenCalled();
   });
 
   /**
@@ -189,7 +213,7 @@ describe("ListingsTab — confirmations", () => {
     expect(mockMarkTaken).not.toHaveBeenCalled();
 
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as taken" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as taken" }),
     );
     expect(mockMarkTaken).toHaveBeenCalledWith(property.id);
   });
@@ -201,7 +225,7 @@ describe("ListingsTab — confirmations", () => {
     expect(mockMarkSold).not.toHaveBeenCalled();
 
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as sold" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as sold" }),
     );
     expect(mockMarkSold).toHaveBeenCalledWith(land.id);
   });

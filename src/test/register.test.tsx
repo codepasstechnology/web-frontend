@@ -44,7 +44,7 @@ describe("RegisterPage — open_signups", () => {
 
   it("renders the form while sign-ups are open", () => {
     render(<RegisterPage />);
-    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /create your account/i })).toBeInTheDocument();
     expect(screen.getByTestId("google-button")).toBeInTheDocument();
   });
 
@@ -53,7 +53,7 @@ describe("RegisterPage — open_signups", () => {
     render(<RegisterPage />);
 
     expect(screen.getByText(/registrations are closed/i)).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText("you@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /create your account/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("google-button")).not.toBeInTheDocument();
   });
 
@@ -63,6 +63,6 @@ describe("RegisterPage — open_signups", () => {
     mockSignupsOpen.mockReturnValue(true);
     render(<RegisterPage />);
 
-    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /create your account/i })).toBeInTheDocument();
   });
 });

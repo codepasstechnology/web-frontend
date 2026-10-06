@@ -9,10 +9,16 @@ import {
   ShieldCheck,
   MoreHorizontal,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
 import { Navbar } from "@/components/Navbar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type DashTab =
   "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
@@ -57,28 +63,23 @@ const items: { id: DashTab; label: string; short: string; icon: ReactNode }[] = 
  * width, so the pill sizes itself to whatever text it holds without anything
  * having to measure it first.
  */
-function NavPill({
-  icon,
-  label,
-  short,
-  expanded,
-  onClick,
-  ...rest
-}: {
-  icon: ReactNode;
-  label: string;
-  short: string;
-  expanded: boolean;
-  onClick: () => void;
-} & React.ComponentPropsWithoutRef<"button">) {
+const NavPill = forwardRef<
+  HTMLButtonElement,
+  {
+    icon: ReactNode;
+    label: string;
+    short: string;
+    expanded: boolean;
+  } & React.ComponentPropsWithoutRef<"button">
+>(function NavPill({ icon, label, short, expanded, className, ...rest }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
-      onClick={onClick}
       aria-label={label}
       className={`flex h-11 items-center rounded-full transition-colors duration-300 ease-in-out motion-reduce:transition-none ${
         expanded ? "min-w-0 bg-brand/10 pl-1.5 pr-3" : "w-11 shrink-0 justify-center hover:bg-muted"
-      }`}
+      } ${className ?? ""}`}
       {...rest}
     >
       <span
@@ -103,7 +104,7 @@ function NavPill({
       </span>
     </button>
   );
-}
+});
 
 // The mobile bottom nav only has room for a handful of comfortable tap
 // targets — the rest live behind "More" so none of them end up as an
@@ -120,12 +121,9 @@ interface Props {
 export function DashboardShell({ active, onChange, children }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
   const overflowActive = mobileOverflowItems.find((it) => it.id === active);
 
   const handleSelect = (t: DashTab) => {
-    setMoreOpen(false);
     if (t === "upload") {
       navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } });
       return;
@@ -133,14 +131,6 @@ export function DashboardShell({ active, onChange, children }: Props) {
     onChange?.(t);
     navigate({ to: "/dashboard", search: { tab: t } });
   };
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,6 +146,7 @@ export function DashboardShell({ active, onChange, children }: Props) {
                 <button
                   key={it.id}
                   onClick={() => handleSelect(it.id)}
+                  aria-current={isActive ? "page" : undefined}
                   className={`mb-1 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-brand/10 text-brand"
@@ -190,36 +181,38 @@ export function DashboardShell({ active, onChange, children }: Props) {
               onClick={() => handleSelect(it.id)}
             />
           ))}
-          <div ref={moreRef} className="relative">
-            <NavPill
-              icon={<MoreHorizontal className="h-4 w-4" />}
-              label="More sections"
-              short={overflowActive?.short ?? "More"}
-              expanded={!!overflowActive}
-              aria-haspopup="menu"
-              aria-expanded={moreOpen}
-              onClick={() => setMoreOpen((v) => !v)}
-            />
-            {moreOpen && (
-              <div className="absolute bottom-full right-0 z-30 mb-2 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-                {mobileOverflowItems.map((it) => {
-                  const isActive = it.id === active;
-                  return (
-                    <button
-                      key={it.id}
-                      onClick={() => handleSelect(it.id)}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                        isActive ? "bg-brand/10 text-brand" : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {it.icon}
-                      {it.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <NavPill
+                icon={<MoreHorizontal className="h-4 w-4" />}
+                label="More sections"
+                short={overflowActive?.short ?? "More"}
+                expanded={!!overflowActive}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              align="end"
+              sideOffset={10}
+              className="w-52 rounded-xl p-1.5"
+            >
+              {mobileOverflowItems.map((it) => (
+                <DropdownMenuItem
+                  key={it.id}
+                  onSelect={() => handleSelect(it.id)}
+                  aria-current={it.id === active ? "page" : undefined}
+                  className={`gap-2.5 rounded-lg px-3 py-2.5 font-medium ${
+                    it.id === active
+                      ? "bg-brand/10 text-brand focus:bg-brand/10 focus:text-brand"
+                      : ""
+                  }`}
+                >
+                  {it.icon}
+                  {it.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
       </div>
 

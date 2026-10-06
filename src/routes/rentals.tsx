@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { List, X, SlidersHorizontal } from "lucide-react";
-import { LandMap } from "@/components/LandMap";
-import { MapSearchBar } from "@/components/MapSearchBar";
+import { LandMap } from "@/components/map/LazyMaps";
+import { MapSearchBar } from "@/components/map/LazyMaps";
 import { RentalPanel } from "@/components/PropertyPanel";
 import {
   usePublicProperties,
@@ -88,7 +88,7 @@ function RentalsPage() {
     setFilters((f) => ({ ...f, [key]: value }));
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-[calc(100dvh-3.5rem-1px)] flex-col bg-background sm:h-[calc(100dvh-4rem-1px)]">
       <div className="relative flex flex-1 overflow-hidden">
         {isMobile && !listOpen && (
           <button
