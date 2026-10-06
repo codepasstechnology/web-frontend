@@ -5,6 +5,7 @@ import { LoadingScreen } from "@/components/auth/LoadingScreen";
 import { LoadingPage } from "../routes/loading";
 
 const mockNavigate = vi.fn();
+const mockRouter = { preloadRoute: vi.fn(() => Promise.resolve()) };
 const auth = {
   user: { fullName: "Wanjiku Kamau", role: "individual" } as {
     fullName: string;
@@ -16,6 +17,7 @@ const auth = {
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: object) => ({ ...opts, useSearch: () => ({ mode: "login" }) }),
   useNavigate: () => mockNavigate,
+  useRouter: () => mockRouter,
 }));
 
 vi.mock("@/lib/auth", () => ({ useAuth: () => auth }));
@@ -50,6 +52,7 @@ describe("loading route", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockNavigate.mockReset();
+    mockRouter.preloadRoute.mockClear();
     auth.user = { fullName: "Wanjiku Kamau", role: "individual" };
     auth.ready = true;
   });
@@ -58,20 +61,37 @@ describe("loading route", () => {
     vi.useRealTimers();
   });
 
-  it("waits at least 1.5s, fades, then opens the dashboard", () => {
+  it("waits at least 1.5s, fades, then opens the dashboard", async () => {
     render(<LoadingPage />);
-    act(() => vi.advanceTimersByTime(1500));
+    await act(() => vi.advanceTimersByTimeAsync(1499));
     expect(mockNavigate).not.toHaveBeenCalled();
-    act(() => vi.advanceTimersByTime(400));
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    await act(() => vi.advanceTimersByTimeAsync(400));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard", search: { tab: undefined } });
   });
 
-  it("sends account managers to the manager page", () => {
+  it("sends account managers to the manager page", async () => {
     auth.user = { fullName: "Ada", role: "account_manager" };
     render(<LoadingPage />);
-    act(() => vi.advanceTimersByTime(1500));
-    act(() => vi.advanceTimersByTime(400));
+    await act(() => vi.advanceTimersByTimeAsync(1500));
+    await act(() => vi.advanceTimersByTimeAsync(400));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/manager" });
+  });
+
+  it("waits for the dashboard code to load before fading", async () => {
+    let finishPreload: () => void = () => {};
+    mockRouter.preloadRoute.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishPreload = resolve;
+      }),
+    );
+    render(<LoadingPage />);
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    await act(async () => finishPreload());
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    await act(() => vi.advanceTimersByTimeAsync(400));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard", search: { tab: undefined } });
   });
 
   it("returns to sign-in when there is no signed-in user", () => {

@@ -50,7 +50,7 @@ export function LoginPage() {
 
   const goToDashboard = () => {
     setBusy("success");
-    window.setTimeout(() => navigate({ to: "/loading", search: { mode: "login" } }), 380);
+    navigate({ to: "/loading", search: { mode: "login" } });
   };
 
   const readError = (err: unknown, fallback: string) => {

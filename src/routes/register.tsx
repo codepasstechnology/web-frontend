@@ -201,8 +201,7 @@ export function RegisterPage() {
         password: form.password,
         role: API_ROLE[form.goal],
       });
-      setBusy("success");
-      window.setTimeout(() => navigate({ to: "/loading", search: { mode: "signup" } }), 380);
+      navigate({ to: "/loading", search: { mode: "signup" } });
     } catch (error: unknown) {
       const e = error as { errors?: Record<string, string[]>; message?: string };
       const msg = Object.values(e?.errors ?? {})[0]?.[0];
