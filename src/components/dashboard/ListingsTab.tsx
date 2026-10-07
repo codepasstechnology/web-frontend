@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Download, MoreHorizontal, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { ChevronRight, Download, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import {
   useMyProperties,
   useDeleteProperty,
@@ -25,13 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ListingPreviewDialog } from "@/components/dashboard/ListingPreviewDialog";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const LAND_STATUS_VARIANT: Record<string, "success" | "warning" | "secondary"> = {
@@ -97,6 +91,7 @@ export function ListingsTab() {
   const [takenTarget, setTakenTarget] = useState<ListingRow | null>(null);
   const [taking, setTaking] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<ListingRow | null>(null);
   const showViews = Boolean(user?.analyticsAccess);
 
   const userListings = user?.listings;
@@ -189,7 +184,7 @@ export function ListingsTab() {
   const closeLabel = (r: ListingRow) => (r.kind === "land" ? "Mark as sold" : "Mark as taken");
 
   const rowActions = (r: ListingRow) => (
-    <div className="flex justify-end gap-1">
+    <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       {canClose(r) && (
         <Button
           variant="ghost"
@@ -327,12 +322,22 @@ export function ListingsTab() {
               </TableHeader>
               <TableBody>
                 {visible.map((r) => (
-                  <TableRow key={`${r.kind}-${r.id}`}>
+                  <TableRow
+                    key={`${r.kind}-${r.id}`}
+                    onClick={() => setPreviewTarget(r)}
+                    className="cursor-pointer"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {thumb(r, "h-9 w-12")}
                         <div className="min-w-0">
-                          <div className="font-medium">{r.name}</div>
+                          <button
+                            type="button"
+                            aria-label={`View ${r.name}`}
+                            className="text-left font-medium hover:underline focus-visible:underline focus-visible:outline-none"
+                          >
+                            {r.name}
+                          </button>
                           <div className="text-xs text-muted-foreground">{r.sub}</div>
                         </div>
                       </div>
@@ -358,55 +363,61 @@ export function ListingsTab() {
           <ul className="divide-y divide-border md:hidden">
             {visible.map((r) => (
               <li key={`${r.kind}-${r.id}`}>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
-                    >
-                      <div className="flex items-center gap-3">
-                        {thumb(r, "h-12 w-16")}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{r.name}</div>
-                          <div className="truncate text-xs text-muted-foreground">{r.sub}</div>
-                        </div>
-                        <RowStatus row={r} />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <KindChip kind={r.kind} />
-                          {showViews && `${r.views} views · `}
-                          {r.createdAt}
-                        </span>
-                        <MoreHorizontal aria-hidden className="h-4 w-4" />
-                      </div>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {canClose(r) && (
-                      <DropdownMenuItem onSelect={() => setTakenTarget(r)}>
-                        <Tag /> {closeLabel(r)}
-                      </DropdownMenuItem>
-                    )}
-                    {r.kind === "land" && (
-                      <DropdownMenuItem onSelect={() => editListing(r)}>
-                        <Pencil /> Edit
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={() => setDeleteTarget(r)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTarget(r)}
+                  className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                >
+                  <div className="flex items-center gap-3">
+                    {thumb(r, "h-12 w-16")}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{r.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">{r.sub}</div>
+                    </div>
+                    <RowStatus row={r} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <KindChip kind={r.kind} />
+                      {showViews && `${r.views} views · `}
+                      {r.createdAt}
+                    </span>
+                    <ChevronRight aria-hidden className="h-4 w-4" />
+                  </div>
+                </button>
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      <ListingPreviewDialog
+        row={previewTarget}
+        badges={
+          previewTarget && (
+            <>
+              <KindChip kind={previewTarget.kind} />
+              <RowStatus row={previewTarget} />
+            </>
+          )
+        }
+        showViews={showViews}
+        closeLabel={previewTarget ? closeLabel(previewTarget) : ""}
+        onClose={() => setPreviewTarget(null)}
+        onEdit={previewTarget?.kind === "land" ? () => editListing(previewTarget) : undefined}
+        onMarkClosed={
+          previewTarget && canClose(previewTarget)
+            ? () => {
+                setTakenTarget(previewTarget);
+                setPreviewTarget(null);
+              }
+            : undefined
+        }
+        onDelete={() => {
+          setDeleteTarget(previewTarget);
+          setPreviewTarget(null);
+        }}
+      />
 
       <AlertDialog
         open={deleteTarget !== null}
