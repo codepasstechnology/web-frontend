@@ -48,6 +48,21 @@ export interface MyProperty {
   coverPhotoUrl: string | null;
 }
 
+export interface MyPropertyDetail extends MyProperty {
+  description: string;
+  bedrooms: number;
+  bathrooms: number;
+  furnished: boolean;
+  amenities: string[];
+  minNights: number | null;
+  cleaningFee: number | null;
+  postedBy: "owner" | "broker";
+  agent: { name: string; phone: string; agency: string };
+  position: [number, number];
+  postingFeeAmount: number;
+  photos: string[];
+}
+
 interface ApiProperty {
   id: string;
   reference_number: string;
@@ -90,6 +105,24 @@ interface ApiMyProperty {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+}
+
+interface ApiMyPropertyDetail extends ApiMyProperty {
+  description: string;
+  bedrooms: number;
+  bathrooms: number;
+  furnished: boolean;
+  amenities: string[];
+  min_nights: number | null;
+  cleaning_fee: number | null;
+  posted_by: "owner" | "broker";
+  agent_name: string;
+  agent_phone: string;
+  agent_agency: string;
+  latitude: number;
+  longitude: number;
+  posting_fee_amount: number;
+  photos: { id: string; url: string; is_cover: boolean }[];
 }
 
 export interface PropertyFilters {
@@ -173,6 +206,26 @@ function mapApiMyProperty(p: ApiMyProperty): MyProperty {
   };
 }
 
+function mapApiMyPropertyDetail(p: ApiMyPropertyDetail): MyPropertyDetail {
+  return {
+    ...mapApiMyProperty(p),
+    description: p.description ?? "",
+    bedrooms: p.bedrooms ?? 0,
+    bathrooms: p.bathrooms ?? 0,
+    furnished: p.furnished ?? false,
+    amenities: p.amenities ?? [],
+    minNights: p.min_nights,
+    cleaningFee: p.cleaning_fee,
+    postedBy: p.posted_by,
+    agent: { name: p.agent_name ?? "", phone: p.agent_phone ?? "", agency: p.agent_agency ?? "" },
+    position: [Number(p.latitude), Number(p.longitude)],
+    postingFeeAmount: p.posting_fee_amount ?? 0,
+    photos: [...(p.photos ?? [])]
+      .sort((a, b) => Number(b.is_cover) - Number(a.is_cover))
+      .map((photo) => photo.url),
+  };
+}
+
 function toQuery(filters: PropertyFilters): string {
   const params = new URLSearchParams();
   if (filters.intent && filters.intent !== "all") params.set("intent", filters.intent);
@@ -215,6 +268,19 @@ export function useMyProperties() {
   return useQuery({
     queryKey: ["my-properties"],
     queryFn: async () => (await api.get<ApiMyProperty[]>("/user/properties")).map(mapApiMyProperty),
+  });
+}
+
+/**
+ * The owner's own view of one property. Keyed under "my-properties" so the
+ * mutations below refresh it along with the list.
+ */
+export function useMyProperty(id: string | undefined) {
+  return useQuery({
+    queryKey: ["my-properties", id],
+    queryFn: async () =>
+      mapApiMyPropertyDetail(await api.get<ApiMyPropertyDetail>(`/user/properties/${id}`)),
+    enabled: !!id,
   });
 }
 
