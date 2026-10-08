@@ -1,7 +1,18 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { RegisterPage } from "../routes/register";
+
+beforeAll(() => {
+  window.matchMedia ??= ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+  })) as unknown as typeof window.matchMedia;
+});
 
 const mockNavigate = vi.fn();
 const mockSignupsOpen = vi.fn(() => true);

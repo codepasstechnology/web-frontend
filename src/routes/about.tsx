@@ -1,167 +1,184 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ShieldCheck, Target, Users } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CtaBand } from "@/components/site/CtaBand";
-import { PageHeader } from "@/components/site/PageHeader";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, MapIcon, MapPin, ShieldCheck } from "lucide-react";
+import { KenyaMeshMap } from "@/components/site/KenyaMeshMap";
+import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
+import { MarketingShell } from "@/components/site/MarketingShell";
+import { PageHero } from "@/components/site/PageHero";
 
 export const Route = createFileRoute("/about")({
-  head: () => ({ meta: [{ title: "About — Geo Pin Properties Kenya" }] }),
+  head: () => ({
+    meta: [{ title: "About — Geo Pin Properties Kenya" }],
+    links: MARKETING_FONT_LINKS,
+  }),
   component: AboutPage,
 });
 
 const values = [
   {
     icon: ShieldCheck,
-    title: "Transparency first",
-    body: "Every data point we surface is traceable to a government source. We never fabricate, interpolate, or hide uncertainty.",
+    title: "Trust comes first",
+    body: "Every verified badge means we checked. When we haven't, we say so.",
   },
   {
-    icon: Users,
-    title: "Built for Kenyans",
-    body: "Our team lives and works in Nairobi. We understand the local market, the bureaucracy, and what's at stake when a deal goes wrong.",
+    icon: MapIcon,
+    title: "Show, don't describe",
+    body: "Boundaries belong on a map, not in a caption. Seeing beats guessing.",
   },
   {
-    icon: Target,
-    title: "Speed without shortcuts",
-    body: "We automate the tedious parts — searches, cross-checks, report generation — so professionals can focus on judgment, not paperwork.",
+    icon: MapPin,
+    title: "Built for Kenya",
+    body: "Made for how land is bought, sold and rented here, county by county.",
   },
 ];
 
-const team = [
-  { name: "Amina Ochieng", role: "Co-founder & CEO", initials: "AO" },
-  { name: "Brian Kamau", role: "Co-founder & CTO", initials: "BK" },
-  { name: "Christine Mwangi", role: "Head of Data", initials: "CM" },
-  { name: "David Njoroge", role: "Head of Product", initials: "DN" },
+const verificationSteps = [
+  {
+    title: "The owner submits documents",
+    body: "Ownership documents and the parcel's location are uploaded with the listing.",
+  },
+  {
+    title: "We check the details",
+    body: "Our team reviews the documents and matches them to the boundary on the map.",
+  },
+  {
+    title: "The badge goes live",
+    body: "Only then does the listing show the green verified badge.",
+  },
 ];
+
+const team = [1, 2, 3, 4].map((n) => ({ id: n, name: "[NAME]", role: "[ROLE]" }));
 
 function AboutPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <PageHeader eyebrow="About us" title="Making land ownership safe and transparent">
-        <p className="max-w-[60ch] text-pretty text-[1.0625rem] leading-relaxed text-muted-foreground">
-          Geo Pin Properties was founded in Nairobi in 2023 with a single mission: eliminate land
-          fraud in Kenya by putting verified, government-sourced data in the hands of every buyer,
-          seller, and professional.
-        </p>
-      </PageHeader>
-
-      <section className="mx-auto max-w-[1100px] px-4 pt-14 md:px-8 md:pt-20">
-        <dl className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {[
-            { value: "40 000+", label: "Parcels verified" },
-            { value: "12 000+", label: "Registered users" },
-            { value: "47", label: "Counties covered" },
-            { value: "< 2 min", label: "Avg. verification time" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="flex flex-col-reverse rounded-xl border border-border bg-card px-5 py-6"
-            >
-              <dt className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {s.label}
-              </dt>
-              <dd className="text-[clamp(1.5rem,3vw,2rem)] font-bold tracking-[-0.02em] tabular-nums">
-                {s.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+    <MarketingShell>
+      <PageHero
+        eyebrow="About Geo Pin"
+        title="Putting Kenya's land"
+        highlight="on the map."
+        lede="Buying land should not mean guessing where it starts and ends, or who you are really dealing with. We are building the map that makes land clear, verified and easy to act on."
+      />
 
       <section
         aria-labelledby="story-title"
-        className="mx-auto flex max-w-[760px] flex-col gap-5 px-4 pt-16 md:px-8 md:pt-24"
+        className="gs-wrap gs-split"
+        style={{ paddingBottom: 96, alignItems: "center" }}
       >
-        <h2
-          id="story-title"
-          className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-[1.15] tracking-[-0.02em]"
-        >
-          Our story
-        </h2>
-        <div className="flex flex-col gap-4 text-[1.0625rem] leading-relaxed text-muted-foreground">
-          <p>
-            The idea for Geo Pin Properties came from a painful experience. Our co-founder Brian
-            watched his family lose a plot in Kiambu to a double-allocation — a fraud that went
-            undiscovered until after the title deed was transferred. The process to rectify it took
-            four years and cost more than the land itself.
-          </p>
-          <p>
-            We asked a simple question: why does verifying a parcel still require weeks of manual
-            searches, physical visits, and chasing clerks? The data exists in government systems.
-            The problem is access, speed, and presentation.
-          </p>
-          <p>
-            We spent 18 months aggregating data from public land records, the Kenya National Bureau
-            of Statistics, and county authorities to build a platform that surfaces all critical
-            verification signals in one place — in minutes, not weeks.
-          </p>
-          <p>
-            Today Geo Pin Properties serves individual buyers, real estate agents, lawyers, and
-            SACCO mortgage departments. We are proud to be a Nairobi-built product solving a
-            uniquely Kenyan problem.
-          </p>
+        <div className="gs-map-panel gs-reveal">
+          <KenyaMeshMap mappedLand />
+          <span className="gs-hand gs-map-note">every green dot is mapped land</span>
         </div>
-      </section>
-
-      <section
-        aria-labelledby="values-title"
-        className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pt-16 md:px-8 md:pt-24"
-      >
-        <h2
-          id="values-title"
-          className="text-center text-[clamp(1.75rem,3.6vw,2.5rem)] font-bold leading-[1.1] tracking-[-0.02em]"
-        >
-          What we stand for
-        </h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          {values.map(({ icon: Icon, title, body }) => (
-            <article
-              key={title}
-              className="flex flex-col gap-4 rounded-xl border border-border bg-card p-7 text-card-foreground"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-                <Icon aria-hidden className="h-6 w-6 text-brand" strokeWidth={1.75} />
-              </div>
-              <h3 className="text-lg font-bold">{title}</h3>
-              <p className="leading-relaxed text-muted-foreground">{body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="team-title"
-        className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pt-16 md:px-8 md:pt-24"
-      >
-        <div className="flex flex-col items-center gap-3 text-center">
-          <h2
-            id="team-title"
-            className="text-[clamp(1.75rem,3.6vw,2.5rem)] font-bold leading-[1.1] tracking-[-0.02em]"
-          >
-            The team
+        <div className="gs-reveal" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <h2 id="story-title" className="gs-h gs-h2">
+            Why we started
           </h2>
-          <p className="text-[1.0625rem] text-muted-foreground">
-            A small, focused team based in Nairobi.
+          <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
+            [Your founding story: who started Geo Pin, the problem you saw in Kenya&apos;s land
+            market, and the moment you decided to fix it. Two or three short paragraphs work best.]
           </p>
-        </div>
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-          {team.map((member) => (
-            <div key={member.name} className="flex flex-col items-center gap-3 text-center">
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="bg-brand/10 text-lg font-bold text-brand">
-                  {member.initials}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold">{member.name}</p>
-                <p className="text-sm text-muted-foreground">{member.role}</p>
-              </div>
-            </div>
-          ))}
+          <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
+            Today, Geo Pin brings plotted parcels, verified listings and rentals together on one
+            GIS-powered map, so people can see the land, check it and connect with the right person.
+          </p>
+          <span className="gs-hand gs-tilt">find. connect. own.</span>
         </div>
       </section>
 
-      <CtaBand />
-    </div>
+      <section aria-labelledby="values-title" className="gs-alt">
+        <div
+          className="gs-wrap"
+          style={{ paddingTop: 96, paddingBottom: 96, display: "grid", gap: 40 }}
+        >
+          <h2 id="values-title" className="gs-h gs-h2 gs-reveal">
+            What we believe
+          </h2>
+          <div className="gs-grid">
+            {values.map(({ icon: Icon, title, body }) => (
+              <article key={title} className="gs-val gs-lift gs-reveal">
+                <span className="gs-blob">
+                  <Icon aria-hidden size={26} strokeWidth={1.8} />
+                </span>
+                <h3 className="gs-h" style={{ fontSize: 23, letterSpacing: "-0.02em" }}>
+                  {title}
+                </h3>
+                <p className="gs-text" style={{ fontSize: 16 }}>
+                  {body}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="verification-title"
+        className="gs-wrap gs-split"
+        style={{ paddingTop: 96, paddingBottom: 96 }}
+      >
+        <div className="gs-stack gs-reveal">
+          <h2 id="verification-title" className="gs-h gs-h2">
+            How verification works
+          </h2>
+          <p className="gs-text">[Adjust these steps to match your real process.]</p>
+        </div>
+        <ol className="gs-steps">
+          {verificationSteps.map((step, i) => (
+            <li key={step.title} className="gs-step gs-reveal">
+              <span className="gs-stepn">{String(i + 1).padStart(2, "0")}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <h3 className="gs-h" style={{ fontSize: 21, letterSpacing: "-0.01em" }}>
+                  {step.title}
+                </h3>
+                <p className="gs-text" style={{ fontSize: 16 }}>
+                  {step.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-labelledby="team-title" className="gs-alt">
+        <div
+          className="gs-wrap"
+          style={{ paddingTop: 96, paddingBottom: 96, display: "grid", gap: 40 }}
+        >
+          <div className="gs-reveal" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <h2 id="team-title" className="gs-h gs-h2">
+              The team
+            </h2>
+            <p className="gs-text">[Add your team members with a photo, name and role.]</p>
+          </div>
+          <div
+            className="gs-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}
+          >
+            {team.map((member) => (
+              <div
+                key={member.id}
+                className="gs-card gs-lift gs-reveal"
+                style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}
+              >
+                <span className="gs-photo gs-mono">[PHOTO]</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontWeight: 600, fontSize: 17 }}>{member.name}</span>
+                  <span style={{ fontSize: 14, color: "var(--muted)" }}>{member.role}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="gs-wrap" style={{ paddingTop: 40, paddingBottom: 112 }}>
+        <div className="gs-deep gs-reveal">
+          <h2 className="gs-h">Come see the map.</h2>
+          <p>Explore plotted land and verified properties across Kenya.</p>
+          <Link to="/explore" className="gs-btn">
+            Explore the map
+            <ArrowRight aria-hidden size={18} className="gs-arrow" />
+          </Link>
+        </div>
+      </section>
+    </MarketingShell>
   );
 }

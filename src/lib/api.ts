@@ -152,6 +152,8 @@ export interface BlogPostAuthor {
   name: string;
   avatar: string | null;
   avatar_color: string | null;
+  /** Only returned by the single-post endpoint. */
+  bio?: string | null;
 }
 
 export interface BlogPost {
@@ -166,6 +168,8 @@ export interface BlogPost {
   author: BlogPostAuthor | null;
   /** Only returned by the single-post endpoint. */
   content?: string;
+  /** Up to three related articles, only returned by the single-post endpoint. */
+  related?: BlogPost[];
 }
 
 export interface Paginated<T> {
