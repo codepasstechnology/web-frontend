@@ -508,6 +508,11 @@ export function RentalPanel({ property, onClose }: { property: Property; onClose
                 Featured
               </span>
             )}
+            {property.status === "occupied" && (
+              <span className="inline-flex items-center rounded-sm bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Occupied
+              </span>
+            )}
           </div>
           <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{property.title}</h2>
           <p className="text-xs text-muted-foreground">

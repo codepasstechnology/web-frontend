@@ -1,13 +1,26 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronRight, Download, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import {
+  BedDouble,
+  CalendarCheck,
+  ChevronRight,
+  DoorClosed,
+  Download,
+  Pencil,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import {
   useMyProperties,
   useDeleteProperty,
   useMarkPropertyTaken,
+  useSetPropertyAvailability,
   formatPrice,
   INTENT_LABELS,
   TYPE_LABELS,
+  type BnbAvailability,
+  type PropertyIntent,
 } from "@/lib/properties";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -44,6 +57,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 export type ListingRow = {
   kind: "land" | "property";
+  intent?: PropertyIntent;
   id: string;
   name: string;
   sub: string;
@@ -58,8 +72,52 @@ const PROPERTY_STATUS_VARIANT: Record<string, "success" | "warning" | "secondary
     available: "success",
     pending: "warning",
     taken: "secondary",
+    occupied: "warning",
+    closed: "secondary",
     suspended: "destructive",
   };
+
+type StatusAction = { label: string; to: "sold" | "taken" | BnbAvailability };
+
+const BNB_ACTIONS: StatusAction[] = [
+  { label: "Mark as available", to: "available" },
+  { label: "Mark as occupied", to: "occupied" },
+  { label: "Mark as closed", to: "closed" },
+];
+
+const ACTION_ICONS: Record<StatusAction["to"], typeof Tag> = {
+  sold: Tag,
+  taken: Tag,
+  available: CalendarCheck,
+  occupied: BedDouble,
+  closed: DoorClosed,
+};
+
+const PERMANENT_CLOSE =
+  "It will be removed from the marketplace and buyers can no longer see it. This can't be undone.";
+
+const ACTION_DESCRIPTIONS: Record<StatusAction["to"], string> = {
+  sold: PERMANENT_CLOSE,
+  taken: PERMANENT_CLOSE,
+  available: "It will show on the map as open for bookings.",
+  occupied: "It stays on the map with an Occupied badge so guests know it's booked.",
+  closed: "It will be hidden from the map until you mark it available again.",
+};
+
+/**
+ * BnBs come and go from availability, so they toggle between states rather
+ * than closing for good like land (sold) and other rentals (taken).
+ */
+function statusActions(r: ListingRow): StatusAction[] {
+  if (r.kind === "land")
+    return r.status === "active" ? [{ label: "Mark as sold", to: "sold" }] : [];
+  if (r.intent !== "bnb") {
+    return r.status === "available" ? [{ label: "Mark as taken", to: "taken" }] : [];
+  }
+  return BNB_ACTIONS.some((a) => a.to === r.status)
+    ? BNB_ACTIONS.filter((a) => a.to !== r.status)
+    : [];
+}
 
 function RowStatus({ row }: { row: ListingRow }) {
   if (row.kind === "land") return <StatusBadge status={row.status} />;
@@ -84,11 +142,15 @@ export function ListingsTab() {
   const { data: properties = [], isLoading, isError, refetch } = useMyProperties();
   const removeProperty = useDeleteProperty();
   const markTaken = useMarkPropertyTaken();
+  const setAvailability = useSetPropertyAvailability();
 
   const [filter, setFilter] = useState<"all" | "land" | "property">("all");
   const [deleteTarget, setDeleteTarget] = useState<ListingRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [takenTarget, setTakenTarget] = useState<ListingRow | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{
+    row: ListingRow;
+    action: StatusAction;
+  } | null>(null);
   const [taking, setTaking] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [previewTarget, setPreviewTarget] = useState<ListingRow | null>(null);
@@ -109,6 +171,7 @@ export function ListingsTab() {
     }));
     const rentals: ListingRow[] = properties.map((p) => ({
       kind: "property",
+      intent: p.intent,
       id: p.id,
       name: p.title,
       sub: `${p.reference} · ${INTENT_LABELS[p.intent]} · ${TYPE_LABELS[p.type]} · ${formatPrice(p.price, p.pricePeriod)}`,
@@ -160,13 +223,15 @@ export function ListingsTab() {
     }
   };
 
-  const confirmTaken = async () => {
-    if (!takenTarget) return;
+  const confirmStatus = async () => {
+    if (!statusTarget) return;
+    const { row, action } = statusTarget;
     setTaking(true);
     try {
-      if (takenTarget.kind === "land") await markListingSold(takenTarget.id);
-      else await markTaken.mutateAsync(takenTarget.id);
-      setTakenTarget(null);
+      if (action.to === "sold") await markListingSold(row.id);
+      else if (action.to === "taken") await markTaken.mutateAsync(row.id);
+      else await setAvailability.mutateAsync({ id: row.id, status: action.to });
+      setStatusTarget(null);
     } catch {
       // leave the dialog open so the seller can retry
     } finally {
@@ -174,29 +239,29 @@ export function ListingsTab() {
     }
   };
 
-  const canClose = (r: ListingRow) =>
-    r.kind === "land" ? r.status === "active" : r.status === "available";
-
   const newListing = () =>
     navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } });
   const editListing = (r: ListingRow) =>
     navigate({ to: "/dashboard/upload", search: { edit: r.id, type: undefined } });
-  const closeLabel = (r: ListingRow) => (r.kind === "land" ? "Mark as sold" : "Mark as taken");
 
   const rowActions = (r: ListingRow) => (
     <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-      {canClose(r) && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground"
-          onClick={() => setTakenTarget(r)}
-          title={closeLabel(r)}
-          aria-label={`${closeLabel(r)}: ${r.name}`}
-        >
-          <Tag />
-        </Button>
-      )}
+      {statusActions(r).map((action) => {
+        const Icon = ACTION_ICONS[action.to];
+        return (
+          <Button
+            key={action.to}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            onClick={() => setStatusTarget({ row: r, action })}
+            title={action.label}
+            aria-label={`${action.label}: ${r.name}`}
+          >
+            <Icon />
+          </Button>
+        );
+      })}
       {r.kind === "land" && (
         <Button
           variant="ghost"
@@ -221,6 +286,8 @@ export function ListingsTab() {
       </Button>
     </div>
   );
+
+  const previewAction = previewTarget ? statusActions(previewTarget)[0] : undefined;
 
   const thumb = (r: ListingRow, size: string) =>
     r.coverPhotoUrl ? (
@@ -402,13 +469,13 @@ export function ListingsTab() {
           )
         }
         showViews={showViews}
-        closeLabel={previewTarget ? closeLabel(previewTarget) : ""}
+        closeLabel={previewAction?.label ?? ""}
         onClose={() => setPreviewTarget(null)}
         onEdit={previewTarget?.kind === "land" ? () => editListing(previewTarget) : undefined}
         onMarkClosed={
-          previewTarget && canClose(previewTarget)
+          previewTarget && previewAction
             ? () => {
-                setTakenTarget(previewTarget);
+                setStatusTarget({ row: previewTarget, action: previewAction });
                 setPreviewTarget(null);
               }
             : undefined
@@ -442,27 +509,24 @@ export function ListingsTab() {
       </AlertDialog>
 
       <AlertDialog
-        open={takenTarget !== null}
-        onOpenChange={(open) => !open && !taking && setTakenTarget(null)}
+        open={statusTarget !== null}
+        onOpenChange={(open) => !open && !taking && setStatusTarget(null)}
       >
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Mark this listing as {takenTarget?.kind === "land" ? "sold" : "taken"}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Mark this listing as {statusTarget?.action.to}?</AlertDialogTitle>
             <AlertDialogDescription>
-              It will be removed from the marketplace and buyers can no longer see it. This
-              can&apos;t be undone.
+              {statusTarget && ACTION_DESCRIPTIONS[statusTarget.action.to]}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={taking}>Cancel</AlertDialogCancel>
             <Button
-              onClick={confirmTaken}
+              onClick={confirmStatus}
               disabled={taking}
               className="bg-brand text-brand-foreground hover:bg-brand-hover"
             >
-              {taking ? "Marking…" : takenTarget ? closeLabel(takenTarget) : ""}
+              {taking ? "Marking…" : statusTarget?.action.label}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -75,6 +75,7 @@ const rental: Property = {
   type: "apartment",
   price: 85000,
   pricePeriod: "month",
+  status: "available",
   minNights: null,
   cleaningFee: null,
   bedrooms: 2,
