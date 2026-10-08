@@ -4,7 +4,9 @@ import { api } from "./api";
 export type PropertyIntent = "rent" | "bnb" | "sale";
 export type PropertyType =
   "apartment" | "house" | "townhouse" | "studio" | "bedsitter" | "commercial" | "office";
-export type PropertyStatus = "pending" | "available" | "taken" | "suspended";
+export type PropertyStatus =
+  "pending" | "available" | "taken" | "occupied" | "closed" | "suspended";
+export type BnbAvailability = "available" | "occupied" | "closed";
 export type PricePeriod = "month" | "night" | "total";
 
 export interface Property {
@@ -18,6 +20,7 @@ export interface Property {
   type: PropertyType;
   price: number;
   pricePeriod: PricePeriod;
+  status: PropertyStatus;
   minNights: number | null;
   cleaningFee: number | null;
   bedrooms: number;
@@ -74,6 +77,7 @@ interface ApiProperty {
   type: PropertyType;
   price: number;
   price_period: PricePeriod;
+  status: PropertyStatus;
   min_nights: number | null;
   cleaning_fee: number | null;
   bedrooms: number;
@@ -169,6 +173,7 @@ export function mapApiProperty(p: ApiProperty): Property {
     type: p.type,
     price: p.price,
     pricePeriod: p.price_period,
+    status: p.status,
     minNights: p.min_nights,
     cleaningFee: p.cleaning_fee,
     bedrooms: p.bedrooms ?? 0,
@@ -385,6 +390,16 @@ export function useMarkPropertyTaken() {
 
   return useMutation({
     mutationFn: (id: string) => api.patch<unknown>(`/user/properties/${id}/taken`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
+  });
+}
+
+export function useSetPropertyAvailability() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: BnbAvailability }) =>
+      api.patch<unknown>(`/user/properties/${id}/availability`, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
   });
 }

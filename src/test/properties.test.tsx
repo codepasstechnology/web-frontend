@@ -58,6 +58,7 @@ const apiProperty = {
   type: "apartment" as const,
   price: 75000,
   price_period: "month" as const,
+  status: "available" as const,
   min_nights: null,
   cleaning_fee: null,
   bedrooms: 2,

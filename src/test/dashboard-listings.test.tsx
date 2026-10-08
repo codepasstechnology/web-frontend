@@ -8,6 +8,9 @@ import type { AppUser, ListingDetail, UserListing } from "@/lib/auth";
 
 const mockDeleteProperty = vi.fn<(id: string) => Promise<unknown>>(() => Promise.resolve({}));
 const mockMarkTaken = vi.fn<(id: string) => Promise<unknown>>(() => Promise.resolve({}));
+const mockSetAvailability = vi.fn<(args: { id: string; status: string }) => Promise<unknown>>(() =>
+  Promise.resolve({}),
+);
 const mockRemoveListing = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
 const mockMarkSold = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
 const mockFetchListing = vi.fn<(id: string) => Promise<ListingDetail>>();
@@ -33,6 +36,7 @@ vi.mock("@/lib/properties", async (importOriginal) => {
     useMyProperties: () => ({ ...mockProperties(), refetch: vi.fn() }),
     useDeleteProperty: () => ({ mutateAsync: mockDeleteProperty, isPending: false }),
     useMarkPropertyTaken: () => ({ mutateAsync: mockMarkTaken, isPending: false }),
+    useSetPropertyAvailability: () => ({ mutateAsync: mockSetAvailability, isPending: false }),
   };
 });
 
@@ -232,6 +236,54 @@ describe("ListingsTab — confirmations", () => {
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as sold" }),
     );
     expect(mockMarkSold).toHaveBeenCalledWith(land.id);
+  });
+});
+
+describe("ListingsTab — BnB availability", () => {
+  const bnb: MyProperty = { ...property, id: "p-2", title: "Diani Beach BnB", intent: "bnb" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUser.mockReturnValue({ ...user, listings: [] } as AppUser);
+  });
+
+  it("offers occupied and closed instead of taken on a live BnB", () => {
+    mockProperties.mockReturnValue({ data: [bnb], isLoading: false, isError: false });
+    const { container } = render(<ListingsTab />);
+    const row = within(container.querySelector("tbody tr") as HTMLElement);
+
+    expect(row.getByTitle("Mark as occupied")).toBeInTheDocument();
+    expect(row.getByTitle("Mark as closed")).toBeInTheDocument();
+    expect(row.queryByTitle("Mark as available")).not.toBeInTheDocument();
+    expect(row.queryByTitle("Mark as taken")).not.toBeInTheDocument();
+  });
+
+  it("lets an occupied BnB be reopened", () => {
+    mockProperties.mockReturnValue({
+      data: [{ ...bnb, status: "occupied" }],
+      isLoading: false,
+      isError: false,
+    });
+    const { container } = render(<ListingsTab />);
+    const row = within(container.querySelector("tbody tr") as HTMLElement);
+
+    expect(row.getByTitle("Mark as available")).toBeInTheDocument();
+    expect(row.getByTitle("Mark as closed")).toBeInTheDocument();
+    expect(row.queryByTitle("Mark as occupied")).not.toBeInTheDocument();
+  });
+
+  it("confirms before closing a BnB", async () => {
+    mockProperties.mockReturnValue({ data: [bnb], isLoading: false, isError: false });
+    render(<ListingsTab />);
+
+    await userEvent.click(screen.getAllByTitle("Mark as closed")[0]);
+    expect(mockSetAvailability).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as closed" }),
+    );
+    expect(mockSetAvailability).toHaveBeenCalledWith({ id: bnb.id, status: "closed" });
+    expect(mockMarkTaken).not.toHaveBeenCalled();
   });
 });
 
