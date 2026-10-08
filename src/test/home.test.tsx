@@ -1,9 +1,20 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ParcelSummary } from "@/lib/parcels";
 import type { Property } from "@/lib/properties";
+
+beforeAll(() => {
+  window.matchMedia ??= ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+  })) as unknown as typeof window.matchMedia;
+});
 
 const navigate = vi.fn();
 

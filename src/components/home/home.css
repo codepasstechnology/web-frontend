@@ -1,13 +1,17 @@
 .geo-home {
-  --gp-charcoal: #15140f;
-  --gp-charcoal-2: #1d1b14;
-  --gp-cream-text: #f4eee2;
-  --gp-muted-dark: #b9b2a1;
-  --gp-link-dark: #d8d0be;
-  --gp-sage: #a9c97a;
-  --gp-cream: #f6f0e2;
+  /* Names are historical (kept from the original dark-only build to avoid a
+     ~100-line rename); each resolves to its light value here, dark value in
+     html.dark below. Tokens confirmed theme-invariant (same in both design
+     mockups) are defined once here with no dark override. */
+  --gp-charcoal: #f6f0e2;
+  --gp-charcoal-2: #ece4d0;
+  --gp-cream-text: #1e2418;
+  --gp-muted-dark: #56594a;
+  --gp-link-dark: #3f4a33;
+  --gp-sage: #5b8a34;
+  --gp-cream: #e9e0ca;
   --gp-cream-card: #fffaf2;
-  --gp-doodle: #f1e7d2;
+  --gp-doodle: #3f5a2a;
   --gp-forest: #3f5a2a;
   --gp-forest-dark: #2f4520;
   --gp-olive: #6e8b47;
@@ -23,17 +27,124 @@
   line-height: normal;
 }
 
+html.dark .geo-home {
+  --gp-charcoal: #15140f;
+  --gp-charcoal-2: #1d1b14;
+  --gp-cream-text: #f4eee2;
+  --gp-muted-dark: #b9b2a1;
+  --gp-link-dark: #d8d0be;
+  --gp-sage: #a9c97a;
+  --gp-cream: #f6f0e2;
+  --gp-doodle: #f1e7d2;
+  --gp-olive: #a9c97a;
+}
+
 :where(.geo-home) a {
   color: var(--gp-sage);
 }
 
 :where(.geo-home) a:hover {
+  color: #2f4520;
+}
+
+html.dark :where(.geo-home) a:hover {
   color: #c9dda4;
 }
 
 :where(.geo-home) :focus-visible {
   outline: 2px solid var(--gp-sage);
   outline-offset: 3px;
+}
+
+/* Theme toggle. Track/knob colors are literal in both directions (chrome
+   describing "the other mode" is hardcoded by design). */
+.gp-theme {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 84px;
+  height: 44px;
+  margin: 0 4px;
+  border-radius: 999px;
+  background: #efe7d4;
+  border: 1px solid #dcd3bf;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    border-color 0.25s,
+    background-color 0.25s;
+}
+
+html.dark .gp-theme {
+  background: rgba(244, 238, 226, 0.07);
+  border-color: rgba(244, 238, 226, 0.18);
+}
+
+.gp-theme:focus-visible {
+  outline: 3px solid #a9c97a;
+  outline-offset: 3px;
+}
+
+.gp-theme-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  color: #56594a;
+}
+
+html.dark .gp-theme-icon {
+  color: #b9b2a1;
+}
+
+.gp-theme-icon-left {
+  left: 13px;
+}
+
+.gp-theme-icon-right {
+  right: 13px;
+}
+
+.gp-knob {
+  position: absolute;
+  top: 3px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e2418;
+  color: #f6f0e2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  left: 4px;
+  transition:
+    transform 0.45s cubic-bezier(0.65, 0, 0.35, 1),
+    background-color 0.35s,
+    color 0.35s;
+}
+
+html.dark .gp-knob {
+  background: #f4eee2;
+  color: #15140f;
+}
+
+.gp-knob-r {
+  transform: translateX(38px);
+}
+
+.gp-theme:hover .gp-knob-l {
+  transform: translateX(7px);
+}
+
+.gp-theme:hover .gp-knob-r {
+  transform: translateX(31px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-knob {
+    transition: none;
+  }
 }
 
 .gp-display {
@@ -145,10 +256,15 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(21, 20, 15, 0.82);
+  background: rgba(246, 240, 226, 0.84);
   backdrop-filter: saturate(160%) blur(16px);
   -webkit-backdrop-filter: saturate(160%) blur(16px);
-  border-bottom: 1px solid rgba(244, 238, 226, 0.08);
+  border-bottom: 1px solid rgba(30, 36, 24, 0.08);
+}
+
+html.dark .gp-header {
+  background: rgba(21, 20, 15, 0.82);
+  border-bottom-color: rgba(244, 238, 226, 0.08);
 }
 
 .gp-nav {
@@ -198,10 +314,21 @@
   text-decoration: none;
   padding: 12px 14px;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .gp-link:hover {
   color: var(--gp-cream-text);
+}
+
+.gp-link[aria-current="page"] {
+  color: var(--gp-cream-text);
+  background: #efe7d4;
+  font-weight: 600;
+}
+
+html.dark .gp-link[aria-current="page"] {
+  background: rgba(244, 238, 226, 0.07);
 }
 
 .gp-dropdown-trigger {
@@ -232,7 +359,7 @@
 }
 
 .gp-outline-pill {
-  border: 1px solid rgba(244, 238, 226, 0.24);
+  border: 1px solid rgba(30, 36, 24, 0.24);
   color: var(--gp-cream-text);
   text-decoration: none;
   font-weight: 600;
@@ -244,8 +371,16 @@
   align-items: center;
 }
 
+html.dark .gp-outline-pill {
+  border-color: rgba(244, 238, 226, 0.24);
+}
+
 .gp-outline-pill:hover {
   color: var(--gp-cream-text);
+  background: rgba(30, 36, 24, 0.06);
+}
+
+html.dark .gp-outline-pill:hover {
   background: rgba(244, 238, 226, 0.06);
 }
 
@@ -253,8 +388,8 @@
   width: 48px;
   height: 48px;
   border-radius: 999px;
-  border: 1px solid rgba(244, 238, 226, 0.16);
-  background: rgba(244, 238, 226, 0.06);
+  border: 1px solid rgba(30, 36, 24, 0.16);
+  background: rgba(30, 36, 24, 0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -262,6 +397,11 @@
   gap: 6px;
   cursor: pointer;
   padding: 0;
+}
+
+html.dark .gp-menu-btn {
+  border-color: rgba(244, 238, 226, 0.16);
+  background: rgba(244, 238, 226, 0.06);
 }
 
 .gp-bar {
@@ -288,8 +428,12 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border-top: 1px solid rgba(244, 238, 226, 0.08);
+  border-top: 1px solid rgba(30, 36, 24, 0.08);
   animation: gpMenu 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+html.dark .gp-mobile-menu {
+  border-top-color: rgba(244, 238, 226, 0.08);
 }
 
 .gp-mobile-link {
@@ -304,7 +448,11 @@
   letter-spacing: -0.02em;
   padding: 14px 4px;
   min-height: 56px;
-  border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+  border-bottom: 1px solid rgba(30, 36, 24, 0.07);
+}
+
+html.dark .gp-mobile-link {
+  border-bottom-color: rgba(244, 238, 226, 0.07);
 }
 
 .gp-mobile-link:hover {
@@ -324,7 +472,11 @@
   font-weight: 600;
   font-size: 20px;
   padding: 12px 4px 12px 22px;
-  border-bottom: 1px solid rgba(244, 238, 226, 0.07);
+  border-bottom: 1px solid rgba(30, 36, 24, 0.07);
+}
+
+html.dark .gp-mobile-sub {
+  border-bottom-color: rgba(244, 238, 226, 0.07);
 }
 
 .gp-mobile-cta {
@@ -389,9 +541,13 @@
 /* While the pinned story is on screen the animating map sits behind the header,
    so the header drops its backdrop blur to keep scrolling smooth. */
 .geo-home.gp-in-story .gp-header {
-  background: rgba(21, 20, 15, 0.9);
+  background: rgba(246, 240, 226, 0.9);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+html.dark .geo-home.gp-in-story .gp-header {
+  background: rgba(21, 20, 15, 0.9);
 }
 
 /* Hero */
@@ -446,14 +602,19 @@
 .gp-search {
   width: 100%;
   max-width: 640px;
-  background: rgba(244, 238, 226, 0.06);
-  border: 1px solid rgba(241, 231, 210, 0.22);
+  background: #efe7d4;
+  border: 1px solid #dcd3bf;
   border-radius: 34px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   animation: gpRise 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s backwards;
+}
+
+html.dark .gp-search {
+  background: rgba(244, 238, 226, 0.06);
+  border-color: rgba(241, 231, 210, 0.22);
 }
 
 .gp-tabs {
@@ -477,6 +638,11 @@
 }
 
 .gp-tab[aria-selected="true"] {
+  background: var(--gp-cream-text);
+  color: var(--gp-charcoal);
+}
+
+html.dark .geo-home .gp-tab[aria-selected="true"] {
   background: var(--gp-doodle);
   color: var(--gp-ink);
 }
@@ -492,11 +658,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(21, 20, 15, 0.7);
+  background: var(--gp-cream-card);
   border-radius: 999px;
   padding: 0 22px;
   min-height: 56px;
   text-align: left;
+}
+
+html.dark .gp-field {
+  background: rgba(21, 20, 15, 0.7);
 }
 
 .gp-input {
@@ -602,10 +772,14 @@
 .gp-progress {
   width: 2px;
   height: 180px;
-  background: rgba(244, 238, 226, 0.12);
+  background: rgba(30, 36, 24, 0.12);
   border-radius: 2px;
   overflow: hidden;
   flex: none;
+}
+
+html.dark .gp-progress {
+  background: rgba(244, 238, 226, 0.12);
 }
 
 .gp-progress-fill {
@@ -724,7 +898,11 @@
   border-radius: 48px;
   overflow: hidden;
   background: var(--gp-charcoal-2);
-  border: 1px solid rgba(241, 231, 210, 0.16);
+  border: 1px solid #dcd3bf;
+}
+
+html.dark .gp-map {
+  border-color: rgba(241, 231, 210, 0.16);
 }
 
 .gp-mesh {
@@ -754,8 +932,12 @@
   position: absolute;
   border-radius: 50%;
   background: var(--gp-sage);
-  box-shadow: 0 0 10px #a9c97aaa;
+  box-shadow: 0 0 10px #5b8a34aa;
   animation: gpGlow 4s ease-in-out infinite;
+}
+
+html.dark .geo-home .gp-dot {
+  box-shadow: 0 0 10px #a9c97aaa;
 }
 
 .gp-plots {
@@ -768,8 +950,12 @@
 
 .gp-road {
   position: absolute;
-  background: #34382a;
+  background: #d7ccb2;
   border-radius: 999px;
+}
+
+html.dark .geo-home .gp-road {
+  background: #34382a;
 }
 
 .gp-road-h {
@@ -794,11 +980,49 @@
   color: var(--gp-muted-dark);
 }
 
+html.dark .gp-card {
+  background: rgba(21, 20, 15, 0.9);
+  border-color: rgba(169, 201, 122, 0.35);
+  box-shadow: none;
+}
+
 .gp-parcel {
   position: absolute;
   border-radius: 6px;
-  border: 1.5px solid rgba(196, 214, 160, 0.45);
+  border: 1.5px solid rgba(63, 90, 42, 0.4);
+  background: rgba(110, 139, 71, var(--gp-parcel-fill, 0));
   clip-path: inset(0 calc((1 - var(--plots)) * 100%) calc((1 - var(--plots)) * 100%) 0);
+}
+
+html.dark .gp-parcel {
+  border-color: rgba(196, 214, 160, 0.45);
+  background: rgba(169, 201, 122, var(--gp-parcel-fill, 0));
+}
+
+.gp-outline-path {
+  fill: rgba(110, 139, 71, 0.08);
+  stroke: rgba(63, 90, 42, 0.45);
+}
+
+html.dark .gp-outline-path {
+  fill: rgba(169, 201, 122, 0.035);
+  stroke: rgba(196, 214, 160, 0.3);
+}
+
+.gp-mesh-path {
+  stroke: rgba(63, 90, 42, 0.16);
+}
+
+html.dark .gp-mesh-path {
+  stroke: rgba(214, 198, 160, 0.16);
+}
+
+.gp-dots-path {
+  fill: rgba(63, 90, 42, 0.3);
+}
+
+html.dark .gp-dots-path {
+  fill: rgba(214, 198, 160, 0.4);
 }
 
 .gp-hi {
@@ -809,8 +1033,12 @@
   height: 20%;
   border-radius: 6px;
   border: 2.5px solid var(--gp-sage);
-  background: rgba(169, 201, 122, calc(0.26 * var(--hi)));
+  background: rgba(91, 138, 52, calc(0.2 * var(--hi)));
   opacity: var(--hi);
+}
+
+html.dark .gp-hi {
+  background: rgba(169, 201, 122, calc(0.26 * var(--hi)));
 }
 
 .gp-pin {
@@ -828,8 +1056,9 @@
   left: 6%;
   right: 6%;
   bottom: 6%;
-  background: rgba(21, 20, 15, 0.9);
-  border: 1px solid rgba(169, 201, 122, 0.35);
+  background: rgba(255, 250, 242, 0.96);
+  border: 1px solid #c9d7b3;
+  box-shadow: 0 14px 34px rgba(63, 90, 42, 0.14);
   border-radius: 20px;
   padding: 18px 20px;
   display: flex;
@@ -1112,8 +1341,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-doodle);
+  background: #e3ebd3;
   border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+}
+
+html.dark .geo-home .gp-blob {
+  background: var(--gp-doodle);
 }
 
 .gp-feature-title {
@@ -1223,7 +1456,7 @@
   font-family: "Caveat", "Segoe Print", cursive;
   font-weight: 700;
   font-size: 28px;
-  color: var(--gp-doodle);
+  color: #f1e7d2;
   transform: rotate(-4deg);
   margin-left: 40px;
 }
@@ -1232,32 +1465,83 @@
 
 .gp-footer {
   background: var(--gp-charcoal);
-  border-top: 1px solid rgba(244, 238, 226, 0.08);
+  border-top: 1px solid rgba(30, 36, 24, 0.08);
+  color: var(--gp-cream-text);
+}
+
+html.dark .gp-footer {
+  border-top-color: rgba(244, 238, 226, 0.08);
 }
 
 .gp-footer-inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 28px 32px 36px;
+  padding: 56px 32px 36px;
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 32px;
+  gap: 40px;
   justify-content: space-between;
-  font-size: 13px;
-  color: var(--gp-muted-dark);
 }
 
-.gp-footer-links {
+.gp-footer-brand {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gp-footer-name {
+  font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.035em;
+}
+
+.gp-footer-tag {
+  font-family: "Caveat", "Segoe Print", cursive;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--gp-doodle);
+}
+
+.gp-footer-cols {
   display: flex;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: 56px;
+  font-size: 15px;
 }
 
-.gp-footer-links a {
+.gp-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gp-footer-col span {
+  font-weight: 600;
+}
+
+.gp-footer-col a {
   color: var(--gp-muted-dark);
   text-decoration: none;
 }
 
-.gp-footer-links a:hover {
+.gp-footer-col a:hover {
   color: var(--gp-cream-text);
+}
+
+.gp-footer-legal {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px 32px;
+  font-size: 13px;
+  color: var(--gp-muted-dark);
+}
+
+@media (max-width: 640px) {
+  .gp-footer-inner,
+  .gp-footer-legal {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }

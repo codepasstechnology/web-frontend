@@ -271,6 +271,62 @@
   }
 }
 
+/* Theme toggle circle-wipe. useTheme()'s toggle() sets --wx/--wy to the
+   toggle's position before calling document.startViewTransition(); the new
+   theme's snapshot grows from there while the old one just sits underneath,
+   so colours flip the instant the circle finishes covering the screen. */
+::view-transition-old(root) {
+  animation: none;
+}
+
+::view-transition-new(root) {
+  animation: gpThemeCircle 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.12s both;
+}
+
+@keyframes gpThemeCircle {
+  from {
+    clip-path: circle(0px at var(--wx, 50%) var(--wy, 50%));
+  }
+  to {
+    clip-path: circle(150vmax at var(--wx, 50%) var(--wy, 50%));
+  }
+}
+
+/* Safety net: the hook skips startViewTransition under reduced motion, but
+   OS motion settings can change between renders, so the pseudo-elements
+   (not reachable by the `*` rule above) get their own instant-swap guard. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+/* useTheme()'s fallback when the View Transitions API is missing: an overlay
+   in the new theme's background grows the same circle, the theme flips under
+   it, then the overlay fades out. */
+.theme-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: gpThemeCircle 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.theme-wipe-out {
+  animation: themeWipeFade 0.45s ease forwards;
+}
+
+@keyframes themeWipeFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 /* Printing a dashboard page (e.g. the analytics "Print / PDF" export) should
    show only the page content, not the app's own chrome around it. */
 @media print {

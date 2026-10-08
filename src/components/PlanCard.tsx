@@ -6,6 +6,7 @@ interface Props {
   plan: Plan;
   current?: boolean;
   onSelect?: () => void;
+  yearly?: boolean;
 }
 
 function listingsLine(plan: Plan) {
@@ -13,8 +14,10 @@ function listingsLine(plan: Plan) {
   return `Up to ${plan.listings} active ${plan.listings === 1 ? "listing" : "listings"}`;
 }
 
-export function PlanCard({ plan, current, onSelect }: Props) {
+export function PlanCard({ plan, current, onSelect, yearly }: Props) {
   const highlighted = Boolean(plan.badge);
+  const displayPrice = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
+  const period = yearly && plan.priceYearly !== null ? "/yr" : "/mo";
   return (
     <article
       className={`relative flex flex-col gap-5 rounded-xl bg-card px-7 py-8 text-card-foreground ${
@@ -34,10 +37,13 @@ export function PlanCard({ plan, current, onSelect }: Props) {
       </div>
       <div className="flex items-baseline gap-1.5">
         <span className="text-sm font-semibold text-muted-foreground">KES</span>
-        <span className="text-4xl font-extrabold tracking-[-0.02em] tabular-nums">
-          {plan.price.toLocaleString("en-US")}
+        <span
+          key={period}
+          className="animate-in fade-in slide-in-from-top-1 text-4xl font-extrabold tracking-[-0.02em] tabular-nums duration-300"
+        >
+          {displayPrice.toLocaleString("en-US")}
         </span>
-        <span className="text-sm text-muted-foreground">/mo</span>
+        <span className="text-sm text-muted-foreground">{period}</span>
       </div>
       <ul className="flex flex-col gap-2.5 text-[0.9375rem] leading-snug">
         {plan.features.map((f) => (
@@ -57,7 +63,7 @@ export function PlanCard({ plan, current, onSelect }: Props) {
             highlighted && !current ? "bg-brand text-brand-foreground hover:bg-brand-hover" : ""
           }`}
         >
-          {current ? "Current plan" : plan.price === 0 ? "Start free" : plan.cta}
+          {current ? "Current plan" : displayPrice === 0 ? "Start free" : plan.cta}
         </Button>
       </div>
     </article>

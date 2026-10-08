@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type CSSProperties } from "react";
 import { usePublicParcels } from "@/lib/parcels";
 import { formatPrice } from "@/lib/properties";
 import { KENYA_MESH, KENYA_OUTLINE, MAPPED_LAND_DOTS, SURVEY_DOTS } from "./kenyaMapData";
@@ -77,13 +77,13 @@ export function ScrollStory() {
               <svg className="gp-note-arrow" width="96" height="60" viewBox="0 0 96 60" fill="none">
                 <path
                   d="M4 6 C 20 40, 50 50, 84 40"
-                  stroke="#A9C97A"
+                  stroke="var(--gp-olive)"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
                 <path
                   d="M72 30 L 86 40 L 72 50"
-                  stroke="#A9C97A"
+                  stroke="var(--gp-olive)"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -101,21 +101,20 @@ export function ScrollStory() {
                   aria-label="Mesh map of Kenya with mapped land as green dots"
                 >
                   <path
+                    className="gp-outline-path"
                     d={KENYA_OUTLINE}
-                    fill="rgba(169,201,122,0.035)"
-                    stroke="rgba(196,214,160,0.3)"
                     strokeWidth="1.5"
                     strokeLinejoin="round"
                     style={{ vectorEffect: "non-scaling-stroke" }}
                   />
                   <path
+                    className="gp-mesh-path"
                     d={KENYA_MESH}
                     fill="none"
-                    stroke="rgba(214,198,160,0.16)"
                     strokeWidth="1"
                     style={{ vectorEffect: "non-scaling-stroke" }}
                   />
-                  <path d={SURVEY_DOTS} fill="rgba(214,198,160,0.4)" />
+                  <path className="gp-dots-path" d={SURVEY_DOTS} />
                 </svg>
                 <div className="gp-dots">
                   {MAPPED_LAND_DOTS.map(([left, top, size, delay], i) => (
@@ -145,13 +144,15 @@ export function ScrollStory() {
                   <div
                     key={i}
                     className="gp-parcel"
-                    style={{
-                      left: `${p.left}%`,
-                      top: `${p.top}%`,
-                      width: `${p.width}%`,
-                      height: `${p.height}%`,
-                      background: `rgba(169,201,122,${p.fill})`,
-                    }}
+                    style={
+                      {
+                        left: `${p.left}%`,
+                        top: `${p.top}%`,
+                        width: `${p.width}%`,
+                        height: `${p.height}%`,
+                        "--gp-parcel-fill": p.fill,
+                      } as CSSProperties
+                    }
                   />
                 ))}
                 <div className="gp-hi" />
@@ -159,11 +160,11 @@ export function ScrollStory() {
                   <svg width="44" height="56" viewBox="0 0 24 30" aria-hidden="true">
                     <path
                       d="M12 29s-10-8.6-10-16a10 10 0 0 1 20 0c0 7.4-10 16-10 16z"
-                      fill="#A9C97A"
-                      stroke="#15140F"
+                      fill="var(--gp-sage)"
+                      stroke="var(--gp-charcoal)"
                       strokeWidth="1.2"
                     />
-                    <circle cx="12" cy="12.5" r="3.6" fill="#15140F" />
+                    <circle cx="12" cy="12.5" r="3.6" fill="var(--gp-charcoal)" />
                   </svg>
                 </div>
                 <span className="gp-map-label" style={{ left: "6%", top: "5%" }}>
@@ -183,7 +184,7 @@ export function ScrollStory() {
                         height="12"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#15140F"
+                        stroke="var(--gp-charcoal)"
                         strokeWidth="3"
                         strokeLinecap="round"
                         strokeLinejoin="round"

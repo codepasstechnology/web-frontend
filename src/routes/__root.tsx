@@ -134,10 +134,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("lv_theme");if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})()`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -148,6 +151,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+// The home page, the marketing pages and blog posts bring their own header and footer.
+const OWN_CHROME_PATHS = new Set(["/", "/pricing", "/blog", "/about", "/help", "/contact"]);
 const NO_NAVBAR_PREFIXES = [
   "/dashboard",
   "/manager",
@@ -163,9 +168,10 @@ const NO_FOOTER_PREFIXES = ["/land", "/rentals", "/explore"];
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { pathname } = useLocation();
-  // The home page brings its own header and footer.
-  const isHome = pathname === "/";
-  const showNavbar = !isHome && !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
+  const showNavbar =
+    !OWN_CHROME_PATHS.has(pathname) &&
+    !pathname.startsWith("/blog/") &&
+    !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
   const showFooter = showNavbar && !NO_FOOTER_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
