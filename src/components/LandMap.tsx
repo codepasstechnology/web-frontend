@@ -1,72 +1,50 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Circle,
   MapContainer,
-  TileLayer,
-  Polygon,
   Marker,
+  Polygon,
+  TileLayer,
   Tooltip,
-  Popup,
   useMap,
+  useMapEvents,
   ZoomControl,
 } from "react-leaflet";
 import L from "leaflet";
-import "leaflet-rotate";
-import { statusMeta, type LandParcel } from "@/lib/landData";
+import { Plus } from "lucide-react";
+import type { LandParcel } from "@/lib/landData";
+import { parcelPrice } from "@/lib/parcelFilters";
 import { formatPrice, INTENT_LABELS, type Property } from "@/lib/properties";
-import { MapSatelliteToggle, OSM_TILES, SATELLITE_TILES } from "@/components/MapSearchBar";
-
-// Fix default marker icons in bundlers
-const icon = L.divIcon({
-  className: "lv-marker",
-  html: `<div style="width:14px;height:14px;border-radius:9999px;background:#15803D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.25)"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
-
-// Small white glyph per status, drawn inside the pin's head.
-const statusGlyphs: Record<string, string> = {
-  verified:
-    '<path d="M8 12.2l2.6 2.6L16.2 9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-  disputed:
-    '<rect x="11.15" y="6.8" width="1.7" height="6" rx="0.85" fill="#fff"/><circle cx="12" cy="16" r="1.1" fill="#fff"/>',
-  sold: '<path d="M9 9l6 6M15 9l-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
-  reserved:
-    '<circle cx="12" cy="12" r="5" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M12 9.2v3l2.2 1.4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
-  available: '<circle cx="12" cy="12" r="3.5" fill="#fff"/>',
-  home: '<path d="M7 12.2L12 8l5 4.2V16.5H13.8v-2.8h-3.6v2.8H7z" fill="#fff"/>',
-};
-
-// Rounded-square badge with a small callout tail — a shape of our own, not the
-// generic teardrop everyone associates with Google Maps. Anchored at the tail tip.
-// Selected parcels pop slightly larger with a glow.
-const pinIconFor = (color: string, glyphKey: string, selected: boolean) => {
-  const glyph = statusGlyphs[glyphKey] ?? statusGlyphs.available;
-  const scale = selected ? 1.2 : 1;
-  const w = Math.round(24 * scale);
-  const h = Math.round(30 * scale);
-  return L.divIcon({
-    className: `lv-pin-icon${selected ? " lv-pin-icon-selected" : ""}`,
-    html: `<svg width="${w}" height="${h}" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
-      <path d="M8 2H16A6 6 0 0 1 22 8V16A6 6 0 0 1 16 22H15L12 29L9 22H8A6 6 0 0 1 2 16V8A6 6 0 0 1 8 2Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
-      ${glyph}
-    </svg>`,
-    iconSize: [w, h],
-    iconAnchor: [w / 2, Math.round(29 * scale)],
-  });
-};
-
-// Anchored to the polygon's own rightmost vertex — a real point on the
-// boundary line, not floating outside it, and never inside the land itself.
-// Property pins are coloured by what the listing is for, the way land pins are
-// coloured by parcel status.
-const intentColors: Record<Property["intent"], string> = {
-  rent: "#1E293B",
-  bnb: "#7C3AED",
-  sale: "#16A34A",
-};
-
-const polygonAnchorPoint = (poly: [number, number][]): [number, number] =>
-  poly.reduce((best, p) => (p[1] > best[1] ? p : best), poly[0]);
+import {
+  centroid,
+  clusterByTouch,
+  zoomStepsToSeparate,
+  type Bbox,
+  type ScreenPoint,
+} from "@/lib/mapGeo";
+import { MapSatelliteToggle, MapSearchBar } from "@/components/MapSearchBar";
+import {
+  SATELLITE_ATTRIBUTION,
+  SATELLITE_TILES,
+  DARK_TILES_CLASS,
+  STREET_ATTRIBUTION,
+  STREET_TILES,
+  useIsDark,
+} from "@/components/map/tiles";
+import { MapLegend } from "@/components/MapLegend";
+import {
+  beaconIcon,
+  clusterIcon,
+  DEAL_COLOR,
+  DEAL_TAG,
+  INTENT_COLOR,
+  meIcon,
+  parcelLabelIcon,
+  propertyIcon,
+  propertyKind,
+  propertyShortLabel,
+} from "@/components/map/markers";
+import "@/components/map/map.css";
 
 export interface FlyTarget {
   lat: number;
@@ -93,7 +71,23 @@ interface Props {
   parcels?: LandParcel[];
   properties?: Property[];
   flyTarget?: FlyTarget | null;
+  /** Listings to highlight, e.g. while their sidebar card is hovered. */
+  hotIds?: string[];
+  onHover?: (ids: string[]) => void;
+  /** Recently viewed listings get a small grey dot. */
+  seenIds?: string[];
+  /** Fired after the map settles, so the page can load just the visible area. */
+  onBoundsChange?: (bbox: Bbox) => void;
+  areaLoading?: boolean;
+  loadError?: boolean;
+  retrying?: boolean;
+  onRetry?: () => void;
 }
+
+/** Below this zoom a plot is only a few pixels wide, so its corner beacons are hidden. */
+const BEACON_MIN_ZOOM = 15;
+
+const isMobileWidth = () => window.innerWidth <= 900;
 
 // Fits map to all parcels/properties on first load, and zooms to the
 // selected one when chosen.
@@ -110,6 +104,7 @@ function MapController({
 }) {
   const map = useMap();
   const fitted = useRef(false);
+  const flownTo = useRef<string | null>(null);
   useEffect(() => {
     if (fitted.current) return;
     const all = [
@@ -129,7 +124,12 @@ function MapController({
     map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
   }, [map, mode, parcels, properties]);
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      flownTo.current = null;
+      return;
+    }
+    // Refetched data must not yank the map back to a listing already shown.
+    if (flownTo.current === selectedId) return;
 
     let bounds: [number, number][] | null = null;
     const parcel = mode === "rentals" ? undefined : parcels.find((x) => x.id === selectedId);
@@ -147,12 +147,12 @@ function MapController({
       bounds = [property.position, property.position];
     }
     if (!bounds) return;
+    flownTo.current = selectedId;
 
     // The listing panel covers the right side of the map on desktop and the
     // bottom ~60% on mobile — pad the fly-to so the parcel lands in the
     // slice of map that's actually still visible, not hidden behind it.
-    const isMobile = window.innerWidth < 768;
-    const paddingBottomRight: [number, number] = isMobile
+    const paddingBottomRight: [number, number] = isMobileWidth()
       ? [20, window.innerHeight * 0.58]
       : [400, 20];
 
@@ -166,6 +166,339 @@ function MapController({
   return null;
 }
 
+function BoundsWatcher({ onChange }: { onChange?: (bbox: Bbox) => void }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
+  useMapEvents({
+    moveend(e) {
+      if (!onChangeRef.current) return;
+      const b = (e.target as L.Map).getBounds();
+      clearTimeout(timer.current ?? undefined);
+      timer.current = setTimeout(
+        () => onChangeRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]),
+        300,
+      );
+    },
+  });
+  return null;
+}
+
+type Item =
+  | { kind: "parcel"; id: string; at: [number, number]; place: string; parcel: LandParcel }
+  | { kind: "property"; id: string; at: [number, number]; place: string; property: Property };
+
+const SEGMENT_ORDER = ["lsale", "llease", "rent", "sale", "bnb"] as const;
+const SEGMENT_COLOR: Record<(typeof SEGMENT_ORDER)[number], string> = {
+  lsale: DEAL_COLOR.sale,
+  llease: DEAL_COLOR.lease,
+  rent: INTENT_COLOR.rent,
+  sale: INTENT_COLOR.sale,
+  bnb: INTENT_COLOR.bnb,
+};
+const segmentOf = (it: Item): (typeof SEGMENT_ORDER)[number] =>
+  it.kind === "parcel"
+    ? it.parcel.listingType === "lease"
+      ? "llease"
+      : "lsale"
+    : it.property.intent;
+
+function parcelAria(p: LandParcel): string {
+  return [
+    `${DEAL_TAG[p.listingType]}: ${p.parcelNumber}`,
+    p.size,
+    p.area || p.county,
+    p.status === "verified" ? "verified" : "not yet verified",
+    p.polygon ? "" : "approximate location",
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function ParcelShape({
+  parcel,
+  at,
+  on,
+  seen,
+  showBeacons,
+  index,
+  onSelect,
+  onHover,
+}: {
+  parcel: LandParcel;
+  at: [number, number];
+  on: boolean;
+  seen: boolean;
+  showBeacons: boolean;
+  index: number;
+  onSelect: () => void;
+  onHover: (ids: string[]) => void;
+}) {
+  const color = DEAL_COLOR[parcel.listingType];
+  const verified = parcel.status === "verified";
+  const handlers = {
+    click: onSelect,
+    mouseover: () => onHover([parcel.id]),
+    mouseout: () => onHover([]),
+  };
+  const label = useMemo(
+    () =>
+      parcelLabelIcon({
+        text: parcel.size,
+        color,
+        verified,
+        on,
+        seen,
+        aria: parcelAria(parcel),
+        below: !parcel.polygon,
+      }),
+    [parcel, color, verified, on, seen],
+  );
+  const corners = parcel.polygon ?? [at];
+  const beacons = useMemo(
+    () => corners.map((_, i) => beaconIcon(color, on, 0.2 + index * 0.06 + i * 0.05)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [corners.length, color, on],
+  );
+
+  return (
+    <>
+      {parcel.polygon ? (
+        <>
+          {verified && (
+            <Polygon
+              positions={parcel.polygon}
+              interactive={false}
+              pathOptions={{ color: "var(--surface)", weight: on ? 7 : 5.5, fill: false }}
+            />
+          )}
+          <Polygon
+            positions={parcel.polygon}
+            eventHandlers={handlers}
+            pathOptions={{
+              color,
+              fillColor: color,
+              weight: on ? 3.5 : verified ? 2.2 : 1.8,
+              fillOpacity: verified ? (on ? 0.6 : 0.42) : on ? 0.4 : 0.2,
+              dashArray: verified ? undefined : "6 4",
+            }}
+          >
+            <Tooltip sticky direction="top" offset={[0, -10]} className="gm-tip">
+              <b>{parcel.parcelNumber}</b>
+              <span>
+                {verified ? "Verified" : "Available"} · {parcelPrice(parcel)}
+              </span>
+            </Tooltip>
+          </Polygon>
+        </>
+      ) : (
+        <Circle
+          center={at}
+          radius={70}
+          eventHandlers={handlers}
+          pathOptions={{
+            color,
+            fillColor: color,
+            weight: 2,
+            dashArray: "3 3",
+            fillOpacity: on ? 0.26 : 0.14,
+            className: "gm-approx",
+          }}
+        >
+          <Tooltip sticky direction="top" offset={[0, -10]} className="gm-tip">
+            <b>{parcel.parcelNumber}</b>
+            <span>Approximate location · {parcelPrice(parcel)}</span>
+          </Tooltip>
+        </Circle>
+      )}
+      {showBeacons &&
+        corners.map((c, i) => (
+          <Marker
+            key={i}
+            position={c}
+            icon={beacons[i]}
+            interactive={false}
+            keyboard={false}
+            zIndexOffset={on ? 300 : 0}
+          />
+        ))}
+      <Marker
+        position={at}
+        icon={label}
+        keyboard={false}
+        zIndexOffset={on ? 2000 : 1000}
+        eventHandlers={handlers}
+      />
+    </>
+  );
+}
+
+function PropertyPin({
+  property,
+  on,
+  seen,
+  onSelect,
+  onHover,
+}: {
+  property: Property;
+  on: boolean;
+  seen: boolean;
+  onSelect: () => void;
+  onHover: (ids: string[]) => void;
+}) {
+  const icon = useMemo(
+    () =>
+      propertyIcon({
+        kind: propertyKind(property.type),
+        color: INTENT_COLOR[property.intent],
+        label: propertyShortLabel(property),
+        on,
+        seen,
+        aria: `${INTENT_LABELS[property.intent]}: ${property.title}, ${property.area || property.county}, ${formatPrice(property.price, property.pricePeriod)}`,
+      }),
+    [property, on, seen],
+  );
+  return (
+    <Marker
+      position={property.position}
+      icon={icon}
+      keyboard={false}
+      zIndexOffset={on ? 3000 : 0}
+      eventHandlers={{
+        click: onSelect,
+        mouseover: () => onHover([property.id]),
+        mouseout: () => onHover([]),
+      }}
+    />
+  );
+}
+
+function Layers({
+  mode,
+  items,
+  selectedId,
+  hotIds,
+  seenIds,
+  onSelectParcel,
+  onSelectProperty,
+  onHover,
+  onAllClustered,
+}: {
+  mode: MapMode;
+  items: Item[];
+  selectedId: string | null;
+  hotIds: string[];
+  seenIds: string[];
+  onSelectParcel?: (p: LandParcel | null) => void;
+  onSelectProperty?: (p: Property | null) => void;
+  onHover: (ids: string[]) => void;
+  onAllClustered: (all: boolean) => void;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+
+  const groups = useMemo(() => {
+    const points: ScreenPoint[] = items.map((it) => {
+      const p = map.project(it.at, zoom);
+      return { id: it.id, x: p.x, y: p.y };
+    });
+    const byId = new Map(items.map((it) => [it.id, it]));
+    return clusterByTouch(points).map((members) => ({
+      points: members,
+      items: members.map((m) => byId.get(m.id) as Item),
+    }));
+  }, [items, map, zoom]);
+
+  const singles = groups.filter((g) => g.items.length === 1).map((g) => g.items[0]);
+  const clusters = groups.filter((g) => g.items.length > 1);
+  const allClustered = clusters.length > 0 && singles.length === 0;
+  useEffect(() => onAllClustered(allClustered), [allClustered, onAllClustered]);
+
+  const noun = (n: number) =>
+    mode === "land"
+      ? n === 1
+        ? "plot"
+        : "plots"
+      : mode === "rentals"
+        ? n === 1
+          ? "home"
+          : "homes"
+        : n === 1
+          ? "listing"
+          : "listings";
+
+  return (
+    <>
+      {clusters.map((g) => {
+        const n = g.items.length;
+        const places = new Map<string, number>();
+        g.items.forEach((it) => places.set(it.place, (places.get(it.place) ?? 0) + 1));
+        const topPlace = [...places.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        const place = topPlace + (places.size > 1 ? " area" : "");
+        const counts = new Map<string, number>();
+        g.items.forEach((it) => counts.set(segmentOf(it), (counts.get(segmentOf(it)) ?? 0) + 1));
+        const bounds = L.latLngBounds(g.items.map((it) => it.at));
+        const ids = g.items.map((it) => it.id);
+        const on = ids.some((id) => id === selectedId || hotIds.includes(id));
+        return (
+          <Marker
+            key={ids.join("|")}
+            position={bounds.getCenter()}
+            keyboard={false}
+            zIndexOffset={4000}
+            icon={clusterIcon({
+              count: n,
+              label: `${n} ${noun(n)} · ${place}`,
+              aria: `${n} ${noun(n)} in ${place}. Zoom in to see them.`,
+              on,
+              segments: SEGMENT_ORDER.filter((k) => counts.has(k)).map((k) => ({
+                color: SEGMENT_COLOR[k],
+                share: (counts.get(k) ?? 0) / n,
+              })),
+            })}
+            eventHandlers={{
+              click: () =>
+                map.flyTo(
+                  bounds.getCenter(),
+                  Math.min(map.getMaxZoom(), zoom + zoomStepsToSeparate(g.points)),
+                  { duration: 0.8 },
+                ),
+              mouseover: () => onHover(ids),
+              mouseout: () => onHover([]),
+            }}
+          />
+        );
+      })}
+      {singles.map((it, index) =>
+        it.kind === "parcel" ? (
+          <ParcelShape
+            key={it.id}
+            parcel={it.parcel}
+            at={it.at}
+            index={index}
+            on={it.id === selectedId || hotIds.includes(it.id)}
+            seen={seenIds.includes(it.id) && it.id !== selectedId}
+            showBeacons={zoom >= BEACON_MIN_ZOOM}
+            onSelect={() => onSelectParcel?.(it.parcel)}
+            onHover={onHover}
+          />
+        ) : (
+          <PropertyPin
+            key={it.id}
+            property={it.property}
+            on={it.id === selectedId || hotIds.includes(it.id)}
+            seen={seenIds.includes(it.id) && it.id !== selectedId}
+            onSelect={() => onSelectProperty?.(it.property)}
+            onHover={onHover}
+          />
+        ),
+      )}
+    </>
+  );
+}
+
 export function LandMap({
   mode,
   onSelectParcel,
@@ -174,135 +507,145 @@ export function LandMap({
   parcels = [],
   properties = [],
   flyTarget,
+  hotIds = [],
+  onHover,
+  seenIds = [],
+  onBoundsChange,
+  areaLoading = false,
+  loadError = false,
+  retrying = false,
+  onRetry,
 }: Props) {
-  const parcelList = parcels;
   const [mounted, setMounted] = useState(false);
   const [isSatellite, setIsSatellite] = useState(false);
+  const [searchTarget, setSearchTarget] = useState<FlyTarget | null>(null);
+  const [me, setMe] = useState<[number, number] | null>(null);
+  const [allClustered, setAllClustered] = useState(false);
+  const dark = useIsDark();
   useEffect(() => setMounted(true), []);
+
+  const items = useMemo<Item[]>(() => {
+    const out: Item[] = [];
+    if (mode !== "rentals") {
+      for (const p of parcels) {
+        const at = p.polygon
+          ? centroid(p.polygon)
+          : p.latitude != null && p.longitude != null
+            ? ([p.latitude, p.longitude] as [number, number])
+            : null;
+        if (at) out.push({ kind: "parcel", id: p.id, at, place: p.area || p.county, parcel: p });
+      }
+    }
+    if (mode !== "land") {
+      for (const p of properties) {
+        out.push({
+          kind: "property",
+          id: p.id,
+          at: p.position,
+          place: p.area || p.county,
+          property: p,
+        });
+      }
+    }
+    return out;
+  }, [mode, parcels, properties]);
+
   if (!mounted) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-muted text-sm text-muted-foreground">
-        Loading GIS map…
-      </div>
-    );
+    return <div className="gm-mapfill" style={{ background: "var(--mbg)" }} />;
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="gm-mapfill">
       <MapContainer
         center={[-1.286389, 36.817223]}
         zoom={11}
         scrollWheelZoom
         zoomControl={false}
-        // leaflet-rotate's SVG/Canvas renderer desyncs from the tile pane mid
-        // zoom-animation while `rotate` is on (its own acknowledged bug), which
-        // reads as parcel boundaries drifting off their tiles as you pinch-zoom.
-        // Disabling the animated zoom transition removes the in-between frames
-        // where that drift is visible — zoom still works, it just snaps to the
-        // new level instead of easing into it. Rotation itself is unaffected.
-        zoomAnimation={false}
-        rotate
-        touchRotate
-        rotateControl={{ position: "topleft", closeOnZeroBearing: false }}
-        className="h-full w-full"
-        style={{ background: "#e8eef5" }}
+        className="gm-map"
+        style={{ height: "100%", width: "100%" }}
       >
         <ZoomControl position="bottomright" />
         <MapController
           mode={mode}
           selectedId={selectedId}
-          parcels={parcelList}
+          parcels={parcels}
           properties={properties}
         />
+        <BoundsWatcher onChange={onBoundsChange} />
         <FlyToTarget target={flyTarget ?? null} />
+        <FlyToTarget target={searchTarget} />
         <TileLayer
-          key={isSatellite ? "sat" : "osm"}
-          url={isSatellite ? SATELLITE_TILES : OSM_TILES}
-          attribution={isSatellite ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors"}
+          key={isSatellite ? "sat" : dark ? "dark" : "street"}
+          url={isSatellite ? SATELLITE_TILES : STREET_TILES}
+          attribution={isSatellite ? SATELLITE_ATTRIBUTION : STREET_ATTRIBUTION}
+          className={dark && !isSatellite ? DARK_TILES_CLASS : undefined}
         />
-
-        {mode !== "rentals" &&
-          parcelList.map((p) => {
-            if (!p.polygon) return null;
-            const meta = statusMeta[p.status];
-            const isSelected = selectedId === p.id;
-            return (
-              <Polygon
-                key={p.id}
-                positions={p.polygon}
-                pathOptions={{
-                  color: meta.color,
-                  weight: isSelected ? 3.5 : 2,
-                  fillColor: meta.fill,
-                  fillOpacity: isSelected ? 0.6 : 0.42,
-                  dashArray: p.status === "disputed" ? "6 4" : undefined,
-                }}
-                eventHandlers={{ click: () => onSelectParcel?.(p) }}
-              >
-                <Tooltip direction="top" sticky offset={[0, -4]}>
-                  <div className="text-xs">
-                    <div className="font-semibold text-foreground">{p.title}</div>
-                    <div className="text-muted-foreground">
-                      {meta.label} · KES {p.price.toLocaleString()}
-                    </div>
-                  </div>
-                </Tooltip>
-              </Polygon>
-            );
-          })}
-
-        {mode !== "rentals" &&
-          parcelList.map((p) => {
-            const position = p.polygon
-              ? polygonAnchorPoint(p.polygon)
-              : p.latitude != null && p.longitude != null
-                ? ([p.latitude, p.longitude] as [number, number])
-                : null;
-            if (!position) return null;
-            const meta = statusMeta[p.status];
-            const isSelected = selectedId === p.id;
-            return (
-              <Marker
-                key={`label-${p.id}`}
-                position={position}
-                icon={pinIconFor(meta.color, p.status, isSelected)}
-                keyboard={false}
-                eventHandlers={{ click: () => onSelectParcel?.(p) }}
-              >
-                <Tooltip direction="right" offset={[2, -16]}>
-                  <div className="text-xs">
-                    <div className="font-semibold text-foreground">{p.parcelNumber}</div>
-                    <div className="text-muted-foreground">{p.size}</div>
-                  </div>
-                </Tooltip>
-              </Marker>
-            );
-          })}
-
-        {mode !== "land" &&
-          properties.map((p) => (
-            <Marker
-              key={p.id}
-              position={p.position}
-              icon={pinIconFor(
-                intentColors[p.intent],
-                mode === "all" ? "home" : p.intent === "sale" ? "sold" : "available",
-                selectedId === p.id,
-              )}
-              eventHandlers={{ click: () => onSelectProperty?.(p) }}
-            >
-              <Tooltip direction="top" offset={[0, -18]}>
-                <div className="text-xs">
-                  <div className="font-semibold text-foreground">{p.title}</div>
-                  <div className="text-muted-foreground">
-                    {INTENT_LABELS[p.intent]} · {formatPrice(p.price, p.pricePeriod)}
-                  </div>
-                </div>
-              </Tooltip>
-            </Marker>
-          ))}
+        <Layers
+          mode={mode}
+          items={items}
+          selectedId={selectedId ?? null}
+          hotIds={hotIds}
+          seenIds={seenIds}
+          onSelectParcel={onSelectParcel}
+          onSelectProperty={onSelectProperty}
+          onHover={(ids) => onHover?.(ids)}
+          onAllClustered={setAllClustered}
+        />
+        {me && <Marker position={me} icon={meIcon} interactive={false} keyboard={false} />}
       </MapContainer>
+
       <MapSatelliteToggle satellite={isSatellite} onToggle={() => setIsSatellite((s) => !s)} />
+      <MapSearchBar
+        onFly={(lat, lng) => setSearchTarget({ lat, lng, zoom: 14 })}
+        onNearMe={(lat, lng) => setMe([lat, lng])}
+      />
+      <div className="gm-ctl gm-ctl-chips">
+        {areaLoading && (
+          <span className="gm-chipx" role="status">
+            <span className="gm-spin" aria-hidden>
+              <Spinner14 />
+            </span>
+            Loading listings in this area…
+          </span>
+        )}
+        {allClustered && (
+          <span className="gm-chipx gm-light">
+            <Plus width={14} height={14} aria-hidden />
+            {mode === "rentals" ? "Zoom in to see each home" : "Zoom in to see plot boundaries"}
+          </span>
+        )}
+      </div>
+      {loadError && (
+        <div className="gm-err" role="alert">
+          Couldn&apos;t load listings.
+          <button type="button" onClick={onRetry} disabled={retrying}>
+            {retrying && (
+              <span className="gm-spin" aria-hidden>
+                <Spinner14 />
+              </span>
+            )}
+            Retry
+          </button>
+        </div>
+      )}
+      <MapLegend mode={mode} />
     </div>
+  );
+}
+
+function Spinner14() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+    </svg>
   );
 }

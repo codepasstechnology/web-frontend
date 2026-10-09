@@ -82,6 +82,12 @@ interface ApiUser {
   } | null;
 }
 
+/** What the wizard needs to know after a listing is saved. */
+export interface ListingSaved {
+  /** Its land overlaps another listing, so the team will compare title deeds. */
+  locationOverlaps: boolean;
+}
+
 interface ApiListing {
   id: string;
   title: string;
@@ -92,9 +98,12 @@ interface ApiListing {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+  /** The new listing's land overlaps another listing; it is flagged for review. */
+  location_overlaps?: boolean;
 }
 
 interface ApiListingDetail {
+  location_overlaps?: boolean;
   id: string;
   title: string;
   parcel_number: string | null;
@@ -293,14 +302,14 @@ interface AuthCtx {
     l: NewListingInput,
     onProgress?: (pct: number) => void,
     abortRef?: { current: (() => void) | null },
-  ) => Promise<void>;
+  ) => Promise<ListingSaved>;
   fetchListing: (id: string) => Promise<ListingDetail>;
   updateListing: (
     id: string,
     l: ListingEditInput,
     onProgress?: (pct: number) => void,
     abortRef?: { current: (() => void) | null },
-  ) => Promise<void>;
+  ) => Promise<ListingSaved>;
   removeListing: (id: string) => Promise<void>;
   markListingSold: (id: string) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
@@ -625,6 +634,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       coverPhotoUrl: created.cover_photo_url,
     };
     setUser((prev) => (prev ? { ...prev, listings: [newL, ...prev.listings] } : prev));
+    return { locationOverlaps: !!created.location_overlaps };
   }, []);
 
   const fetchListing: AuthCtx["fetchListing"] = useCallback(async (id) => {
@@ -710,6 +720,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           : prev,
       );
+      return { locationOverlaps: !!updated.location_overlaps };
     },
     [],
   );

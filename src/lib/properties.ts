@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { bboxParam, type Bbox } from "./mapGeo";
 
 export type PropertyIntent = "rent" | "bnb" | "sale";
 export type PropertyType =
@@ -32,6 +33,7 @@ export interface Property {
   position: [number, number];
   photos: string[];
   featured: boolean;
+  svAvailable?: boolean | null;
 }
 
 export interface MyProperty {
@@ -92,6 +94,7 @@ interface ApiProperty {
   longitude: number;
   photos: string[];
   featured: boolean;
+  sv_available?: boolean | null;
 }
 
 interface ApiMyProperty {
@@ -189,6 +192,7 @@ export function mapApiProperty(p: ApiProperty): Property {
     position: [Number(p.latitude), Number(p.longitude)],
     photos: p.photos ?? [],
     featured: p.featured ?? false,
+    svAvailable: p.sv_available ?? null,
   };
 }
 
@@ -231,8 +235,9 @@ function mapApiMyPropertyDetail(p: ApiMyPropertyDetail): MyPropertyDetail {
   };
 }
 
-function toQuery(filters: PropertyFilters): string {
+function toQuery(filters: PropertyFilters, bbox: Bbox | null = null): string {
   const params = new URLSearchParams();
+  if (bbox) params.set("bbox", bboxParam(bbox));
   if (filters.intent && filters.intent !== "all") params.set("intent", filters.intent);
   if (filters.type && filters.type !== "all") params.set("type", filters.type);
   if (filters.county && filters.county !== "All") params.set("county", filters.county);
@@ -244,14 +249,18 @@ function toQuery(filters: PropertyFilters): string {
   return q ? `?${q}` : "";
 }
 
-export function usePublicProperties(filters: PropertyFilters = {}) {
+export function usePublicProperties(filters: PropertyFilters = {}, bbox: Bbox | null = null) {
   return useQuery({
-    queryKey: ["properties", filters],
-    queryFn: async () => {
-      const page = await api.get<{ data: ApiProperty[] }>(`/properties${toQuery(filters)}`);
+    queryKey: ["properties", filters, bbox],
+    queryFn: async ({ signal }) => {
+      const page = await api.get<{ data: ApiProperty[] }>(
+        `/properties${toQuery(filters, bbox)}`,
+        signal,
+      );
       return page.data.map(mapApiProperty);
     },
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 

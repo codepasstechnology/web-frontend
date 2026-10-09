@@ -3046,17 +3046,6 @@ function KycCard({
                       hintText='This shows where you originally placed your land. Drop a new pin to correct it, or tap "Trace boundary" / "Retrace boundary" to redraw the shape.'
                       requireTapToActivate
                     />
-                    {locBoundary ? (
-                      <p className="text-xs text-muted-foreground">
-                        Traced boundary: {locBoundary.length} points
-                      </p>
-                    ) : locPin ? (
-                      <p className="text-xs text-muted-foreground">
-                        Pin: {locPin[0].toFixed(6)}, {locPin[1].toFixed(6)}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground/60">No pin placed yet.</p>
-                    )}
                     <div className="flex justify-end">
                       <button
                         onClick={() => handleUpdateLocation(kyc, locPin, locBoundary)}

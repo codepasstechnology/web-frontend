@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Plus, Trash2, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { StkCheckoutModal } from "@/components/StkCheckoutModal";
@@ -551,12 +551,6 @@ function PostPropertyPage() {
                 tutorial={false}
                 hintText="Tap the map to drop a pin on the property. Search for the estate or switch to satellite to find it."
               />
-              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />
-                {form.pin
-                  ? `Pin set — ${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
-                  : "No pin yet — tap the map to place one."}
-              </p>
             </div>
           )}
 

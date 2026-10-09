@@ -30,6 +30,17 @@
   --deep-ink: #fff6ea;
   --err: #b3261e;
   --ring: rgba(63, 90, 42, 0.16);
+  /* Map: listing colours (land by deal, properties by intent) and basemap. */
+  --s-lsale: #3f5a2a;
+  --s-lease: #23756c;
+  --s-rent: #2d5c9c;
+  --s-bsale: #1e2418;
+  --s-bnb: #a8600c;
+  --s-sold: #64748b;
+  --s-ink: #fffaf2;
+  --mkd: #fffaf2;
+  --mbg: #e6e0cc;
+  --me: #2d5c9c;
   background: var(--bg);
   color: var(--ink);
   overflow-x: clip;
@@ -62,6 +73,16 @@ html.dark .gs-root {
   --deep-ink: #f4eee2;
   --err: #f2877e;
   --ring: rgba(169, 201, 122, 0.22);
+  --s-lsale: #a9c97a;
+  --s-lease: #6cc3b6;
+  --s-rent: #93b6ec;
+  --s-bsale: #f4eee2;
+  --s-bnb: #edb660;
+  --s-sold: #94a3b8;
+  --s-ink: #15140f;
+  --mkd: #ede6d6;
+  --mbg: #191813;
+  --me: #93b6ec;
 }
 
 /* Zero-specificity so component transitions (buttons, the navbar knob) still win. */

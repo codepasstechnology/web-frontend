@@ -4,9 +4,13 @@ import {
   ArrowLeft,
   ArrowRight,
   Building2,
+  Check,
   CheckCircle2,
+  CircleHelp,
   Lock,
   Map as MapIcon,
+  MapPin,
+  Spline,
   Star,
   UploadCloud,
   X,
@@ -15,10 +19,15 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { useAuth, type NewListingInput } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
+import { hasSelfIntersection, polygonAreaAcres } from "@/lib/mapGeo";
+import { plotStatus } from "@/lib/plotting";
+import "@/components/site/site-pages.css";
+import "@/components/map/map.css";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({ meta: [{ title: "Upload Land — Geo Pin Properties Kenya" }] }),
@@ -116,50 +125,6 @@ function sizeToDisplay(
   return widthFt && lengthFt ? `${widthFt} x ${lengthFt} ft` : "";
 }
 
-type LatLng = { lat: number; lng: number };
-
-function segmentsIntersect(p1: LatLng, p2: LatLng, p3: LatLng, p4: LatLng): boolean {
-  const d = (a: LatLng, b: LatLng, c: LatLng) =>
-    (c.lng - a.lng) * (b.lat - a.lat) - (b.lng - a.lng) * (c.lat - a.lat);
-  const d1 = d(p3, p4, p1);
-  const d2 = d(p3, p4, p2);
-  const d3 = d(p1, p2, p3);
-  const d4 = d(p1, p2, p4);
-  return (d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)
-    ? (d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)
-    : false;
-}
-
-function hasSelfIntersection(points: LatLng[]): boolean {
-  const n = points.length;
-  if (n < 4) return false;
-  for (let i = 0; i < n; i++) {
-    const a1 = points[i];
-    const a2 = points[(i + 1) % n];
-    for (let j = i + 1; j < n; j++) {
-      if (j === i || (j + 1) % n === i || (i + 1) % n === j) continue;
-      if (segmentsIntersect(a1, a2, points[j], points[(j + 1) % n])) return true;
-    }
-  }
-  return false;
-}
-
-function polygonAreaAcres(points: { lat: number; lng: number }[]): number {
-  const R = 6378137;
-  const lat0 = (points.reduce((s, p) => s + p.lat, 0) / points.length) * (Math.PI / 180);
-  const xy = points.map((p): [number, number] => [
-    R * (p.lng * (Math.PI / 180)) * Math.cos(lat0),
-    R * (p.lat * (Math.PI / 180)),
-  ]);
-  let area = 0;
-  for (let i = 0; i < xy.length; i++) {
-    const [x1, y1] = xy[i];
-    const [x2, y2] = xy[(i + 1) % xy.length];
-    area += x1 * y2 - x2 * y1;
-  }
-  return Math.abs(area) / 2 / 4046.8564224;
-}
-
 function ListingTypeChooser({
   onLand,
   onProperty,
@@ -239,6 +204,11 @@ function UploadPage() {
   >([]);
   const [removePhotoIds, setRemovePhotoIds] = useState<string[]>([]);
   const [coverPhotoId, setCoverPhotoId] = useState<string | undefined>(undefined);
+  // Bumped to shake the "crosses itself" note, and to open the map's walkthrough.
+  const [mapAttention, setMapAttention] = useState(0);
+  const [tutorialKey, setTutorialKey] = useState(0);
+  const [overlapWarning, setOverlapWarning] = useState(false);
+  const [savedWithOverlap, setSavedWithOverlap] = useState(false);
 
   const [form, setForm] = useState({
     parcelNumber: draft?.parcelNumber ?? "",
@@ -314,6 +284,32 @@ function UploadPage() {
     const { photos: _photos, documents: _documents, ...draftFields } = form;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, ...draftFields }));
   }, [step, form, editId]);
+
+  // Warn while plotting when the location covers land that is already listed.
+  // The server flags it for review on submit either way; this only gives an
+  // honest seller the chance to fix a mistake first.
+  useEffect(() => {
+    if (step !== 1 || (!form.pin && !form.boundary)) {
+      setOverlapWarning(false);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      api
+        .post<{ overlaps: boolean }>("/user/listings/overlap-check", {
+          ...(form.boundary
+            ? { boundary: form.boundary }
+            : { latitude: form.pin?.[0], longitude: form.pin?.[1] }),
+          except_id: editId,
+        })
+        .then(({ overlaps }) => !cancelled && setOverlapWarning(overlaps))
+        .catch(() => {});
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [step, form.pin, form.boundary, editId]);
 
   // Photos live in IndexedDB (File objects aren't JSON-serializable, unlike
   // the fields above) so they're saved separately, in their own effect.
@@ -412,10 +408,19 @@ function UploadPage() {
     step === 0
       ? !!(form.parcelNumber && form.county && sizeAcres != null && form.price)
       : step === 1
-        ? (!!form.pin || !!form.boundary) && !boundarySelfIntersects
+        ? !!form.pin || !!form.boundary
         : step === 2
           ? hasRequiredDocs
           : true;
+
+  // A boundary that crosses itself blocks the step; pressing on shakes the note instead.
+  const goNext = () => {
+    if (step === 1 && boundarySelfIntersects) {
+      setMapAttention((n) => n + 1);
+      return;
+    }
+    setStep((s) => s + 1);
+  };
 
   const submit = async () => {
     if (limitReached) {
@@ -447,7 +452,7 @@ function UploadPage() {
     };
     try {
       if (editId) {
-        await updateListing(
+        const saved = await updateListing(
           editId,
           {
             ...payload,
@@ -457,8 +462,10 @@ function UploadPage() {
           setUploadProgress,
           abortRef,
         );
+        setSavedWithOverlap(saved.locationOverlaps);
       } else {
-        await addListing(payload, setUploadProgress, abortRef);
+        const saved = await addListing(payload, setUploadProgress, abortRef);
+        setSavedWithOverlap(saved.locationOverlaps);
         clearDraft();
       }
       setSubmitted(true);
@@ -475,21 +482,23 @@ function UploadPage() {
   return (
     <DashboardShell active="upload" onChange={() => {}}>
       {step === 1 && isMobile && !submitted && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
+        <div className="gs-root gm-full">
+          <div className="gm-mtop">
+            <button type="button" className="gm-link" onClick={() => setStep(0)}>
               <ArrowLeft className="h-4 w-4" /> Back
             </button>
-            <span className="mx-auto text-sm font-semibold text-foreground">
-              Pin or trace your land
-            </span>
-            <span className="w-12 shrink-0" aria-hidden="true" />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Pin or trace your land</span>
+            <button
+              type="button"
+              className="gm-mbtn"
+              onClick={() => setTutorialKey((n) => n + 1)}
+              aria-label="How it works"
+              style={{ width: 40, height: 40, borderRadius: "50%", boxShadow: "none" }}
+            >
+              <CircleHelp className="h-[18px] w-[18px]" />
+            </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden p-3">
+          <div className="gm-fullmap">
             <LandBoundaryMap
               pin={form.pin}
               boundary={form.boundary}
@@ -497,31 +506,33 @@ function UploadPage() {
               onBoundaryChange={(b) => set("boundary", b)}
               county={form.county}
               hintText=""
-              heightClassName="h-[calc(100dvh-12rem)]"
+              heightClassName="h-full"
+              notes={false}
+              openTutorialKey={tutorialKey}
             />
           </div>
-          <div className="shrink-0 border-t border-border p-3">
-            <p
-              className={`mb-2 truncate text-xs font-medium ${
-                boundarySelfIntersects ? "text-destructive" : "text-muted-foreground"
-              }`}
-            >
-              {boundarySelfIntersects
-                ? 'This boundary crosses itself — tap "Retrace boundary" to redraw it.'
-                : form.boundary
-                  ? `Boundary traced — ${form.boundary.length} points${
-                      tracedAreaAcres != null ? ` · ≈ ${tracedAreaAcres.toFixed(2)} acres` : ""
-                    }`
-                  : form.pin
-                    ? `Pin set — ${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
-                    : "Tap the map to drop a pin, or trace your land's exact edge."}
-            </p>
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              disabled={!canNext}
-              className="w-full rounded-md bg-[#15803D] px-4 py-3 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
-            >
+          <div className="gm-mbot">
+            <span className="gm-pline" role="status" style={{ fontWeight: 600 }}>
+              {plotStatus(form.pin, form.boundary)}
+            </span>
+            {overlapWarning && (
+              <span className="gm-pline" data-tone="warn" role="status" style={{ fontSize: 13 }}>
+                Part of this location is already listed. We&apos;ll compare title deeds before it
+                goes live.
+              </span>
+            )}
+            {boundarySelfIntersects && (
+              <span
+                key={mapAttention}
+                className={`gm-pline${mapAttention ? " gm-shake" : ""}`}
+                data-tone="error"
+                role="alert"
+                style={{ fontSize: 13 }}
+              >
+                This boundary crosses itself. Tap &quot;Retrace boundary&quot; to redraw it.
+              </span>
+            )}
+            <button type="button" className="gm-btn" onClick={goNext} disabled={!canNext}>
               Confirm location
             </button>
           </div>
@@ -600,6 +611,12 @@ function UploadPage() {
                 ? "Your changes have been saved and the listing is back under review."
                 : "Your listing is under review and will appear on the map within 24 hours."}
             </p>
+            {savedWithOverlap && (
+              <p className="mx-auto mt-3 max-w-md rounded-md border border-warning/40 bg-warning-subtle px-3 py-2 text-sm text-warning-subtle-foreground">
+                This location overlaps another listing, so our team will compare the title deeds
+                before it goes live. This can take a little longer.
+              </p>
+            )}
             <div className="mt-5 flex justify-center gap-2">
               <button
                 onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })}
@@ -834,41 +851,95 @@ function UploadPage() {
             )}
 
             {step === 1 && !isMobile && (
-              <div>
-                <LandBoundaryMap
-                  pin={form.pin}
-                  boundary={form.boundary}
-                  onPinChange={(p) => set("pin", p)}
-                  onBoundaryChange={(b) => set("boundary", b)}
-                  county={form.county}
-                />
-                {boundarySelfIntersects && (
-                  <p className="mt-2 text-xs font-medium text-destructive">
-                    This boundary crosses itself — tap &quot;Retrace boundary&quot; to redraw it
-                    before continuing.
+              <div className="gs-root gm-wiz">
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <h2 className="gm-h" style={{ fontSize: "clamp(26px, 3vw, 36px)" }}>
+                    Where is your land?
+                  </h2>
+                  <p style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>
+                    Drop a pin, or trace your boundary so buyers can see exactly what they are
+                    getting.
                   </p>
-                )}
-                {form.boundary && tracedAreaAcres != null && (
-                  <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    Traced boundary: {form.boundary.length} points · ≈ {tracedAreaAcres.toFixed(2)}{" "}
-                    acres
+                </div>
+                <div className="gm-wizgrid">
+                  <div style={{ minWidth: 0 }}>
+                    <LandBoundaryMap
+                      pin={form.pin}
+                      boundary={form.boundary}
+                      onPinChange={(p) => set("pin", p)}
+                      onBoundaryChange={(b) => set("boundary", b)}
+                      county={form.county}
+                      hintText=""
+                      heightClassName="h-[560px] xl:h-[640px]"
+                      typedSize={sizeAcres ? { acres: sizeAcres, label: sizeDisplay } : null}
+                      attentionKey={mapAttention}
+                      openTutorialKey={tutorialKey}
+                      overlapWarning={overlapWarning}
+                    />
+                    {form.boundary && tracedAreaAcres != null && !boundarySelfIntersects && (
+                      <button
+                        type="button"
+                        className="gm-link"
+                        style={{ marginTop: 6 }}
+                        onClick={() => {
+                          set("sizeUnit", "acres");
+                          set("sizeAcres", tracedAreaAcres.toFixed(2));
+                        }}
+                      >
+                        Use ≈ {tracedAreaAcres.toFixed(2)} acres as the land size
+                      </button>
+                    )}
+                  </div>
+                  <aside className="gm-wizaside">
+                    <div className="gm-wcard">
+                      <span className="gm-mono gm-eyebrow">FROM STEP 1</span>
+                      <span className="gm-h" style={{ fontSize: 22 }}>
+                        {form.parcelNumber || "Your listing"}
+                      </span>
+                      <dl className="gm-facts">
+                        <dt>County</dt>
+                        <dd>{form.county || "—"}</dd>
+                        <dt>Size</dt>
+                        <dd>{sizeDisplay || "—"}</dd>
+                        <dt>Listing</dt>
+                        <dd>{form.listingType === "lease" ? "For lease" : "For sale"}</dd>
+                      </dl>
+                      <button type="button" className="gm-link" onClick={() => setStep(0)}>
+                        Edit basic details
+                      </button>
+                    </div>
+                    <div className="gm-wcard">
+                      <span className="gm-h" style={{ fontSize: 19 }}>
+                        Pin or trace?
+                      </span>
+                      <p className="gm-choice">
+                        <span>
+                          <MapPin className="h-[18px] w-[18px]" />
+                        </span>
+                        <span>
+                          <strong>Drop a pin</strong> if you don&apos;t know the exact shape. Buyers
+                          see an approximate area.
+                        </span>
+                      </p>
+                      <p className="gm-choice">
+                        <span>
+                          <Spline className="h-[18px] w-[18px]" />
+                        </span>
+                        <span>
+                          <strong>Trace the boundary</strong> by tapping each corner. Traced plots
+                          show as outlines and are ready for verification.
+                        </span>
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        set("sizeUnit", "acres");
-                        set("sizeAcres", tracedAreaAcres.toFixed(2));
-                      }}
-                      className="font-medium text-[#15803D] hover:underline"
+                      className="gm-btn gm-ghost"
+                      onClick={() => setTutorialKey((n) => n + 1)}
                     >
-                      Use this as land size
+                      <CircleHelp className="h-[18px] w-[18px]" /> How it works
                     </button>
-                  </p>
-                )}
-                {!form.boundary && form.pin && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Pin: {form.pin[0].toFixed(5)}, {form.pin[1].toFixed(5)}
-                  </p>
-                )}
+                  </aside>
+                </div>
               </div>
             )}
 
@@ -1180,15 +1251,16 @@ function UploadPage() {
                 disabled={step === 0}
                 className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back
+                <ArrowLeft className="h-3.5 w-3.5" /> {step === 1 ? "Basic details" : "Back"}
               </button>
               {step < steps.length - 1 ? (
                 <button
-                  onClick={() => setStep((s) => s + 1)}
+                  onClick={goNext}
                   disabled={!canNext}
                   className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-50"
                 >
-                  Next <ArrowRight className="h-3.5 w-3.5" />
+                  {step === 1 ? "Photos & documents" : "Next"}{" "}
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
                 <button
