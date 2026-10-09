@@ -1,3 +1,5 @@
+import { goToMaintenance } from "@/lib/maintenanceRedirect";
+
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost/Landconnect/backend/public/api";
 const TOKEN_KEY = "lv_token_v1";
 
@@ -51,6 +53,8 @@ async function request<T>(
     throw new Error("Unauthenticated");
   }
 
+  if (res.status === 503) goToMaintenance();
+
   if (!res.ok) {
     const payload = await res.json().catch(() => ({ message: fallbackErrorMessage(res.status) }));
     throw Object.assign(new Error(payload.message ?? fallbackErrorMessage(res.status)), {
@@ -100,6 +104,8 @@ function uploadWithProgress<T>(
         return;
       }
 
+      if (xhr.status === 503) goToMaintenance();
+
       let payload: { message?: string; errors?: Record<string, string[]> };
       try {
         payload = JSON.parse(xhr.responseText);
@@ -136,6 +142,8 @@ async function requestBlob(path: string): Promise<Blob> {
     if (typeof window !== "undefined") window.location.href = "/login";
     throw new Error("Unauthenticated");
   }
+
+  if (res.status === 503) goToMaintenance();
 
   if (!res.ok) throw new Error("Request failed");
 

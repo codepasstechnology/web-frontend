@@ -21,6 +21,7 @@ import { Route as HelpRouteImport } from './routes/help'
 import { Route as LandRouteImport } from './routes/land'
 import { Route as LoadingRouteImport } from './routes/loading'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as ManagerRouteImport } from './routes/manager'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -93,6 +94,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ManagerRoute = ManagerRouteImport.update({
   id: '/manager',
   path: '/manager',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/land': typeof LandRoute
   '/loading': typeof LoadingRoute
   '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
   '/manager': typeof ManagerRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByTo {
   '/land': typeof LandRoute
   '/loading': typeof LoadingRoute
   '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
   '/manager': typeof ManagerRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/land': typeof LandRoute
   '/loading': typeof LoadingRoute
   '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
   '/manager': typeof ManagerRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/land'
     | '/loading'
     | '/login'
+    | '/maintenance'
     | '/manager'
     | '/pricing'
     | '/privacy'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/land'
     | '/loading'
     | '/login'
+    | '/maintenance'
     | '/manager'
     | '/pricing'
     | '/privacy'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/land'
     | '/loading'
     | '/login'
+    | '/maintenance'
     | '/manager'
     | '/pricing'
     | '/privacy'
@@ -316,6 +328,7 @@ export interface RootRouteChildren {
   LandRoute: typeof LandRoute
   LoadingRoute: typeof LoadingRoute
   LoginRoute: typeof LoginRoute
+  MaintenanceRoute: typeof MaintenanceRoute
   ManagerRoute: typeof ManagerRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -415,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/manager': {
       id: '/manager'
       path: '/manager'
@@ -508,6 +528,7 @@ const rootRouteChildren: RootRouteChildren = {
   LandRoute: LandRoute,
   LoadingRoute: LoadingRoute,
   LoginRoute: LoginRoute,
+  MaintenanceRoute: MaintenanceRoute,
   ManagerRoute: ManagerRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
