@@ -5,6 +5,7 @@ import { KenyaMeshMap } from "@/components/site/KenyaMeshMap";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { PageHero } from "@/components/site/PageHero";
+import { api } from "@/lib/api";
 import { usePublicSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/contact")({
@@ -40,6 +41,7 @@ function ContactPage() {
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState("");
 
   const errors = checks(values);
   const shown = (f: Field) => (tried ? errors[f] : "");
@@ -75,12 +77,18 @@ function ContactPage() {
       setAttempt((a) => a + 1);
       return;
     }
-    // No contact endpoint exists yet, so a valid message only plays the sending state.
     setBusy(true);
-    window.setTimeout(() => {
-      setBusy(false);
-      setSent(true);
-    }, 900);
+    setSendError("");
+    api
+      .post("/contact", {
+        name: values.name.trim(),
+        email: values.email.trim(),
+        topic,
+        message: values.msg.trim(),
+      })
+      .then(() => setSent(true))
+      .catch((err: Error) => setSendError(err.message))
+      .finally(() => setBusy(false));
   }
 
   function handleReset() {
@@ -210,6 +218,11 @@ function ContactPage() {
                   </span>
                 )}
               </div>
+              {sendError && (
+                <span role="alert" className="gs-error">
+                  {sendError}
+                </span>
+              )}
               <button
                 type="submit"
                 className="gs-btn"
