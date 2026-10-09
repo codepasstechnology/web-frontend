@@ -10,6 +10,7 @@ const posts = vi.fn<() => BlogPost[]>(() => []);
 const plans = vi.fn<() => Plan[]>(() => []);
 const settings = vi.fn<() => Record<string, string>>(() => ({}));
 const navigate = vi.fn();
+const sendContact = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: object) => opts,
@@ -30,6 +31,9 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/components/site/MarketingShell", () => ({
   MarketingShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock("@/lib/api", () => ({
+  api: { post: (path: string, body: unknown) => sendContact(path, body) },
 }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({ user: null, setPlan: vi.fn() }),
@@ -245,6 +249,7 @@ describe("Pricing page", () => {
 describe("Contact page", () => {
   beforeEach(() => {
     settings.mockReturnValue({});
+    sendContact.mockReset().mockResolvedValue({});
   });
 
   it("flags every invalid field on submit", async () => {
@@ -256,6 +261,8 @@ describe("Contact page", () => {
   });
 
   it("sends a valid message and thanks the sender by first name", async () => {
+    let finish = () => {};
+    sendContact.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
     render(<Contact />);
     await userEvent.type(screen.getByLabelText("Your name"), "Wanjiku Kamau");
     await userEvent.type(screen.getByLabelText("Email"), "wanjiku@example.com");
@@ -263,7 +270,28 @@ describe("Contact page", () => {
     await userEvent.click(screen.getByRole("button", { name: /Send message/ }));
 
     expect(screen.getByRole("img", { name: "Sending" })).toBeInTheDocument();
-    expect(await screen.findByText("Asante, Wanjiku!", {}, { timeout: 2000 })).toBeInTheDocument();
+    finish();
+    expect(await screen.findByText("Asante, Wanjiku!")).toBeInTheDocument();
+    expect(sendContact).toHaveBeenCalledWith("/contact", {
+      name: "Wanjiku Kamau",
+      email: "wanjiku@example.com",
+      topic: "General",
+      message: "Is plot 42 still available?",
+    });
+  });
+
+  it("shows the server's error and keeps the form when sending fails", async () => {
+    sendContact.mockRejectedValue(new Error("Too many attempts. Try again shortly."));
+    render(<Contact />);
+    await userEvent.type(screen.getByLabelText("Your name"), "Wanjiku Kamau");
+    await userEvent.type(screen.getByLabelText("Email"), "wanjiku@example.com");
+    await userEvent.type(screen.getByLabelText("Message"), "Is plot 42 still available?");
+    await userEvent.click(screen.getByRole("button", { name: /Send message/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Too many attempts. Try again shortly.",
+    );
+    expect(screen.getByLabelText("Message")).toHaveValue("Is plot 42 still available?");
   });
 
   it("links the support email from public settings, falling back to the placeholder", () => {
