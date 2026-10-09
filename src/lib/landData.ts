@@ -29,6 +29,11 @@ export interface LandParcel {
   latitude?: number;
   longitude?: number;
   photos?: string[];
+  landUse?: string;
+  /** Town or neighbourhood, e.g. "Kitengela". */
+  area?: string;
+  /** Google Street View covers this spot. Null until the background check has run. */
+  svAvailable?: boolean | null;
 }
 
 const parcel = (

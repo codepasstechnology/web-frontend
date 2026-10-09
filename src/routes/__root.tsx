@@ -151,8 +151,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// The home page, the marketing pages and blog posts bring their own header and footer.
-const OWN_CHROME_PATHS = new Set(["/", "/pricing", "/blog", "/about", "/help", "/contact"]);
+// The home page, the marketing pages, blog posts and the map pages bring their own chrome.
+const OWN_CHROME_PATHS = new Set([
+  "/",
+  "/pricing",
+  "/blog",
+  "/about",
+  "/help",
+  "/contact",
+  "/land",
+  "/rentals",
+  "/explore",
+]);
 const NO_NAVBAR_PREFIXES = [
   "/dashboard",
   "/manager",
@@ -162,8 +172,6 @@ const NO_NAVBAR_PREFIXES = [
   "/forgot-password",
   "/reset-password",
 ];
-// Full-screen map pages have no room for a page footer.
-const NO_FOOTER_PREFIXES = ["/land", "/rentals", "/explore"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -172,7 +180,7 @@ function RootComponent() {
     !OWN_CHROME_PATHS.has(pathname) &&
     !pathname.startsWith("/blog/") &&
     !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
-  const showFooter = showNavbar && !NO_FOOTER_PREFIXES.some((p) => pathname.startsWith(p));
+  const showFooter = showNavbar;
 
   useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {

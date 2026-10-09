@@ -25,7 +25,7 @@ export function clearToken(): void {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; body?: unknown } = {},
+  opts: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
   const isFormData = opts.body instanceof FormData;
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -36,6 +36,7 @@ async function request<T>(
   const res = await fetch(`${BASE}${path}`, {
     method: opts.method ?? "GET",
     headers,
+    signal: opts.signal,
     body:
       opts.body !== undefined
         ? isFormData
@@ -179,8 +180,10 @@ export interface Paginated<T> {
   total: number;
 }
 
+export const API_BASE = BASE;
+
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),

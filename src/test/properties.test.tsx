@@ -33,9 +33,26 @@ vi.mock("@/lib/api", () => ({
   api: { get: vi.fn(), post: (path: string) => mockApiPost(path) },
 }));
 
+vi.mock("@/components/home/HomeNavbar", () => ({ HomeNavbar: () => null }));
+
 vi.mock("@/components/LandMap", () => ({
-  LandMap: ({ onSelectProperty }: { onSelectProperty?: (p: unknown) => void }) => (
-    <div data-testid="land-map" onClick={() => onSelectProperty?.(null)} />
+  LandMap: ({
+    onSelectProperty,
+    loadError,
+    onRetry,
+  }: {
+    onSelectProperty?: (p: unknown) => void;
+    loadError?: boolean;
+    onRetry?: () => void;
+  }) => (
+    <div>
+      <div data-testid="land-map" onClick={() => onSelectProperty?.(null)} />
+      {loadError && (
+        <button type="button" onClick={onRetry}>
+          Retry
+        </button>
+      )}
+    </div>
   ),
 }));
 
@@ -139,10 +156,10 @@ describe("RentalsPage", () => {
 
     expect(screen.getByText("Kilimani 2BR Apartment")).toBeInTheDocument();
     expect(screen.getByText("KES 75,000 / month")).toBeInTheDocument();
-    expect(screen.getByText("1 listings")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 result");
   });
 
-  it("shows a loading state while the feed is in flight", () => {
+  it("doesn't call the list empty while the feed is in flight", () => {
     mockUsePublicProperties.mockReturnValue({
       data: [],
       isLoading: true,
@@ -152,10 +169,10 @@ describe("RentalsPage", () => {
 
     render(<RentalsPage />);
 
-    expect(screen.getByText("Loading listings…")).toBeInTheDocument();
+    expect(screen.queryByText("No listings match these filters.")).not.toBeInTheDocument();
   });
 
-  it("offers a retry when the feed fails", () => {
+  it("offers a retry when the feed fails", async () => {
     const refetch = vi.fn();
     mockUsePublicProperties.mockReturnValue({
       data: [],
@@ -166,8 +183,8 @@ describe("RentalsPage", () => {
 
     render(<RentalsPage />);
 
-    expect(screen.getByText("Could not load listings.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it("explains an empty result set rather than rendering nothing", () => {
@@ -180,7 +197,7 @@ describe("RentalsPage", () => {
 
     render(<RentalsPage />);
 
-    expect(screen.getByText("No properties match these filters yet.")).toBeInTheDocument();
+    expect(screen.getByText("No listings match these filters.")).toBeInTheDocument();
   });
 });
 
