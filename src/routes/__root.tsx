@@ -7,6 +7,7 @@ import {
   useLocation,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
@@ -15,6 +16,8 @@ import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
+import { isUnderMaintenance } from "@/lib/maintenance";
+import { ALWAYS_OPEN_PATHS } from "@/lib/maintenanceRedirect";
 
 const AUTH_BG_URLS = [
   "https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop",
@@ -128,6 +131,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           ]),
     ],
   }),
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined" || ALWAYS_OPEN_PATHS.has(location.pathname)) return;
+    if (await isUnderMaintenance()) {
+      throw redirect({ to: "/maintenance", search: { from: location.href } });
+    }
+  },
   shellComponent: import.meta.env.VITE_CPANEL ? undefined : RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -162,6 +171,7 @@ const OWN_CHROME_PATHS = new Set([
   "/land",
   "/rentals",
   "/explore",
+  "/maintenance",
 ]);
 const NO_NAVBAR_PREFIXES = [
   "/dashboard",
