@@ -3,6 +3,7 @@ name: Web Frontend CI
 on:
   pull_request:
     branches: [main, dev]
+  workflow_call:
 
 jobs:
   unit-tests:
