@@ -1,13 +1,26 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Download, MoreHorizontal, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import {
+  BedDouble,
+  CalendarCheck,
+  ChevronRight,
+  DoorClosed,
+  Download,
+  Pencil,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import {
   useMyProperties,
   useDeleteProperty,
   useMarkPropertyTaken,
+  useSetPropertyAvailability,
   formatPrice,
   INTENT_LABELS,
   TYPE_LABELS,
+  type BnbAvailability,
+  type PropertyIntent,
 } from "@/lib/properties";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -25,13 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ListingPreviewDialog } from "@/components/dashboard/ListingPreviewDialog";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const LAND_STATUS_VARIANT: Record<string, "success" | "warning" | "secondary"> = {
@@ -50,6 +57,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 export type ListingRow = {
   kind: "land" | "property";
+  intent?: PropertyIntent;
   id: string;
   name: string;
   sub: string;
@@ -64,8 +72,52 @@ const PROPERTY_STATUS_VARIANT: Record<string, "success" | "warning" | "secondary
     available: "success",
     pending: "warning",
     taken: "secondary",
+    occupied: "warning",
+    closed: "secondary",
     suspended: "destructive",
   };
+
+type StatusAction = { label: string; to: "sold" | "taken" | BnbAvailability };
+
+const BNB_ACTIONS: StatusAction[] = [
+  { label: "Mark as available", to: "available" },
+  { label: "Mark as occupied", to: "occupied" },
+  { label: "Mark as closed", to: "closed" },
+];
+
+const ACTION_ICONS: Record<StatusAction["to"], typeof Tag> = {
+  sold: Tag,
+  taken: Tag,
+  available: CalendarCheck,
+  occupied: BedDouble,
+  closed: DoorClosed,
+};
+
+const PERMANENT_CLOSE =
+  "It will be removed from the marketplace and buyers can no longer see it. This can't be undone.";
+
+const ACTION_DESCRIPTIONS: Record<StatusAction["to"], string> = {
+  sold: PERMANENT_CLOSE,
+  taken: PERMANENT_CLOSE,
+  available: "It will show on the map as open for bookings.",
+  occupied: "It stays on the map with an Occupied badge so guests know it's booked.",
+  closed: "It will be hidden from the map until you mark it available again.",
+};
+
+/**
+ * BnBs come and go from availability, so they toggle between states rather
+ * than closing for good like land (sold) and other rentals (taken).
+ */
+function statusActions(r: ListingRow): StatusAction[] {
+  if (r.kind === "land")
+    return r.status === "active" ? [{ label: "Mark as sold", to: "sold" }] : [];
+  if (r.intent !== "bnb") {
+    return r.status === "available" ? [{ label: "Mark as taken", to: "taken" }] : [];
+  }
+  return BNB_ACTIONS.some((a) => a.to === r.status)
+    ? BNB_ACTIONS.filter((a) => a.to !== r.status)
+    : [];
+}
 
 function RowStatus({ row }: { row: ListingRow }) {
   if (row.kind === "land") return <StatusBadge status={row.status} />;
@@ -90,13 +142,18 @@ export function ListingsTab() {
   const { data: properties = [], isLoading, isError, refetch } = useMyProperties();
   const removeProperty = useDeleteProperty();
   const markTaken = useMarkPropertyTaken();
+  const setAvailability = useSetPropertyAvailability();
 
   const [filter, setFilter] = useState<"all" | "land" | "property">("all");
   const [deleteTarget, setDeleteTarget] = useState<ListingRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [takenTarget, setTakenTarget] = useState<ListingRow | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{
+    row: ListingRow;
+    action: StatusAction;
+  } | null>(null);
   const [taking, setTaking] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<ListingRow | null>(null);
   const showViews = Boolean(user?.analyticsAccess);
 
   const userListings = user?.listings;
@@ -114,6 +171,7 @@ export function ListingsTab() {
     }));
     const rentals: ListingRow[] = properties.map((p) => ({
       kind: "property",
+      intent: p.intent,
       id: p.id,
       name: p.title,
       sub: `${p.reference} · ${INTENT_LABELS[p.intent]} · ${TYPE_LABELS[p.type]} · ${formatPrice(p.price, p.pricePeriod)}`,
@@ -165,13 +223,15 @@ export function ListingsTab() {
     }
   };
 
-  const confirmTaken = async () => {
-    if (!takenTarget) return;
+  const confirmStatus = async () => {
+    if (!statusTarget) return;
+    const { row, action } = statusTarget;
     setTaking(true);
     try {
-      if (takenTarget.kind === "land") await markListingSold(takenTarget.id);
-      else await markTaken.mutateAsync(takenTarget.id);
-      setTakenTarget(null);
+      if (action.to === "sold") await markListingSold(row.id);
+      else if (action.to === "taken") await markTaken.mutateAsync(row.id);
+      else await setAvailability.mutateAsync({ id: row.id, status: action.to });
+      setStatusTarget(null);
     } catch {
       // leave the dialog open so the seller can retry
     } finally {
@@ -179,29 +239,29 @@ export function ListingsTab() {
     }
   };
 
-  const canClose = (r: ListingRow) =>
-    r.kind === "land" ? r.status === "active" : r.status === "available";
-
   const newListing = () =>
     navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } });
   const editListing = (r: ListingRow) =>
     navigate({ to: "/dashboard/upload", search: { edit: r.id, type: undefined } });
-  const closeLabel = (r: ListingRow) => (r.kind === "land" ? "Mark as sold" : "Mark as taken");
 
   const rowActions = (r: ListingRow) => (
-    <div className="flex justify-end gap-1">
-      {canClose(r) && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground"
-          onClick={() => setTakenTarget(r)}
-          title={closeLabel(r)}
-          aria-label={`${closeLabel(r)}: ${r.name}`}
-        >
-          <Tag />
-        </Button>
-      )}
+    <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+      {statusActions(r).map((action) => {
+        const Icon = ACTION_ICONS[action.to];
+        return (
+          <Button
+            key={action.to}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            onClick={() => setStatusTarget({ row: r, action })}
+            title={action.label}
+            aria-label={`${action.label}: ${r.name}`}
+          >
+            <Icon />
+          </Button>
+        );
+      })}
       {r.kind === "land" && (
         <Button
           variant="ghost"
@@ -226,6 +286,8 @@ export function ListingsTab() {
       </Button>
     </div>
   );
+
+  const previewAction = previewTarget ? statusActions(previewTarget)[0] : undefined;
 
   const thumb = (r: ListingRow, size: string) =>
     r.coverPhotoUrl ? (
@@ -327,12 +389,22 @@ export function ListingsTab() {
               </TableHeader>
               <TableBody>
                 {visible.map((r) => (
-                  <TableRow key={`${r.kind}-${r.id}`}>
+                  <TableRow
+                    key={`${r.kind}-${r.id}`}
+                    onClick={() => setPreviewTarget(r)}
+                    className="cursor-pointer"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {thumb(r, "h-9 w-12")}
                         <div className="min-w-0">
-                          <div className="font-medium">{r.name}</div>
+                          <button
+                            type="button"
+                            aria-label={`View ${r.name}`}
+                            className="text-left font-medium hover:underline focus-visible:underline focus-visible:outline-none"
+                          >
+                            {r.name}
+                          </button>
                           <div className="text-xs text-muted-foreground">{r.sub}</div>
                         </div>
                       </div>
@@ -358,55 +430,61 @@ export function ListingsTab() {
           <ul className="divide-y divide-border md:hidden">
             {visible.map((r) => (
               <li key={`${r.kind}-${r.id}`}>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
-                    >
-                      <div className="flex items-center gap-3">
-                        {thumb(r, "h-12 w-16")}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{r.name}</div>
-                          <div className="truncate text-xs text-muted-foreground">{r.sub}</div>
-                        </div>
-                        <RowStatus row={r} />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <KindChip kind={r.kind} />
-                          {showViews && `${r.views} views · `}
-                          {r.createdAt}
-                        </span>
-                        <MoreHorizontal aria-hidden className="h-4 w-4" />
-                      </div>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {canClose(r) && (
-                      <DropdownMenuItem onSelect={() => setTakenTarget(r)}>
-                        <Tag /> {closeLabel(r)}
-                      </DropdownMenuItem>
-                    )}
-                    {r.kind === "land" && (
-                      <DropdownMenuItem onSelect={() => editListing(r)}>
-                        <Pencil /> Edit
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={() => setDeleteTarget(r)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTarget(r)}
+                  className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                >
+                  <div className="flex items-center gap-3">
+                    {thumb(r, "h-12 w-16")}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{r.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">{r.sub}</div>
+                    </div>
+                    <RowStatus row={r} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <KindChip kind={r.kind} />
+                      {showViews && `${r.views} views · `}
+                      {r.createdAt}
+                    </span>
+                    <ChevronRight aria-hidden className="h-4 w-4" />
+                  </div>
+                </button>
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      <ListingPreviewDialog
+        row={previewTarget}
+        badges={
+          previewTarget && (
+            <>
+              <KindChip kind={previewTarget.kind} />
+              <RowStatus row={previewTarget} />
+            </>
+          )
+        }
+        showViews={showViews}
+        closeLabel={previewAction?.label ?? ""}
+        onClose={() => setPreviewTarget(null)}
+        onEdit={previewTarget?.kind === "land" ? () => editListing(previewTarget) : undefined}
+        onMarkClosed={
+          previewTarget && previewAction
+            ? () => {
+                setStatusTarget({ row: previewTarget, action: previewAction });
+                setPreviewTarget(null);
+              }
+            : undefined
+        }
+        onDelete={() => {
+          setDeleteTarget(previewTarget);
+          setPreviewTarget(null);
+        }}
+      />
 
       <AlertDialog
         open={deleteTarget !== null}
@@ -431,27 +509,24 @@ export function ListingsTab() {
       </AlertDialog>
 
       <AlertDialog
-        open={takenTarget !== null}
-        onOpenChange={(open) => !open && !taking && setTakenTarget(null)}
+        open={statusTarget !== null}
+        onOpenChange={(open) => !open && !taking && setStatusTarget(null)}
       >
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Mark this listing as {takenTarget?.kind === "land" ? "sold" : "taken"}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Mark this listing as {statusTarget?.action.to}?</AlertDialogTitle>
             <AlertDialogDescription>
-              It will be removed from the marketplace and buyers can no longer see it. This
-              can&apos;t be undone.
+              {statusTarget && ACTION_DESCRIPTIONS[statusTarget.action.to]}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={taking}>Cancel</AlertDialogCancel>
             <Button
-              onClick={confirmTaken}
+              onClick={confirmStatus}
               disabled={taking}
               className="bg-brand text-brand-foreground hover:bg-brand-hover"
             >
-              {taking ? "Marking…" : takenTarget ? closeLabel(takenTarget) : ""}
+              {taking ? "Marking…" : statusTarget?.action.label}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

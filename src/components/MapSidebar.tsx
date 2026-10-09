@@ -1,320 +1,271 @@
-import { useEffect, useState } from "react";
-import { Filter, ChevronLeft, ChevronRight, X, Search } from "lucide-react";
-import { statusMeta, type LandStatus, type ListingType, type PostedBy } from "@/lib/landData";
-import { kenyaCounties } from "@/lib/plans";
+import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight, Clock, PanelLeftClose, X } from "lucide-react";
 
-const counties = ["All", ...kenyaCounties];
-
-// Only "available" and "sold" ever occur on the public marketplace — every
-// listing goes live as available, with no separate verified/reserved/disputed stage.
-const visibleStatuses: LandStatus[] = ["available", "sold"];
-
-export interface Filters {
-  query: string;
-  county: string;
-  status: LandStatus | "all";
-  listingType: ListingType | "all";
-  postedBy: PostedBy | "all";
-  minPrice: number;
-  maxPrice: number;
+export interface RecentChip {
+  id: string;
+  label: string;
+  mono: boolean;
+  color: string;
+  onOpen: () => void;
 }
 
+const VIEWS = [
+  { to: "/explore", label: "Explore" },
+  { to: "/land", label: "Land" },
+  { to: "/rentals", label: "Rentals" },
+] as const;
+
+/** The left column on every browse map: header, recently viewed, filters and results. */
 export function MapSidebar({
-  filters,
-  setFilters,
+  view,
+  title,
   count,
+  recent,
+  onClearRecent,
+  filters,
+  filtersActive,
+  onReset,
+  empty,
+  drawerOpen,
+  onCloseDrawer,
+  children,
 }: {
-  filters: Filters;
-  setFilters: (f: Filters) => void;
+  view: "/explore" | "/land" | "/rentals";
+  title: string;
   count: number;
+  recent: RecentChip[];
+  onClearRecent: () => void;
+  filters?: ReactNode;
+  filtersActive: boolean;
+  onReset: () => void;
+  empty: boolean;
+  drawerOpen: boolean;
+  onCloseDrawer: () => void;
+  children: ReactNode;
 }) {
-  const [open, setOpen] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 768 : true,
-  );
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth < 768 : false,
-  );
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // `isMobile` is real component state, not a CSS-only concern: it decides
-  // whether this renders as an overlay drawer with its own open/closed
-  // default (mobile) or a persistent collapsible rail (desktop) — Tailwind
-  // breakpoints alone can't drive that behavioral branch, only the layout
-  // within it.
-  const FloatingToggle = (
-    <button
-      onClick={() => setOpen(true)}
-      className="absolute left-3 top-3 z-[1100] flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
-    >
-      <Filter className="h-3.5 w-3.5" /> Filters
-    </button>
-  );
+  const [collapsed, setCollapsed] = useState(false);
+  const countLabel = `${count} ${count === 1 ? "result" : "results"}`;
 
   return (
     <>
-      {isMobile && !open && FloatingToggle}
-
-      {isMobile && (
-        <div
-          onClick={() => setOpen(false)}
-          className={`fixed inset-0 z-[1050] bg-black/40 transition-opacity duration-300 md:hidden ${
-            open ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-        />
+      {drawerOpen && (
+        <button type="button" className="gm-backdrop" aria-label="Close" onClick={onCloseDrawer} />
       )}
-
       <aside
-        className={`${
-          isMobile
-            ? `fixed left-0 top-0 z-[1060] h-full w-[85%] max-w-xs transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "-translate-x-full"}`
-            : `relative z-20 h-full transition-[width] duration-300 ease-in-out ${open ? "w-72" : "w-12"}`
-        } flex flex-col border-r border-border bg-card`}
+        className="gm-side"
+        data-collapsed={collapsed}
+        data-drawer={drawerOpen}
+        aria-label="Listings and filters"
       >
-        {!isMobile && (
+        <div className="gm-srail">
           <button
-            onClick={() => setOpen((v) => !v)}
-            className="absolute right-2 top-4 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            type="button"
+            className="gm-mbtn"
+            onClick={() => setCollapsed(false)}
+            aria-label="Show filters and listings"
           >
-            {open ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            <ChevronRight width={18} height={18} aria-hidden />
           </button>
-        )}
-
-        {(open || !isMobile) &&
-          (open ? (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">Filters</h3>
-                <span className="ml-auto text-[11px] text-muted-foreground">{count} parcels</span>
-                {isMobile && (
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <span className="gm-mono">{countLabel}</span>
+        </div>
+        <div className="gm-sbody">
+          <div className="gm-shead">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <nav className="gm-seg" aria-label="Map views" style={{ boxShadow: "none" }}>
+                {VIEWS.map((v) => (
+                  <Link key={v.to} to={v.to} aria-current={v.to === view ? "page" : undefined}>
+                    {v.label}
+                  </Link>
+                ))}
+              </nav>
+              <button
+                type="button"
+                className="gm-mbtn gm-collbtn"
+                onClick={() => setCollapsed(true)}
+                aria-label="Collapse sidebar"
+                style={{ width: 38, height: 38, boxShadow: "none" }}
+              >
+                <PanelLeftClose width={16} height={16} aria-hidden />
+              </button>
+              {drawerOpen && (
+                <button
+                  type="button"
+                  className="gm-mbtn"
+                  onClick={onCloseDrawer}
+                  aria-label="Close"
+                  style={{ width: 38, height: 38, boxShadow: "none" }}
+                >
+                  <X width={16} height={16} aria-hidden />
+                </button>
+              )}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <h1 className="gm-h" style={{ fontSize: 26 }}>
+                {title}
+              </h1>
+              <span
+                role="status"
+                style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "nowrap" }}
+              >
+                {countLabel}
+              </span>
+            </div>
+          </div>
+          <div className="gm-sscroll">
+            {recent.length > 0 && (
+              <div className="gm-recent">
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <span
+                    className="gm-flab"
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
                   >
-                    <X className="h-4 w-4" />
+                    <Clock width={13} height={13} aria-hidden /> Recently viewed
+                  </span>
+                  <button
+                    type="button"
+                    className="gm-link"
+                    onClick={onClearRecent}
+                    style={{ fontSize: 13 }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="gm-rvrow">
+                  {recent.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      className="gm-rv"
+                      onClick={r.onOpen}
+                      aria-label={`Open ${r.label}`}
+                    >
+                      <span
+                        className="gm-dot"
+                        style={{ ["--pc" as string]: r.color, width: 8, height: 8 }}
+                      />
+                      <span
+                        className={r.mono ? "gm-mono" : undefined}
+                        style={r.mono ? { fontSize: 12 } : undefined}
+                      >
+                        {r.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {filters}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span className="gm-flab">Results</span>
+              {filtersActive && (
+                <button type="button" className="gm-link" onClick={onReset}>
+                  Reset filters
+                </button>
+              )}
+            </div>
+            {children}
+            {empty && (
+              <div className="gm-empty">
+                <span className="gm-hand">nothing here yet.</span>
+                <span>No listings match these filters.</span>
+                {filtersActive && (
+                  <button
+                    type="button"
+                    className="gm-btn gm-ghost"
+                    onClick={onReset}
+                    style={{ minHeight: 44 }}
+                  >
+                    Reset filters
                   </button>
                 )}
               </div>
-
-              <div className="flex-1 space-y-5 overflow-y-auto p-4">
-                <Group title="Search">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Title number…"
-                      value={filters.query}
-                      onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-                      className="w-full rounded-sm border border-border bg-background py-1.5 pl-7 pr-2 text-xs text-foreground outline-none transition-colors hover:border-muted-foreground/40 focus:border-brand"
-                    />
-                  </div>
-                </Group>
-
-                <Group title="Listing Type">
-                  <Segmented
-                    options={[
-                      { v: "all", label: "All" },
-                      { v: "sale", label: "Sale" },
-                      { v: "lease", label: "Lease" },
-                    ]}
-                    value={filters.listingType}
-                    onChange={(v) =>
-                      setFilters({ ...filters, listingType: v as Filters["listingType"] })
-                    }
-                  />
-                </Group>
-
-                <Group title="Posted By">
-                  <Segmented
-                    options={[
-                      { v: "all", label: "Any" },
-                      { v: "owner", label: "Owner" },
-                      { v: "broker", label: "Broker" },
-                    ]}
-                    value={filters.postedBy}
-                    onChange={(v) => setFilters({ ...filters, postedBy: v as Filters["postedBy"] })}
-                  />
-                </Group>
-
-                <Group title="County">
-                  <div className="flex flex-wrap gap-1.5">
-                    {counties.map((c) => {
-                      const active = filters.county === c;
-                      return (
-                        <button
-                          key={c}
-                          onClick={() => setFilters({ ...filters, county: c })}
-                          className={`rounded-sm border px-2 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                            active
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background text-foreground hover:bg-muted"
-                          }`}
-                        >
-                          {c}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </Group>
-
-                <Group title="Status">
-                  <div className="space-y-1">
-                    <StatusOption
-                      label="All Statuses"
-                      active={filters.status === "all"}
-                      onClick={() => setFilters({ ...filters, status: "all" })}
-                    />
-                    {visibleStatuses.map((s) => (
-                      <StatusOption
-                        key={s}
-                        label={statusMeta[s].label}
-                        color={statusMeta[s].color}
-                        active={filters.status === s}
-                        onClick={() => setFilters({ ...filters, status: s })}
-                      />
-                    ))}
-                  </div>
-                </Group>
-
-                <Group title="Price Range (KES)">
-                  <div className="space-y-3">
-                    <div>
-                      <div className="mb-1 flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground">Min</span>
-                        <span className="text-foreground">{filters.minPrice.toLocaleString()}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={30000000}
-                        step={250000}
-                        value={filters.minPrice}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          setFilters({
-                            ...filters,
-                            minPrice: v,
-                            maxPrice: Math.max(v, filters.maxPrice),
-                          });
-                        }}
-                        className="w-full accent-brand"
-                      />
-                    </div>
-                    <div>
-                      <div className="mb-1 flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground">Max</span>
-                        <span className="text-foreground">{filters.maxPrice.toLocaleString()}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={30000000}
-                        step={250000}
-                        value={filters.maxPrice}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          setFilters({
-                            ...filters,
-                            maxPrice: v,
-                            minPrice: Math.min(v, filters.minPrice),
-                          });
-                        }}
-                        className="w-full accent-brand"
-                      />
-                    </div>
-                  </div>
-                </Group>
-
-                <button
-                  onClick={() =>
-                    setFilters({
-                      query: "",
-                      county: "All",
-                      status: "all",
-                      listingType: "all",
-                      postedBy: "all",
-                      minPrice: 0,
-                      maxPrice: 30000000,
-                    })
-                  }
-                  className="w-full rounded-sm border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  Reset filters
-                </button>
-              </div>
-            </div>
-          ) : null)}
+            )}
+          </div>
+        </div>
       </aside>
     </>
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function Segmented({
+export function SegFilter<T extends string>({
+  label,
   options,
   value,
   onChange,
 }: {
-  options: { v: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
+  label?: string;
+  options: { value: T; label: string; color?: string }[];
+  value: T;
+  onChange: (v: T) => void;
 }) {
-  return (
-    <div className="grid grid-flow-col auto-cols-fr overflow-hidden rounded-sm border border-border">
+  const group = (
+    <div className="gm-seg2" role="group" aria-label={label ?? "Show"}>
       {options.map((o) => (
         <button
-          key={o.v}
-          onClick={() => onChange(o.v)}
-          className={`px-2 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
-            value === o.v
-              ? "bg-primary text-primary-foreground"
-              : "bg-background text-foreground hover:bg-muted"
-          }`}
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
         >
+          {o.color && <span className="gm-dot" style={{ ["--pc" as string]: o.color }} />}
           {o.label}
         </button>
       ))}
     </div>
   );
+  if (!label) return group;
+  return (
+    <div className="gm-field">
+      <span className="gm-flab">{label}</span>
+      {group}
+    </div>
+  );
 }
 
-function StatusOption({
+export function SelectFilter({
+  id,
   label,
-  color,
-  active,
-  onClick,
+  value,
+  options,
+  onChange,
+  hideLabel,
 }: {
+  id: string;
   label: string;
-  color?: string;
-  active: boolean;
-  onClick: () => void;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+  hideLabel?: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-sm border px-2.5 py-1.5 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active
-          ? "border-primary bg-muted text-foreground"
-          : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
-      {color && <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />}
-      {label}
-    </button>
+    <>
+      <label htmlFor={id} className={hideLabel ? "gm-sr" : "gm-flab"}>
+        {label}
+      </label>
+      <select id={id} className="gm-fsel" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </>
   );
 }

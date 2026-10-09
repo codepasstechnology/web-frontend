@@ -1,10 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { bboxParam, type Bbox } from "./mapGeo";
 
 export type PropertyIntent = "rent" | "bnb" | "sale";
 export type PropertyType =
   "apartment" | "house" | "townhouse" | "studio" | "bedsitter" | "commercial" | "office";
-export type PropertyStatus = "pending" | "available" | "taken" | "suspended";
+export type PropertyStatus =
+  "pending" | "available" | "taken" | "occupied" | "closed" | "suspended";
+export type BnbAvailability = "available" | "occupied" | "closed";
 export type PricePeriod = "month" | "night" | "total";
 
 export interface Property {
@@ -18,6 +21,7 @@ export interface Property {
   type: PropertyType;
   price: number;
   pricePeriod: PricePeriod;
+  status: PropertyStatus;
   minNights: number | null;
   cleaningFee: number | null;
   bedrooms: number;
@@ -29,6 +33,7 @@ export interface Property {
   position: [number, number];
   photos: string[];
   featured: boolean;
+  svAvailable?: boolean | null;
 }
 
 export interface MyProperty {
@@ -48,6 +53,21 @@ export interface MyProperty {
   coverPhotoUrl: string | null;
 }
 
+export interface MyPropertyDetail extends MyProperty {
+  description: string;
+  bedrooms: number;
+  bathrooms: number;
+  furnished: boolean;
+  amenities: string[];
+  minNights: number | null;
+  cleaningFee: number | null;
+  postedBy: "owner" | "broker";
+  agent: { name: string; phone: string; agency: string };
+  position: [number, number];
+  postingFeeAmount: number;
+  photos: string[];
+}
+
 interface ApiProperty {
   id: string;
   reference_number: string;
@@ -59,6 +79,7 @@ interface ApiProperty {
   type: PropertyType;
   price: number;
   price_period: PricePeriod;
+  status: PropertyStatus;
   min_nights: number | null;
   cleaning_fee: number | null;
   bedrooms: number;
@@ -73,6 +94,7 @@ interface ApiProperty {
   longitude: number;
   photos: string[];
   featured: boolean;
+  sv_available?: boolean | null;
 }
 
 interface ApiMyProperty {
@@ -90,6 +112,24 @@ interface ApiMyProperty {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+}
+
+interface ApiMyPropertyDetail extends ApiMyProperty {
+  description: string;
+  bedrooms: number;
+  bathrooms: number;
+  furnished: boolean;
+  amenities: string[];
+  min_nights: number | null;
+  cleaning_fee: number | null;
+  posted_by: "owner" | "broker";
+  agent_name: string;
+  agent_phone: string;
+  agent_agency: string;
+  latitude: number;
+  longitude: number;
+  posting_fee_amount: number;
+  photos: { id: string; url: string; is_cover: boolean }[];
 }
 
 export interface PropertyFilters {
@@ -136,6 +176,7 @@ export function mapApiProperty(p: ApiProperty): Property {
     type: p.type,
     price: p.price,
     pricePeriod: p.price_period,
+    status: p.status,
     minNights: p.min_nights,
     cleaningFee: p.cleaning_fee,
     bedrooms: p.bedrooms ?? 0,
@@ -151,6 +192,7 @@ export function mapApiProperty(p: ApiProperty): Property {
     position: [Number(p.latitude), Number(p.longitude)],
     photos: p.photos ?? [],
     featured: p.featured ?? false,
+    svAvailable: p.sv_available ?? null,
   };
 }
 
@@ -173,8 +215,29 @@ function mapApiMyProperty(p: ApiMyProperty): MyProperty {
   };
 }
 
-function toQuery(filters: PropertyFilters): string {
+function mapApiMyPropertyDetail(p: ApiMyPropertyDetail): MyPropertyDetail {
+  return {
+    ...mapApiMyProperty(p),
+    description: p.description ?? "",
+    bedrooms: p.bedrooms ?? 0,
+    bathrooms: p.bathrooms ?? 0,
+    furnished: p.furnished ?? false,
+    amenities: p.amenities ?? [],
+    minNights: p.min_nights,
+    cleaningFee: p.cleaning_fee,
+    postedBy: p.posted_by,
+    agent: { name: p.agent_name ?? "", phone: p.agent_phone ?? "", agency: p.agent_agency ?? "" },
+    position: [Number(p.latitude), Number(p.longitude)],
+    postingFeeAmount: p.posting_fee_amount ?? 0,
+    photos: [...(p.photos ?? [])]
+      .sort((a, b) => Number(b.is_cover) - Number(a.is_cover))
+      .map((photo) => photo.url),
+  };
+}
+
+function toQuery(filters: PropertyFilters, bbox: Bbox | null = null): string {
   const params = new URLSearchParams();
+  if (bbox) params.set("bbox", bboxParam(bbox));
   if (filters.intent && filters.intent !== "all") params.set("intent", filters.intent);
   if (filters.type && filters.type !== "all") params.set("type", filters.type);
   if (filters.county && filters.county !== "All") params.set("county", filters.county);
@@ -186,14 +249,18 @@ function toQuery(filters: PropertyFilters): string {
   return q ? `?${q}` : "";
 }
 
-export function usePublicProperties(filters: PropertyFilters = {}) {
+export function usePublicProperties(filters: PropertyFilters = {}, bbox: Bbox | null = null) {
   return useQuery({
-    queryKey: ["properties", filters],
-    queryFn: async () => {
-      const page = await api.get<{ data: ApiProperty[] }>(`/properties${toQuery(filters)}`);
+    queryKey: ["properties", filters, bbox],
+    queryFn: async ({ signal }) => {
+      const page = await api.get<{ data: ApiProperty[] }>(
+        `/properties${toQuery(filters, bbox)}`,
+        signal,
+      );
       return page.data.map(mapApiProperty);
     },
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -215,6 +282,19 @@ export function useMyProperties() {
   return useQuery({
     queryKey: ["my-properties"],
     queryFn: async () => (await api.get<ApiMyProperty[]>("/user/properties")).map(mapApiMyProperty),
+  });
+}
+
+/**
+ * The owner's own view of one property. Keyed under "my-properties" so the
+ * mutations below refresh it along with the list.
+ */
+export function useMyProperty(id: string | undefined) {
+  return useQuery({
+    queryKey: ["my-properties", id],
+    queryFn: async () =>
+      mapApiMyPropertyDetail(await api.get<ApiMyPropertyDetail>(`/user/properties/${id}`)),
+    enabled: !!id,
   });
 }
 
@@ -319,6 +399,16 @@ export function useMarkPropertyTaken() {
 
   return useMutation({
     mutationFn: (id: string) => api.patch<unknown>(`/user/properties/${id}/taken`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
+  });
+}
+
+export function useSetPropertyAvailability() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: BnbAvailability }) =>
+      api.patch<unknown>(`/user/properties/${id}/availability`, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
   });
 }

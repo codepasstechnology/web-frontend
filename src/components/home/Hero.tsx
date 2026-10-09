@@ -29,7 +29,7 @@ export function Hero() {
             <path
               d="M4 15 C 60 5, 130 3, 200 9 S 290 18, 316 7"
               fill="none"
-              stroke="#F1E7D2"
+              stroke="var(--gp-doodle)"
               strokeWidth="7"
               strokeLinecap="round"
             />
@@ -67,7 +67,7 @@ export function Hero() {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#B9B2A1"
+              stroke="var(--gp-muted-dark)"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -97,14 +97,14 @@ export function Hero() {
         >
           <path
             d="M30 4 C 8 14, 10 34, 30 36 C 46 38, 50 22, 38 20 C 24 18, 22 44, 36 70"
-            stroke="#A9C97A"
+            stroke="var(--gp-olive)"
             strokeWidth="3.2"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d="M25 60 L 36 71 L 45 57"
-            stroke="#A9C97A"
+            stroke="var(--gp-olive)"
             strokeWidth="3.2"
             strokeLinecap="round"
             strokeLinejoin="round"

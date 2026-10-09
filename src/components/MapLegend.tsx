@@ -1,41 +1,128 @@
-import { Home } from "lucide-react";
-import { statusMeta, type LandStatus } from "@/lib/landData";
+import type { MapMode } from "@/components/LandMap";
+import { beaconSvg } from "@/components/map/markers";
 
-// Only "available" and "sold" ever occur on the public marketplace — every
-// listing goes live as available, with no separate verified/reserved/disputed stage.
-const visibleStatuses: LandStatus[] = ["available", "sold"];
-
-export function MapLegend({ kinds = false }: { kinds?: boolean }) {
-  const items = visibleStatuses;
+export function MapLegend({ mode }: { mode: MapMode }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Parcel Status
-      </p>
-      <ul className="space-y-1.5">
-        {items.map((s) => (
-          <li key={s} className="flex items-center gap-2 text-xs text-foreground">
-            <span
-              className="h-3 w-3 rounded-sm"
-              style={{ backgroundColor: statusMeta[s].color, opacity: 0.9 }}
-            />
-            {statusMeta[s].label}
-          </li>
-        ))}
-      </ul>
-      {kinds && (
+    <div className="gm-ctl gm-legend" aria-label="Legend">
+      {mode !== "rentals" && (
         <>
-          <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Rentals
-          </p>
-          <div className="flex items-center gap-2 text-xs text-foreground">
-            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground">
-              <Home aria-hidden className="h-2.5 w-2.5 text-background" />
-            </span>
-            Home pin, coloured by rent / BnB / sale
-          </div>
+          <span className="gm-flab" style={{ fontSize: 11 }}>
+            Parcels
+          </span>
+          <span className="gm-lrow">
+            <Swatch color="var(--s-lsale)" />
+            For sale
+          </span>
+          <span className="gm-lrow">
+            <Swatch color="var(--s-lease)" />
+            For lease
+          </span>
+          <span className="gm-lrow">
+            <svg width="26" height="16" viewBox="0 0 26 16" aria-hidden="true">
+              <rect
+                x="2"
+                y="2"
+                width="22"
+                height="12"
+                rx="3"
+                fill="var(--muted)"
+                fillOpacity=".3"
+                stroke="var(--surface)"
+                strokeWidth="5"
+              />
+              <rect
+                x="2"
+                y="2"
+                width="22"
+                height="12"
+                rx="3"
+                fill="none"
+                stroke="var(--ink)"
+                strokeWidth="2"
+              />
+            </svg>
+            Verified: solid edge + tick
+          </span>
+          <span className="gm-lrow">
+            <svg width="26" height="16" viewBox="0 0 26 16" aria-hidden="true">
+              <rect
+                x="2"
+                y="2"
+                width="22"
+                height="12"
+                rx="3"
+                fill="var(--muted)"
+                fillOpacity=".15"
+                stroke="var(--ink)"
+                strokeWidth="1.6"
+                strokeDasharray="4 3"
+              />
+            </svg>
+            Available, not yet verified
+          </span>
+          <span className="gm-lrow" style={{ ["--pc" as string]: "var(--s-lsale)" }}>
+            <span
+              style={{ display: "flex", width: 26, justifyContent: "center" }}
+              dangerouslySetInnerHTML={{ __html: beaconSvg(11, 15) }}
+            />
+            Beacon on each corner
+          </span>
+          <span className="gm-lrow">
+            <svg width="26" height="16" viewBox="0 0 26 16" aria-hidden="true">
+              <circle
+                cx="13"
+                cy="8"
+                r="6.5"
+                fill="var(--muted)"
+                fillOpacity=".18"
+                stroke="var(--ink)"
+                strokeWidth="1.6"
+                strokeDasharray="3 2.5"
+              />
+            </svg>
+            Approximate location
+          </span>
+        </>
+      )}
+      {mode !== "land" && (
+        <>
+          <span className="gm-flab" style={{ fontSize: 11 }}>
+            Properties
+          </span>
+          <span className="gm-lrow">
+            <span className="gm-dot" style={{ ["--pc" as string]: "var(--s-rent)" }} />
+            For rent
+            <span
+              className="gm-dot"
+              style={{ ["--pc" as string]: "var(--s-bsale)", marginLeft: 6 }}
+            />
+            Sale
+            <span
+              className="gm-dot"
+              style={{ ["--pc" as string]: "var(--s-bnb)", marginLeft: 6 }}
+            />
+            BnB
+          </span>
         </>
       )}
     </div>
+  );
+}
+
+function Swatch({ color }: { color: string }) {
+  return (
+    <svg width="26" height="16" viewBox="0 0 26 16" aria-hidden="true">
+      <rect
+        x="2"
+        y="2"
+        width="22"
+        height="12"
+        rx="3"
+        fill={color}
+        fillOpacity=".42"
+        stroke={color}
+        strokeWidth="2"
+      />
+    </svg>
   );
 }

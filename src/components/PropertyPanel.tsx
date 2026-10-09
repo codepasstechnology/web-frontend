@@ -1,132 +1,91 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  X,
-  MapPin,
-  Building2,
-  ShieldCheck,
-  Phone,
-  Gauge,
-  Share2,
-  User,
-  Briefcase,
   Check,
   ChevronLeft,
   ChevronRight,
-  FileCheck,
-  Heart,
-  Star,
-  MessageCircle,
+  Columns2,
   Copy,
+  GraduationCap,
+  Heart,
+  Hospital,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  PersonStanding,
+  Phone,
+  Route as RouteIcon,
+  Ruler,
+  Share2,
+  ShieldCheck,
+  ShoppingBag,
+  X,
 } from "lucide-react";
-import { statusMeta, type LandParcel } from "@/lib/landData";
-import { formatPrice, INTENT_LABELS, TYPE_LABELS, type Property } from "@/lib/properties";
+import type { LandParcel } from "@/lib/landData";
+import { INTENT_LABELS, TYPE_LABELS, type Property } from "@/lib/properties";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { api, API_BASE } from "@/lib/api";
+import { centroid, formatCoords } from "@/lib/mapGeo";
+import { directionsUrl, listingUrl, streetViewUrl } from "@/lib/mapLinks";
 import { PhotoViewer } from "@/components/PhotoViewer";
+import { DEAL_COLOR, DEAL_TAG, INTENT_COLOR } from "@/components/map/markers";
+import { ShareSheet, type ShareShape } from "@/components/map/ShareSheet";
+import { useMapToast } from "@/components/map/mapToastContext";
 
-// Mobile: draggable bottom sheet (peek/default/full snap points, leaves the map visible
-// underneath). Desktop: right side panel, unaffected by the drag state.
-const panelClass =
-  "fixed inset-x-0 bottom-0 z-[1150] flex w-full flex-col rounded-t-lg border border-border bg-card shadow-lg " +
-  "md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-0 md:h-full md:max-h-none md:w-full md:max-w-sm md:rounded-none md:border-0 md:border-l";
+const SHEET_HALF = 46;
+const SHEET_FULL = 88;
+const SHEET_CLOSE = 28;
 
-const SHEET_PEEK_VH = 24;
-const SHEET_DEFAULT_VH = 55;
-const SHEET_FULL_VH = 88;
-
-function useDraggableSheetHeight() {
-  const [heightVh, setHeightVh] = useState(SHEET_DEFAULT_VH);
-  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+/** Mobile bottom sheet height: snaps to half or nearly full, and closes when dragged low. */
+function useSheet(onClose: () => void) {
+  const [height, setHeight] = useState(SHEET_HALF);
+  const drag = useRef<{ y: number; start: number; current: number } | null>(null);
+  const panel = useRef<HTMLElement>(null);
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { startY: e.clientY, startHeight: heightVh };
+    drag.current = { y: e.clientY, start: height, current: height };
   };
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current) return;
-    const deltaVh = ((dragRef.current.startY - e.clientY) / window.innerHeight) * 100;
-    setHeightVh(
-      Math.min(SHEET_FULL_VH, Math.max(SHEET_PEEK_VH, dragRef.current.startHeight + deltaVh)),
-    );
+    const d = drag.current;
+    const area = panel.current?.parentElement?.clientHeight;
+    if (!d || !area) return;
+    d.current = Math.max(15, Math.min(92, d.start - ((e.clientY - d.y) / area) * 100));
+    panel.current?.style.setProperty("--sh", `${d.current}%`);
   };
   const onPointerUp = () => {
-    if (!dragRef.current) return;
-    dragRef.current = null;
-    setHeightVh((h) => (h > (SHEET_PEEK_VH + SHEET_FULL_VH) / 2 ? SHEET_FULL_VH : SHEET_PEEK_VH));
-  };
-
-  return { heightVh, onPointerDown, onPointerMove, onPointerUp };
-}
-
-function DragHandle({
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-}: {
-  onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
-  onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
-  onPointerUp: () => void;
-}) {
-  return (
-    <div
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      className="flex shrink-0 touch-none justify-center py-2.5 md:hidden"
-    >
-      <div className="h-1 w-10 rounded-full bg-border" />
-    </div>
-  );
-}
-
-function PostedByBadge({ postedBy }: { postedBy: "owner" | "broker" }) {
-  const isOwner = postedBy === "owner";
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-        isOwner
-          ? "border-[var(--success)]/30 bg-[var(--success)]/10 text-[var(--success)]"
-          : "border-border bg-muted text-muted-foreground"
-      }`}
-    >
-      {isOwner ? <User className="h-3 w-3" /> : <Briefcase className="h-3 w-3" />}
-      {isOwner ? "Owner" : "Broker"}
-    </span>
-  );
-}
-
-function ShareButton({ title, text }: { title: string; text: string }) {
-  const [copied, setCopied] = useState(false);
-  const onShare = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
-    const data = { title, text, url };
-    try {
-      const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
-      if (typeof navigator !== "undefined" && nav.share) {
-        await nav.share(data);
-        return;
-      }
-      await navigator.clipboard.writeText(`${title}\n${text}\n${url}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* user cancelled or unsupported */
+    const d = drag.current;
+    if (!d) return;
+    drag.current = null;
+    if (d.current < SHEET_CLOSE) {
+      onClose();
+      return;
     }
+    const next = d.current < 66 ? SHEET_HALF : SHEET_FULL;
+    panel.current?.style.setProperty("--sh", `${next}%`);
+    setHeight(next);
   };
+
+  return {
+    panel,
+    style: { ["--sh" as string]: `${height}%` },
+    handle: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+  };
+}
+
+function rememberReturn() {
+  try {
+    sessionStorage.setItem("lv_return_to", window.location.pathname + window.location.search);
+  } catch {
+    /* storage unavailable: the viewer lands on the dashboard instead */
+  }
+}
+
+function SignInLink({ className, children }: { className: string; children: ReactNode }) {
   return (
-    <button
-      onClick={onShare}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
-    >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-[var(--success)]" />
-      ) : (
-        <Share2 className="h-3.5 w-3.5" />
-      )}
-      {copied ? "Link copied" : "Share"}
-    </button>
+    <Link to="/login" onClick={rememberReturn} className={className}>
+      {children}
+    </Link>
   );
 }
 
@@ -137,150 +96,39 @@ function whatsappUrl(phone: string, message: string): string | null {
   return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
 }
 
-function WhatsAppButton({
-  phone,
-  message,
-  parcelId,
-}: {
-  phone: string;
-  message: string;
-  parcelId?: string;
-}) {
-  const url = whatsappUrl(phone, message);
-  if (!url) return null;
+function PanelHead({ tags, onClose }: { tags: ReactNode; onClose: () => void }) {
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => {
-        if (parcelId) api.post(`/parcels/${parcelId}/inquiry`).catch(() => {});
-      }}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
-    >
-      <MessageCircle className="h-3.5 w-3.5 text-[var(--success)]" />
-      WhatsApp
-    </a>
-  );
-}
-
-function VerificationRequestButton({ parcelId }: { parcelId: string }) {
-  const { user } = useAuth();
-  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">("idle");
-
-  if (!user) {
-    return (
-      <Link
-        to="/login"
-        className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-secondary"
+    <div className="gm-phead">
+      <div className="gm-tags" style={{ gap: 6 }}>
+        {tags}
+      </div>
+      <button
+        type="button"
+        className="gm-mbtn"
+        onClick={onClose}
+        aria-label="Close"
+        style={{ width: 38, height: 38, borderRadius: "50%", boxShadow: "none" }}
       >
-        Sign in to request a report
-      </Link>
-    );
-  }
-
-  const onClick = async () => {
-    setState("loading");
-    try {
-      await api.post(`/parcels/${parcelId}/verification-request`);
-      setState("sent");
-    } catch {
-      setState("error");
-    }
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={state === "loading" || state === "sent"}
-      className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-secondary disabled:opacity-70"
-    >
-      {state === "sent" ? (
-        <>
-          <FileCheck className="h-3.5 w-3.5" /> Request sent
-        </>
-      ) : state === "loading" ? (
-        "Requesting…"
-      ) : state === "error" ? (
-        "Failed — try again"
-      ) : (
-        "Request Verification Report"
-      )}
-    </button>
-  );
-}
-
-function SaveButton({ saved, onToggle }: { saved: boolean; onToggle: () => void }) {
-  const { user } = useAuth();
-
-  if (!user) {
-    return (
-      <Link
-        to="/login"
-        title="Sign in to save this listing"
-        className="rounded-md border border-border bg-background p-2 text-muted-foreground hover:bg-muted"
-      >
-        <Heart className="h-4 w-4" />
-      </Link>
-    );
-  }
-
-  return (
-    <button
-      onClick={onToggle}
-      title={saved ? "Remove from saved" : "Save this listing"}
-      className={`rounded-md border p-2 ${
-        saved
-          ? "border-destructive/30 bg-destructive/10 text-destructive"
-          : "border-border bg-background text-muted-foreground hover:bg-muted"
-      }`}
-    >
-      <Heart className="h-4 w-4" fill={saved ? "currentColor" : "none"} />
-    </button>
-  );
-}
-
-function CoordinatesRow({ lat, lng }: { lat: number; lng: number }) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* clipboard unavailable */
-    }
-  };
-  return (
-    <button
-      onClick={onCopy}
-      className="mb-4 inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
-    >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-[var(--success)]" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
-      {copied ? "Copied" : "Copy coordinates"}
-    </button>
+        <X width={16} height={16} aria-hidden />
+      </button>
+    </div>
   );
 }
 
 function PhotoGallery({ photos, title }: { photos: string[]; title: string }) {
   const [index, setIndex] = useState(0);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
-  if (photos.length === 0) return null;
+  if (photos.length === 0) return <div className="gm-gal" aria-hidden />;
   const prev = () => setIndex((i) => (i - 1 + photos.length) % photos.length);
   const next = () => setIndex((i) => (i + 1) % photos.length);
   return (
-    <div className="relative -mx-4 -mt-4 mb-4 h-48 overflow-hidden bg-muted md:h-56">
+    <div className="gm-gal">
       <button
         type="button"
         onClick={() => setViewerIndex(index)}
         aria-label={`View photo ${index + 1} of ${photos.length}`}
-        className="h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <img src={photos[index]} alt="" className="h-full w-full object-cover" />
+        <img src={photos[index]} alt="" />
       </button>
       <PhotoViewer
         photos={photos}
@@ -291,21 +139,27 @@ function PhotoGallery({ photos, title }: { photos: string[]; title: string }) {
       {photos.length > 1 && (
         <>
           <button
+            type="button"
+            className="gm-gbtn"
             onClick={prev}
             aria-label="Previous photo"
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+            style={{ left: 10 }}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft width={18} height={18} aria-hidden />
           </button>
           <button
+            type="button"
+            className="gm-gbtn"
             onClick={next}
             aria-label="Next photo"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+            style={{ right: 10 }}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight width={18} height={18} aria-hidden />
           </button>
-          <div className="absolute bottom-2 right-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-medium text-white">
-            {index + 1} / {photos.length}
+          <div className="gm-gdots" aria-hidden>
+            {photos.map((_, i) => (
+              <span key={i} data-on={i === index} />
+            ))}
           </div>
         </>
       )}
@@ -313,322 +167,548 @@ function PhotoGallery({ photos, title }: { photos: string[]; title: string }) {
   );
 }
 
+function PriceRow({
+  priceLabel,
+  price,
+  sizeLabel,
+  size,
+}: {
+  priceLabel: string;
+  price: string;
+  sizeLabel: string;
+  size: string;
+}) {
+  return (
+    <div
+      style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>{priceLabel}</span>
+        <span className="gm-h" style={{ fontSize: 26, letterSpacing: "-0.02em" }}>
+          {price}
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "right" }}>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>{sizeLabel}</span>
+        <span style={{ fontWeight: 700, fontSize: 17 }}>{size}</span>
+      </div>
+    </div>
+  );
+}
+
+function ContactActions({
+  save,
+  onShare,
+  phone,
+  message,
+  onWhatsApp,
+}: {
+  save?: ReactNode;
+  onShare: () => void;
+  phone: string;
+  message: string;
+  onWhatsApp?: () => void;
+}) {
+  const wa = whatsappUrl(phone, message);
+  const tel = phone.replace(/[^\d+]/g, "");
+  return (
+    <div className="gm-acts">
+      {save}
+      <button type="button" className="gm-act" onClick={onShare}>
+        <Share2 width={18} height={18} aria-hidden />
+        Share
+      </button>
+      {wa && (
+        <a
+          href={wa}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="gm-act"
+          onClick={onWhatsApp}
+        >
+          <MessageCircle width={18} height={18} aria-hidden />
+          WhatsApp
+        </a>
+      )}
+      {tel.length >= 9 && (
+        <a href={`tel:${tel}`} className="gm-act">
+          <Phone width={18} height={18} aria-hidden />
+          Call
+        </a>
+      )}
+    </div>
+  );
+}
+
+function PlaceActions({
+  lat,
+  lng,
+  streetView,
+  compare,
+}: {
+  lat: number;
+  lng: number;
+  streetView: boolean;
+  compare?: ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <a
+        href={directionsUrl(lat, lng)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="gm-act2"
+      >
+        <Navigation width={16} height={16} aria-hidden /> Get directions
+      </a>
+      {streetView ? (
+        <a
+          href={streetViewUrl(lat, lng)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="gm-act2"
+        >
+          <PersonStanding width={16} height={16} aria-hidden /> Street View
+        </a>
+      ) : (
+        <span className="gm-act2 gm-nosv" title="Google Street View doesn't cover this spot yet">
+          <PersonStanding width={16} height={16} aria-hidden /> No Street View here
+        </span>
+      )}
+      {compare}
+    </div>
+  );
+}
+
+function CopyCoordinates({ lat, lng }: { lat: number; lng: number }) {
+  const toast = useMapToast();
+  const [copied, setCopied] = useState(false);
+  const plain = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(plain);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+      toast(`Coordinates copied · ${plain}`);
+    } catch {
+      toast("Couldn't copy the coordinates");
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="gm-copy"
+      onClick={onCopy}
+      aria-label={`Copy coordinates ${plain}`}
+    >
+      <span>
+        <small>Coordinates</small>
+        <span className="gm-mono" style={{ fontSize: 13 }}>
+          {formatCoords(lat, lng)}
+        </span>
+      </span>
+      <span>
+        {copied ? (
+          <>
+            <Check width={15} height={15} strokeWidth={2.6} aria-hidden /> Copied
+          </>
+        ) : (
+          <>
+            <Copy width={15} height={15} aria-hidden /> Copy
+          </>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function Chips({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span className="gm-flab">{label}</span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {items.map((u) => (
+          <span key={u} className="gm-uchip">
+            <Check width={13} height={13} strokeWidth={2.6} aria-hidden />
+            {u}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function About({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
+  if (!text && !children) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span className="gm-flab">{title}</span>
+      {text && (
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>{text}</p>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function VerificationCard({ parcel }: { parcel: LandParcel }) {
+  const { user } = useAuth();
+  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">("idle");
+
+  if (parcel.status === "verified") {
+    return (
+      <div className="gm-vcard">
+        <ShieldCheck width={22} height={22} aria-hidden style={{ flex: "none" }} />
+        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <strong>Verified by Geo Pin</strong>
+          <p style={{ opacity: 0.85 }}>Ownership documents and boundary checked by our team.</p>
+        </span>
+      </div>
+    );
+  }
+
+  const request = async () => {
+    setState("loading");
+    try {
+      await api.post(`/parcels/${parcel.id}/verification-request`);
+      setState("sent");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <div className="gm-vcard gm-plain">
+      <strong>Not verified yet</strong>
+      <p>Ask us to check this parcel&apos;s documents and boundary before you commit.</p>
+      {state === "sent" ? (
+        <span
+          role="status"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontWeight: 600,
+            color: "var(--accent)",
+          }}
+        >
+          <Check width={18} height={18} strokeWidth={2.6} aria-hidden /> Request sent. We&apos;ll
+          update you.
+        </span>
+      ) : user ? (
+        <button type="button" className="gm-btn" onClick={request} disabled={state === "loading"}>
+          <ShieldCheck width={18} height={18} aria-hidden />
+          {state === "loading"
+            ? "Requesting…"
+            : state === "error"
+              ? "Couldn't send. Try again"
+              : "Request verification"}
+        </button>
+      ) : (
+        <SignInLink className="gm-btn">
+          <ShieldCheck width={18} height={18} aria-hidden /> Sign in to request verification
+        </SignInLink>
+      )}
+    </div>
+  );
+}
+
+const INTEL: { key: keyof LandParcel["amenities"]; label: string; icon: ReactNode }[] = [
+  {
+    key: "school",
+    label: "Nearest school",
+    icon: <GraduationCap width={17} height={17} aria-hidden />,
+  },
+  {
+    key: "hospital",
+    label: "Nearest hospital",
+    icon: <Hospital width={17} height={17} aria-hidden />,
+  },
+  { key: "shopping", label: "Shopping", icon: <ShoppingBag width={17} height={17} aria-hidden /> },
+  { key: "mainRoad", label: "Main road", icon: <RouteIcon width={17} height={17} aria-hidden /> },
+  {
+    key: "distanceToTarmac",
+    label: "Distance to tarmac",
+    icon: <Ruler width={17} height={17} aria-hidden />,
+  },
+];
+
 export function ParcelPanel({
   parcel,
   onClose,
   saved,
   onToggleSaved,
+  page = "land",
+  inCompare,
+  onToggleCompare,
 }: {
   parcel: LandParcel;
   onClose: () => void;
   saved: boolean;
   onToggleSaved: () => void;
+  page?: "land" | "explore";
+  inCompare?: boolean;
+  onToggleCompare?: () => void;
 }) {
-  const meta = statusMeta[parcel.status];
-  const priceLabel = parcel.listingType === "lease" ? "Lease / year" : "Price";
-  const isMobile = useIsMobile();
-  const { heightVh, onPointerDown, onPointerMove, onPointerUp } = useDraggableSheetHeight();
+  const { user } = useAuth();
+  const sheet = useSheet(onClose);
+  const [sharing, setSharing] = useState(false);
+  const color = DEAL_COLOR[parcel.listingType];
+  const verified = parcel.status === "verified";
+  const [lat, lng] = parcel.polygon
+    ? centroid(parcel.polygon)
+    : [parcel.latitude ?? 0, parcel.longitude ?? 0];
+  const place = parcel.area ? `${parcel.area}, ${parcel.county}` : parcel.county;
+  const price = `KES ${parcel.price.toLocaleString("en-US")}`;
+  const url = listingUrl(page, "parcel", parcel.id);
+
   return (
-    <aside className={panelClass} style={isMobile ? { maxHeight: `${heightVh}vh` } : undefined}>
-      <DragHandle
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
+    <aside ref={sheet.panel} className="gm-panel" aria-label="Listing details" style={sheet.style}>
+      <div className="gm-handle" {...sheet.handle}>
+        <span />
+      </div>
+      <PanelHead
+        onClose={onClose}
+        tags={
+          <>
+            <span className="gm-stag" style={{ ["--pc" as string]: color }}>
+              {DEAL_TAG[parcel.listingType]}
+            </span>
+            {verified ? (
+              <span className="gm-vtag">
+                <ShieldCheck width={12} height={12} aria-hidden /> Verified
+              </span>
+            ) : (
+              <span className="gm-atag" style={{ borderStyle: "solid" }}>
+                Available
+              </span>
+            )}
+            <span className="gm-atag" style={{ borderStyle: "solid" }}>
+              {parcel.postedBy === "owner" ? "Posted by owner" : "Posted by broker"}
+            </span>
+          </>
+        }
       />
-      <div className="flex items-start justify-between border-b border-border p-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              className="inline-flex items-center rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
-              style={{ backgroundColor: meta.color }}
-            >
-              {meta.label}
-            </span>
-            <span className="inline-flex items-center rounded-sm border border-border bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
-              {parcel.listingType === "lease" ? "For Lease" : "For Sale"}
-            </span>
-            <PostedByBadge postedBy={parcel.postedBy} />
-            {parcel.verified && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--success)]">
-                <ShieldCheck className="h-3 w-3" /> Verified
-              </span>
-            )}
-            {parcel.featured && (
-              <span className="inline-flex items-center gap-1 rounded-sm bg-warning-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning-subtle-foreground">
-                <Star className="h-3 w-3" /> Featured
-              </span>
-            )}
+      <div className="gm-pscroll">
+        <PhotoGallery photos={parcel.photos ?? []} title={parcel.parcelNumber} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <h2 className="gm-ptitle gm-mono">{parcel.parcelNumber}</h2>
+          <span style={{ fontSize: 15, color: "var(--muted)" }}>
+            {[parcel.landUse && `${parcel.landUse} land`, `${place} County`]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </div>
+        {!parcel.polygon && (
+          <div className="gm-note">
+            <MapPin width={18} height={18} aria-hidden />
+            Approximate location. The seller dropped a pin but hasn&apos;t traced the boundary yet.
           </div>
-          <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{parcel.title}</h2>
-          <p className="text-xs text-muted-foreground">{parcel.county}</p>
-        </div>
-        <div className="ml-2 flex shrink-0 items-center gap-1.5">
-          <SaveButton saved={saved} onToggle={onToggleSaved} />
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {parcel.photos && <PhotoGallery photos={parcel.photos} title={parcel.parcelNumber} />}
-
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <Stat label="Size" value={parcel.size} />
-          <Stat label={priceLabel} value={`KES ${parcel.price.toLocaleString()}`} />
-        </div>
-
-        {parcel.latitude != null && parcel.longitude != null && (
-          <CoordinatesRow lat={parcel.latitude} lng={parcel.longitude} />
         )}
-
-        <div className="mb-4 rounded-md border border-border bg-background p-3">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Development Score
-            </span>
-            <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold text-foreground">
-              {parcel.amenities.developmentScore}
-            </span>
-            <span className="text-xs text-muted-foreground">/ 100</span>
-          </div>
-          <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
-            <div
-              className="h-1.5 rounded-full bg-brand"
-              style={{ width: `${parcel.amenities.developmentScore}%` }}
-            />
-          </div>
-        </div>
-
-        <p className="mb-4 text-sm leading-relaxed text-foreground">{parcel.description}</p>
-
-        <Section title="Location Intelligence">
-          <Row
-            icon={<Building2 className="h-3.5 w-3.5" />}
-            label="School"
-            value={parcel.amenities.school}
-          />
-          <Row
-            icon={<Building2 className="h-3.5 w-3.5" />}
-            label="Hospital"
-            value={parcel.amenities.hospital}
-          />
-          <Row
-            icon={<Building2 className="h-3.5 w-3.5" />}
-            label="Shopping"
-            value={parcel.amenities.shopping}
-          />
-          <Row
-            icon={<MapPin className="h-3.5 w-3.5" />}
-            label="Main Road"
-            value={parcel.amenities.mainRoad}
-          />
-          <Row
-            icon={<MapPin className="h-3.5 w-3.5" />}
-            label="To Tarmac"
-            value={parcel.amenities.distanceToTarmac}
-          />
-        </Section>
-
-        {parcel.amenities.utilities.length > 0 && (
-          <Section title="Utilities">
-            <div className="flex flex-wrap gap-1.5">
-              {parcel.amenities.utilities.map((u) => (
-                <span
-                  key={u}
-                  className="rounded-sm border border-border bg-background px-2 py-0.5 text-[11px] text-foreground"
-                >
-                  {u}
-                </span>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        <Section title={parcel.postedBy === "owner" ? "Listed by Owner" : "Listed by Broker"}>
-          <p className="text-sm text-foreground">{parcel.seller.name}</p>
-          <p className="text-xs text-muted-foreground">{parcel.seller.agency}</p>
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-foreground">
-            <Phone className="h-3 w-3" /> {parcel.seller.phone}
-          </p>
-        </Section>
-      </div>
-
-      <div className="flex items-center gap-2 border-t border-border p-4">
-        <VerificationRequestButton parcelId={parcel.id} />
-        <WhatsAppButton
+        <PriceRow
+          priceLabel={parcel.listingType === "lease" ? "Lease per year" : "Asking price"}
+          price={price}
+          sizeLabel="Size"
+          size={parcel.size}
+        />
+        <ContactActions
+          save={
+            user ? (
+              <button type="button" className="gm-act" aria-pressed={saved} onClick={onToggleSaved}>
+                <Heart width={18} height={18} aria-hidden />
+                {saved ? "Saved" : "Save"}
+              </button>
+            ) : (
+              <SignInLink className="gm-act">
+                <Heart width={18} height={18} aria-hidden />
+                Save
+              </SignInLink>
+            )
+          }
+          onShare={() => setSharing(true)}
           phone={parcel.seller.phone}
-          message={`Hi, I'm interested in ${parcel.title} listed on Geo Pin Properties.`}
-          parcelId={parcel.id}
+          message={`Hi, I'm interested in ${parcel.parcelNumber} listed on Geo Pin Properties.`}
+          onWhatsApp={() => api.post(`/parcels/${parcel.id}/inquiry`).catch(() => {})}
         />
-        <ShareButton
-          title={parcel.title}
-          text={`${parcel.parcelNumber} · ${parcel.size} · KES ${parcel.price.toLocaleString()}`}
+        <PlaceActions
+          lat={lat}
+          lng={lng}
+          streetView={parcel.svAvailable === true}
+          compare={
+            onToggleCompare && (
+              <button
+                type="button"
+                className="gm-act2"
+                aria-pressed={!!inCompare}
+                onClick={onToggleCompare}
+              >
+                <Columns2 width={16} height={16} aria-hidden />
+                {inCompare ? "In compare" : "Compare"}
+              </button>
+            )
+          }
         />
+        <CopyCoordinates lat={parcel.latitude ?? lat} lng={parcel.longitude ?? lng} />
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span className="gm-flab" style={{ marginBottom: 4 }}>
+            Location intelligence
+          </span>
+          {INTEL.map((row) => (
+            <div key={row.key} className="gm-irow">
+              <span className="gm-iic">{row.icon}</span>
+              <span style={{ flex: 1 }}>{row.label}</span>
+              <span style={{ fontWeight: 600, textAlign: "right" }}>
+                {String(parcel.amenities[row.key])}
+              </span>
+            </div>
+          ))}
+          <span style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+            From OpenStreetMap, measured from the pin.
+          </span>
+        </div>
+        <Chips label="Utilities" items={parcel.amenities.utilities} />
+        <About title="About this plot" text={parcel.description}>
+          <span style={{ fontSize: 14 }}>
+            {parcel.postedBy === "owner" ? "Listed by owner" : "Listed by broker"}:{" "}
+            {parcel.seller.name}
+            {parcel.seller.agency ? ` · ${parcel.seller.agency}` : ""}
+          </span>
+        </About>
+        <VerificationCard parcel={parcel} />
       </div>
+      {sharing && (
+        <ShareSheet
+          anchor={sheet.panel.current}
+          noun="plot"
+          title={parcel.parcelNumber}
+          mono
+          meta={`${parcel.size} · ${DEAL_TAG[parcel.listingType]} · ${place}${verified ? " · Verified" : ""}`}
+          price={price + (parcel.listingType === "lease" ? " / yr" : "")}
+          url={url}
+          waText={`${parcel.size} plot, ${parcel.area || parcel.county} (${parcel.parcelNumber}) ${price} ${url}`}
+          shape={
+            (parcel.polygon
+              ? { kind: "polygon", points: parcel.polygon, verified }
+              : { kind: "approx" }) satisfies ShareShape
+          }
+          color={color}
+          imageUrl={`${API_BASE}/og/parcel/${parcel.id}.png`}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </aside>
   );
 }
 
-export function RentalPanel({ property, onClose }: { property: Property; onClose: () => void }) {
-  const isMobile = useIsMobile();
-  const { heightVh, onPointerDown, onPointerMove, onPointerUp } = useDraggableSheetHeight();
-  const priceLabel =
-    property.pricePeriod === "month"
-      ? "Rent / month"
-      : property.pricePeriod === "night"
-        ? "Rate / night"
-        : "Asking price";
+export function RentalPanel({
+  property,
+  onClose,
+  page = "rentals",
+}: {
+  property: Property;
+  onClose: () => void;
+  page?: "rentals" | "explore";
+}) {
+  const sheet = useSheet(onClose);
+  const [sharing, setSharing] = useState(false);
+  const color = INTENT_COLOR[property.intent];
+  const [lat, lng] = property.position;
+  const place = property.area ? `${property.area}, ${property.county}` : property.county;
+  const price = `KES ${property.price.toLocaleString("en-US")}`;
+  const per =
+    property.pricePeriod === "month" ? " / mo" : property.pricePeriod === "night" ? " / night" : "";
+  const facts =
+    property.bedrooms > 0
+      ? `${property.bedrooms} bedroom${property.bedrooms === 1 ? "" : "s"}`
+      : TYPE_LABELS[property.type];
+  const url = listingUrl(page, "property", property.id);
 
   return (
-    <aside className={panelClass} style={isMobile ? { maxHeight: `${heightVh}vh` } : undefined}>
-      <DragHandle
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-      />
-      <div className="flex items-start justify-between border-b border-border p-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center rounded-sm bg-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-foreground">
-              {TYPE_LABELS[property.type]}
-            </span>
-            <span className="inline-flex items-center rounded-sm border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+    <aside ref={sheet.panel} className="gm-panel" aria-label="Listing details" style={sheet.style}>
+      <div className="gm-handle" {...sheet.handle}>
+        <span />
+      </div>
+      <PanelHead
+        onClose={onClose}
+        tags={
+          <>
+            <span className="gm-stag" style={{ ["--pc" as string]: color }}>
               {INTENT_LABELS[property.intent]}
             </span>
-            <PostedByBadge postedBy={property.postedBy} />
-            {property.featured && (
-              <span className="inline-flex items-center rounded-sm bg-warning-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning-subtle-foreground">
-                Featured
-              </span>
-            )}
-          </div>
-          <h2 className="mt-2 truncate text-lg font-semibold text-foreground">{property.title}</h2>
-          <p className="text-xs text-muted-foreground">
-            {property.area ? `${property.area}, ` : ""}
-            {property.county}
-          </p>
-        </div>
-        <button
-          onClick={onClose}
-          className="ml-2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <span className="gm-atag" style={{ borderStyle: "solid" }}>
+              {TYPE_LABELS[property.type]}
+            </span>
+            <span className="gm-atag" style={{ borderStyle: "solid" }}>
+              {property.postedBy === "owner" ? "Posted by owner" : "Posted by broker"}
+            </span>
+            {property.status === "occupied" && <span className="gm-seen">Occupied</span>}
+          </>
+        }
+      />
+      <div className="gm-pscroll">
         <PhotoGallery photos={property.photos} title={property.title} />
-
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <Stat label={priceLabel} value={formatPrice(property.price, property.pricePeriod)} />
-          <Stat
-            label="Bedrooms"
-            value={property.bedrooms === 0 ? "—" : String(property.bedrooms)}
-          />
-          <Stat
-            label="Bathrooms"
-            value={property.bathrooms === 0 ? "—" : String(property.bathrooms)}
-          />
-          <Stat label="Furnished" value={property.furnished ? "Yes" : "No"} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <h2 className="gm-ptitle">{property.title}</h2>
+          <span style={{ fontSize: 15, color: "var(--muted)" }}>
+            {facts} · {place} County
+          </span>
         </div>
-
-        <CoordinatesRow lat={property.position[0]} lng={property.position[1]} />
-
-        {property.intent === "bnb" && (property.minNights || property.cleaningFee) && (
-          <Section title="BnB terms">
-            {property.minNights && (
-              <p className="text-sm text-foreground">Minimum stay: {property.minNights} nights</p>
-            )}
-            {property.cleaningFee != null && (
-              <p className="text-sm text-foreground">
-                Cleaning fee: KES {property.cleaningFee.toLocaleString()}
-              </p>
-            )}
-          </Section>
-        )}
-
-        {property.description && (
-          <Section title="About this property">
-            <p className="text-sm text-muted-foreground">{property.description}</p>
-          </Section>
-        )}
-
-        {property.amenities.length > 0 && (
-          <Section title="Amenities">
-            <div className="flex flex-wrap gap-1.5">
-              {property.amenities.map((a) => (
-                <span
-                  key={a}
-                  className="rounded-sm border border-border bg-background px-2 py-0.5 text-[11px] text-foreground"
-                >
-                  {a}
-                </span>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        <Section title={property.postedBy === "owner" ? "Listed by Owner" : "Listed by Broker"}>
-          <p className="text-sm text-foreground">{property.agent.name}</p>
-          {property.agent.agency && (
-            <p className="text-xs text-muted-foreground">{property.agent.agency}</p>
-          )}
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-foreground">
-            <Phone className="h-3 w-3" /> {property.agent.phone}
-          </p>
-        </Section>
-      </div>
-
-      <div className="flex items-center gap-2 border-t border-border p-4">
-        <WhatsAppButton
+        <PriceRow
+          priceLabel={
+            property.intent === "rent"
+              ? "Rent per month"
+              : property.intent === "bnb"
+                ? "Per night"
+                : "Asking price"
+          }
+          price={price}
+          sizeLabel="Bedrooms"
+          size={property.bedrooms > 0 ? String(property.bedrooms) : TYPE_LABELS[property.type]}
+        />
+        <ContactActions
+          onShare={() => setSharing(true)}
           phone={property.agent.phone}
           message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on Geo Pin Properties.`}
         />
-        <ShareButton
-          title={property.title}
-          text={`${TYPE_LABELS[property.type]} · ${property.county} · ${formatPrice(property.price, property.pricePeriod)}`}
-        />
+        <PlaceActions lat={lat} lng={lng} streetView={property.svAvailable === true} />
+        <CopyCoordinates lat={lat} lng={lng} />
+        {property.intent === "bnb" && (property.minNights || property.cleaningFee != null) && (
+          <About title="BnB terms" text="">
+            {property.minNights && (
+              <span style={{ fontSize: 14 }}>Minimum stay: {property.minNights} nights</span>
+            )}
+            {property.cleaningFee != null && (
+              <span style={{ fontSize: 14 }}>
+                Cleaning fee: KES {property.cleaningFee.toLocaleString("en-US")}
+              </span>
+            )}
+          </About>
+        )}
+        <Chips label="Amenities" items={property.amenities} />
+        <About title="About this property" text={property.description}>
+          <span style={{ fontSize: 14 }}>
+            {property.postedBy === "owner" ? "Listed by owner" : "Listed by broker"}:{" "}
+            {property.agent.name}
+            {property.agent.agency ? ` · ${property.agent.agency}` : ""}
+          </span>
+        </About>
       </div>
+      {sharing && (
+        <ShareSheet
+          anchor={sheet.panel.current}
+          noun="home"
+          title={property.title}
+          mono={false}
+          meta={`${INTENT_LABELS[property.intent]} · ${place}`}
+          price={price + per}
+          url={url}
+          waText={`${property.title}, ${property.area || property.county} ${price}${per} ${url}`}
+          shape={{ kind: "home" }}
+          color={color}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </aside>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-0.5 text-sm font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-4">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </p>
-      <div className="space-y-1.5">{children}</div>
-    </div>
-  );
-}
-
-function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3 text-xs">
-      <span className="flex items-center gap-1.5 text-muted-foreground">
-        {icon} {label}
-      </span>
-      <span className="text-right text-foreground">{value}</span>
-    </div>
   );
 }

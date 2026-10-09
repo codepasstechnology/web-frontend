@@ -47,8 +47,18 @@ export function LoadingPage() {
   useEffect(() => {
     if (!fading || !user) return;
     const timer = window.setTimeout(() => {
+      // A buyer sent to sign in from a listing (Save, Request verification) goes back to it.
+      let back: string | null = null;
+      try {
+        back = sessionStorage.getItem("lv_return_to");
+        sessionStorage.removeItem("lv_return_to");
+      } catch {
+        /* storage unavailable */
+      }
       if (user.role === "account_manager") {
         navigate({ to: "/manager" });
+      } else if (back?.startsWith("/")) {
+        navigate({ href: back });
       } else {
         navigate({ to: "/dashboard", search: { tab: undefined } });
       }

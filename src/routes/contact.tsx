@@ -1,207 +1,305 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { CheckCircle2, Mail, MapPin, Phone, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { PageHeader } from "@/components/site/PageHeader";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
+import { ArrowRight, Clock, Mail, MessageSquare, Phone } from "lucide-react";
+import { KenyaMeshMap } from "@/components/site/KenyaMeshMap";
+import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
+import { MarketingShell } from "@/components/site/MarketingShell";
+import { PageHero } from "@/components/site/PageHero";
+import { api } from "@/lib/api";
+import { usePublicSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/contact")({
-  head: () => ({ meta: [{ title: "Contact — Geo Pin Properties Kenya" }] }),
+  head: () => ({
+    meta: [{ title: "Contact — Geo Pin Properties Kenya" }],
+    links: MARKETING_FONT_LINKS,
+  }),
   component: ContactPage,
 });
 
-const contactItems = [
-  {
-    icon: Mail,
-    label: "Email us",
-    value: "support@landverify.co.ke",
-    sub: "We reply within one business day.",
-  },
-  {
-    icon: Phone,
-    label: "Call us",
-    value: "+254 700 123 456",
-    sub: "Mon – Fri, 8 am – 6 pm EAT.",
-  },
-  {
-    icon: MapPin,
-    label: "Visit us",
-    value: "Westlands, Nairobi",
-    sub: "Delta Corner, 4th Floor.",
-  },
-];
+// Nairobi as a share of the map's width and height.
+const NAIROBI = { left: 37.14, top: 65.25 };
 
-const topics = [
-  "Verification result question",
-  "Account or billing issue",
-  "Technical problem",
-  "Partnership enquiry",
-  "Other",
-];
+const topics = ["General", "A listing", "Verification", "My account", "Partnerships"];
 
-const emptyForm = { name: "", email: "", subject: "", message: "" };
+type Field = "name" | "email" | "msg";
+
+function checks(values: Record<Field, string>): Record<Field, string> {
+  return {
+    name: values.name.trim().length < 2 ? "Enter your name." : "",
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())
+      ? ""
+      : "Enter a valid email address.",
+    msg: values.msg.trim().length < 10 ? "Tell us a little more (at least 10 characters)." : "",
+  };
+}
 
 function ContactPage() {
+  const { data: settings } = usePublicSettings();
+  const [topic, setTopic] = useState(topics[0]);
+  const [values, setValues] = useState<Record<Field, string>>({ name: "", email: "", msg: "" });
+  const [tried, setTried] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [sendError, setSendError] = useState("");
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const errors = checks(values);
+  const shown = (f: Field) => (tried ? errors[f] : "");
+  const shake = (f: Field) => (shown(f) ? (attempt % 2 ? "gs-shake-a" : "gs-shake-b") : undefined);
+  const firstName = values.name.trim().split(/\s+/)[0] || "friend";
+
+  const supportEmail = settings?.support_email;
+  const contactItems = [
+    {
+      icon: Mail,
+      label: "Email",
+      value: supportEmail || "[EMAIL ADDRESS]",
+      href: supportEmail ? `mailto:${supportEmail}` : undefined,
+    },
+    { icon: MessageSquare, label: "WhatsApp", value: "[WHATSAPP NUMBER]" },
+    { icon: Phone, label: "Phone", value: "[PHONE NUMBER]" },
+    { icon: Clock, label: "Hours", value: "[WORKING HOURS]" },
+  ];
+
+  const field = (f: Field) => ({
+    value: values[f],
+    onChange: (e: { target: { value: string } }) =>
+      setValues((v) => ({ ...v, [f]: e.target.value })),
+    "aria-invalid": !!shown(f),
+    "aria-describedby": shown(f) ? `ct-${f}-error` : undefined,
+  });
+
+  function handleSend(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (errors.name || errors.email || errors.msg) {
+      setTried(true);
+      setAttempt((a) => a + 1);
+      return;
+    }
+    setBusy(true);
+    setSendError("");
+    api
+      .post("/contact", {
+        name: values.name.trim(),
+        email: values.email.trim(),
+        topic,
+        message: values.msg.trim(),
+      })
+      .then(() => setSent(true))
+      .catch((err: Error) => setSendError(err.message))
+      .finally(() => setBusy(false));
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // TODO: wire to backend
-    setSent(true);
+  function handleReset() {
+    setSent(false);
+    setTried(false);
+    setValues((v) => ({ ...v, msg: "" }));
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <PageHeader eyebrow="Contact" title="Get in touch">
-        <p className="max-w-[56ch] text-pretty text-[1.0625rem] leading-relaxed text-muted-foreground">
-          Questions about a verification? Need help with your account? Our team is here for you.
-        </p>
-      </PageHeader>
+    <MarketingShell>
+      <PageHero
+        eyebrow="Contact"
+        title="Let's"
+        highlight="talk land."
+        lede="Questions about a listing, verification or your account? Send us a message and a real person will get back to you."
+      />
 
-      <main className="mx-auto grid max-w-[1100px] gap-10 px-4 py-12 md:px-8 md:py-16 lg:grid-cols-5">
-        <aside className="flex flex-col gap-8 lg:col-span-2">
-          <ul className="flex flex-col gap-6">
-            {contactItems.map(({ icon: Icon, label, value, sub }) => (
-              <li key={label} className="flex gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Icon aria-hidden className="h-5 w-5 text-brand" strokeWidth={1.75} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className="mt-0.5 font-semibold">{value}</p>
-                  <p className="text-sm text-muted-foreground">{sub}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="rounded-xl border border-border bg-muted/40 p-5">
-            <p className="font-semibold">Looking for help articles?</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Most common questions are answered in the Help Centre.
-            </p>
-            <Link
-              to="/help"
-              className="mt-3 inline-flex text-sm font-semibold text-brand hover:underline"
-            >
-              Go to Help Centre →
-            </Link>
-          </div>
-        </aside>
-
-        <section className="rounded-xl border border-border bg-card p-6 text-card-foreground md:p-8 lg:col-span-3">
+      <section className="gs-wrap gs-contact">
+        <div className="gs-card gs-form gs-reveal">
           {sent ? (
-            <div role="status" className="flex flex-col items-center gap-3 py-12 text-center">
-              <CheckCircle2 aria-hidden className="h-12 w-12 text-success" />
-              <h2 className="text-lg font-bold">Message received!</h2>
-              <p className="text-muted-foreground">
-                We&apos;ll get back to you at {form.email} within one business day.
+            <div role="status" className="gs-sent">
+              <span className="gs-blob">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m5 12 5 5L20 7" />
+                </svg>
+              </span>
+              <h2 className="gs-h" style={{ fontSize: 36 }}>
+                Asante, {firstName}!
+              </h2>
+              <p className="gs-text">
+                Your message is on its way. We&apos;ll reply to{" "}
+                <strong style={{ color: "var(--ink)" }}>{values.email}</strong> within [RESPONSE
+                TIME].
               </p>
-              <Button
-                variant="link"
-                className="text-brand"
-                onClick={() => {
-                  setSent(false);
-                  setForm(emptyForm);
-                }}
-              >
+              <button type="button" className="gs-btn gs-ghost" onClick={handleReset}>
                 Send another message
-              </Button>
+              </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <h2 className="text-lg font-bold">Send a message</h2>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="contact-name">Full name</Label>
-                  <Input
-                    id="contact-name"
-                    name="name"
-                    required
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Jane Doe"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="contact-email">Email address</Label>
-                  <Input
-                    id="contact-email"
-                    name="email"
-                    type="email"
-                    required
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="jane@example.com"
-                  />
+            <form
+              onSubmit={handleSend}
+              noValidate
+              style={{ display: "flex", flexDirection: "column", gap: 22 }}
+            >
+              <h2 className="gs-h" style={{ fontSize: 30, letterSpacing: "-0.02em" }}>
+                Send a message
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <span id="ct-topic" className="gs-label">
+                  What&apos;s it about?
+                </span>
+                <div role="group" aria-labelledby="ct-topic" className="gs-chips">
+                  {topics.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      className="gs-chip"
+                      aria-pressed={topic === t}
+                      onClick={() => setTopic(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              <div className="grid gap-1.5">
-                <Label htmlFor="contact-subject">Subject</Label>
-                <Select
-                  name="subject"
-                  required
-                  value={form.subject}
-                  onValueChange={(subject) => setForm((prev) => ({ ...prev, subject }))}
-                >
-                  <SelectTrigger id="contact-subject">
-                    <SelectValue placeholder="Select a topic…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {topics.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+                <div className="gs-field">
+                  <label htmlFor="ct-name">Your name</label>
+                  <div className={shake("name")}>
+                    <input
+                      id="ct-name"
+                      className="gs-input"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="e.g. Wanjiku Kamau"
+                      {...field("name")}
+                    />
+                  </div>
+                  {shown("name") && (
+                    <span id="ct-name-error" className="gs-error">
+                      {shown("name")}
+                    </span>
+                  )}
+                </div>
+                <div className="gs-field">
+                  <label htmlFor="ct-email">Email</label>
+                  <div className={shake("email")}>
+                    <input
+                      id="ct-email"
+                      className="gs-input"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      {...field("email")}
+                    />
+                  </div>
+                  {shown("email") && (
+                    <span id="ct-email-error" className="gs-error">
+                      {shown("email")}
+                    </span>
+                  )}
+                </div>
               </div>
-
-              <div className="grid gap-1.5">
-                <Label htmlFor="contact-message">Message</Label>
-                <Textarea
-                  id="contact-message"
-                  name="message"
-                  required
-                  rows={5}
-                  value={form.message}
-                  onChange={handleChange}
-                  placeholder="Describe your question or issue…"
-                  className="resize-none"
-                />
+              <div className="gs-field">
+                <label htmlFor="ct-msg">Message</label>
+                <div className={shake("msg")}>
+                  <textarea
+                    id="ct-msg"
+                    className="gs-input"
+                    placeholder="How can we help?"
+                    {...field("msg")}
+                  />
+                </div>
+                {shown("msg") && (
+                  <span id="ct-msg-error" className="gs-error">
+                    {shown("msg")}
+                  </span>
+                )}
               </div>
-
-              <div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="h-11 bg-brand px-6 text-base text-brand-foreground hover:bg-brand-hover"
-                >
-                  <Send /> Send message
-                </Button>
-              </div>
+              {sendError && (
+                <span role="alert" className="gs-error">
+                  {sendError}
+                </span>
+              )}
+              <button
+                type="submit"
+                className="gs-btn"
+                aria-busy={busy}
+                style={{ minHeight: 58, width: "100%" }}
+              >
+                {busy ? (
+                  <svg
+                    className="gs-spin"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    role="img"
+                    aria-label="Sending"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                      stroke="currentColor"
+                      strokeOpacity=".3"
+                      strokeWidth="2.5"
+                    />
+                    <path
+                      d="M21 12a9 9 0 0 0-9-9"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                ) : (
+                  <>
+                    Send message
+                    <ArrowRight aria-hidden size={18} className="gs-arrow" />
+                  </>
+                )}
+              </button>
             </form>
           )}
-        </section>
-      </main>
-    </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="gs-mini-map gs-reveal">
+            <KenyaMeshMap pin={NAIROBI} />
+            <span className="gs-mono gs-map-label">[OFFICE], NAIROBI</span>
+          </div>
+          {contactItems.map(({ icon: Icon, label, value, href }) => {
+            const body = (
+              <>
+                <span className="gs-blob">
+                  <Icon aria-hidden size={22} strokeWidth={1.8} />
+                </span>
+                <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontWeight: 600 }}>{label}</span>
+                  <span style={{ color: "var(--muted)", fontSize: 15 }}>{value}</span>
+                </span>
+              </>
+            );
+            return href ? (
+              <a key={label} href={href} className="gs-info gs-lift">
+                {body}
+              </a>
+            ) : (
+              <div key={label} className="gs-info">
+                {body}
+              </div>
+            );
+          })}
+          <span
+            className="gs-hand"
+            style={{ fontSize: 26, rotate: "-2deg", alignSelf: "flex-start", marginTop: 6 }}
+          >
+            karibu, we&apos;re happy to help
+          </span>
+        </div>
+      </section>
+    </MarketingShell>
   );
 }
