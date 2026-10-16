@@ -208,8 +208,9 @@ describe("compare", () => {
 describe("land filters", () => {
   beforeEach(() => mockSearch.mockReturnValue({}));
 
-  it("offers verified and available, never sold", () => {
+  it("offers verified and available, never sold", async () => {
     render(<LandPage />);
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     const status = within(screen.getByRole("group", { name: "Status" }));
     expect(status.getAllByRole("button").map((b) => b.textContent)).toEqual([
       "All",

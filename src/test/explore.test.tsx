@@ -116,6 +116,7 @@ describe("Explore map", () => {
 
   it("writes the chosen kind to the URL", async () => {
     render(<ExplorePage />);
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     await userEvent.click(screen.getByRole("button", { name: "Rentals 1" }));
     expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/explore" }));
     const { search } = mockNavigate.mock.calls[0][0] as {

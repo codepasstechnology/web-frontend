@@ -34,7 +34,9 @@ describe("clusterByTouch", () => {
   });
 
   it("zooms in just far enough for a cluster's members to separate", () => {
-    const members = [pt("a", 0, 0), pt("b", 10, 0), pt("c", 0, 20)];
+    // Spaced from TOUCH_PX and clear of a zoom-step boundary, so the check
+    // doesn't depend on the exact touch distance.
+    const members = [pt("a", 0, 0), pt("b", TOUCH_PX / 6, 0), pt("c", 0, TOUCH_PX / 2)];
     const steps = zoomStepsToSeparate(members);
     const scaled = members.map((p) => pt(p.id, p.x * 2 ** steps, p.y * 2 ** steps));
 
