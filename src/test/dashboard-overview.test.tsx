@@ -90,7 +90,7 @@ describe("OverviewTab", () => {
 
     expect(screen.getByText("KYC: a reviewer asked for more information")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Get a parcel verified\s*\(done\)/ }),
+      screen.getByRole("button", { name: /Get your listing documents reviewed\s*\(done\)/ }),
     ).toBeInTheDocument();
   });
 });

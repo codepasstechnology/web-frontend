@@ -17,7 +17,7 @@ const values = [
   {
     icon: ShieldCheck,
     title: "Trust comes first",
-    body: "Every verified badge means we checked. When we haven't, we say so.",
+    body: "A badge means we reviewed the listing's documents. When we haven't, we say so.",
   },
   {
     icon: MapIcon,
@@ -42,11 +42,9 @@ const verificationSteps = [
   },
   {
     title: "The badge goes live",
-    body: "Only then does the listing show the green verified badge.",
+    body: "Only then does the listing carry the Documents reviewed badge.",
   },
 ];
-
-const team = [1, 2, 3, 4].map((n) => ({ id: n, name: "[NAME]", role: "[ROLE]" }));
 
 function AboutPage() {
   return (
@@ -55,7 +53,7 @@ function AboutPage() {
         eyebrow="About Geo Pin"
         title="Putting Kenya's land"
         highlight="on the map."
-        lede="Buying land should not mean guessing where it starts and ends, or who you are really dealing with. We are building the map that makes land clear, verified and easy to act on."
+        lede="Buying land should not mean guessing where it starts and ends, or who you are really dealing with. We are building the map that makes land listings clear, credible and easy to act on."
       />
 
       <section
@@ -76,7 +74,7 @@ function AboutPage() {
             market, and the moment you decided to fix it. Two or three short paragraphs work best.]
           </p>
           <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
-            Today, Geo Pin brings plotted parcels, verified listings and rentals together on one
+            Today, Geo Pin brings plotted parcels, property listings and rentals together on one
             GIS-powered map, so people can see the land, check it and connect with the right person.
           </p>
           <span className="gs-hand gs-tilt">find. connect. own.</span>
@@ -116,9 +114,13 @@ function AboutPage() {
       >
         <div className="gs-stack gs-reveal">
           <h2 id="verification-title" className="gs-h gs-h2">
-            How verification works
+            How we review listings
           </h2>
-          <p className="gs-text">[Adjust these steps to match your real process.]</p>
+          <p className="gs-text">
+            Geo Pin advertises land and property. We review each listing's documents to confirm it
+            refers to a real parcel; this is not a title search, so buyers should still carry out an
+            official search before paying.
+          </p>
         </div>
         <ol className="gs-steps">
           {verificationSteps.map((step, i) => (
@@ -137,42 +139,10 @@ function AboutPage() {
         </ol>
       </section>
 
-      <section aria-labelledby="team-title" className="gs-alt">
-        <div
-          className="gs-wrap"
-          style={{ paddingTop: 96, paddingBottom: 96, display: "grid", gap: 40 }}
-        >
-          <div className="gs-reveal" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <h2 id="team-title" className="gs-h gs-h2">
-              The team
-            </h2>
-            <p className="gs-text">[Add your team members with a photo, name and role.]</p>
-          </div>
-          <div
-            className="gs-grid"
-            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}
-          >
-            {team.map((member) => (
-              <div
-                key={member.id}
-                className="gs-card gs-lift gs-reveal"
-                style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}
-              >
-                <span className="gs-photo gs-mono">[PHOTO]</span>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span style={{ fontWeight: 600, fontSize: 17 }}>{member.name}</span>
-                  <span style={{ fontSize: 14, color: "var(--muted)" }}>{member.role}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="gs-wrap" style={{ paddingTop: 40, paddingBottom: 112 }}>
         <div className="gs-deep gs-reveal">
           <h2 className="gs-h">Come see the map.</h2>
-          <p>Explore plotted land and verified properties across Kenya.</p>
+          <p>Explore plotted land and properties across Kenya.</p>
           <Link to="/explore" className="gs-btn">
             Explore the map
             <ArrowRight aria-hidden size={18} className="gs-arrow" />

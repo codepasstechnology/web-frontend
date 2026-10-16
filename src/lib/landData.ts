@@ -80,7 +80,7 @@ export const landParcels: LandParcel[] = [
   },
   {
     id: "LV-002",
-    title: "Ruiru Verified Estate Block",
+    title: "Ruiru Estate Block",
     parcelNumber: "KMB/RUR/8821",
     size: "1/8 Acre",
     price: 2400000,
@@ -88,7 +88,7 @@ export const landParcels: LandParcel[] = [
     listingType: "sale",
     postedBy: "owner",
     county: "Kiambu",
-    description: "Verified plot within a gated estate, perimeter wall complete.",
+    description: "Titled plot within a gated estate, perimeter wall complete.",
     verified: true,
     seller: { name: "James Mwangi", phone: "+254 722 998 112", agency: "Direct Owner" },
     amenities: {
@@ -208,7 +208,7 @@ export const landParcels: LandParcel[] = [
     listingType: "sale",
     postedBy: "owner",
     county: "Kiambu",
-    description: "Verified agricultural parcel near JKUAT.",
+    description: "Titled agricultural parcel near JKUAT.",
     verified: true,
     seller: { name: "Peter Kariuki", phone: "+254 711 882 110", agency: "Direct Owner" },
     amenities: {
@@ -300,7 +300,7 @@ export const statusMeta: Record<LandStatus, { label: string; color: string; fill
   available: { label: "Available", color: "#15803D", fill: "#15803D" },
   sold: { label: "Sold", color: "#64748B", fill: "#64748B" },
   reserved: { label: "Reserved", color: "#D97706", fill: "#D97706" },
-  verified: { label: "Verified", color: "#16A34A", fill: "#16A34A" },
+  verified: { label: "Documents reviewed", color: "#16A34A", fill: "#16A34A" },
   disputed: { label: "Disputed", color: "#DC2626", fill: "#DC2626" },
 };
 

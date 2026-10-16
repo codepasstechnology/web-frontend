@@ -82,7 +82,7 @@ export function ListingCard({
           </span>
           {verified && (
             <span className="gm-vtag">
-              <Check width={11} height={11} strokeWidth={3} aria-hidden /> Verified
+              <Check width={11} height={11} strokeWidth={3} aria-hidden /> Documents reviewed
             </span>
           )}
           {approx && <span className="gm-atag">Approx. location</span>}

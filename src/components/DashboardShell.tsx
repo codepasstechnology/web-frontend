@@ -14,13 +14,14 @@ import { forwardRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { usePlans } from "@/lib/plans";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
-import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar";
+import { HomeNavbar } from "@/components/home/HomeNavbar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import "@/components/home/home.css";
 import "@/components/dashboard/dashboard.css";
 
 export type DashTab =
@@ -119,7 +120,11 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
 
   return (
     <div className="gd-root">
-      <DashboardTopBar onSelect={handleSelect} />
+      {/* The site navbar, so signed-in users keep every link. Its colours come
+          from .geo-home; display: contents keeps the header sticky to the page. */}
+      <div className="geo-home" style={{ display: "contents" }}>
+        <HomeNavbar />
+      </div>
 
       <div className="gd-app">
         <aside className="gd-side" aria-label="Dashboard">

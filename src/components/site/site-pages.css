@@ -884,18 +884,6 @@ textarea.gs-input {
   font-weight: 500;
 }
 
-.gs-photo {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--soft);
-  color: var(--soft-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
 /* Help */
 
 .gs-search {

@@ -80,8 +80,8 @@ export function compareRows(parcels: LandParcel[]): CompareRow[] {
       })),
     },
     {
-      label: "Verified",
-      cells: parcels.map((p) => ({ text: p.status === "verified" ? "✓ Verified" : "Not yet" })),
+      label: "Documents",
+      cells: parcels.map((p) => ({ text: p.status === "verified" ? "✓ Reviewed" : "Not yet" })),
     },
     {
       label: "Boundary",

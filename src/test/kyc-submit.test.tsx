@@ -93,7 +93,9 @@ describe("KYC submit modal", () => {
     await attach(modal, "title_deed", "deed.pdf");
     await userEvent.click(modal.getByRole("button", { name: "Submit application" }));
 
-    expect(modal.getByRole("alert")).toHaveTextContent("This parcel is already verified.");
+    expect(modal.getByRole("alert")).toHaveTextContent(
+      "This parcel's documents have already been reviewed.",
+    );
     expect(mockPost).not.toHaveBeenCalled();
   });
 });

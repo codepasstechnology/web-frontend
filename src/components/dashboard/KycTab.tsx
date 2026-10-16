@@ -234,9 +234,10 @@ function KycCard({
         <div className="gd-kb">
           {kyc.status === "approved" && (
             <div className="gd-box" data-k="ok">
-              <strong>Verification approved</strong>
+              <strong>Documents approved</strong>
               <span>
-                Your parcel is verified. Buyers now see a Verified mark on its outline and listing.
+                Your documents have been reviewed. Buyers now see a Documents reviewed badge on the
+                listing.
                 {kyc.reviewed_at && ` · ${fmtDate(kyc.reviewed_at)}`}
               </span>
             </div>
@@ -246,8 +247,7 @@ function KycCard({
             <div className="gd-box" data-k="err">
               <strong>Application rejected</strong>
               <span className="whitespace-pre-wrap">
-                {kyc.rejection_reason ??
-                  "Your application did not meet the verification requirements."}
+                {kyc.rejection_reason ?? "Your application did not meet our document requirements."}
                 {kyc.reviewed_at && ` · ${fmtDate(kyc.reviewed_at)}`}
               </span>
               <button
@@ -448,7 +448,7 @@ function KycCard({
                     </span>
                   </span>
                   {doc.verification_status === "accepted" && (
-                    <StatusChip kind="ok" label="Verified" />
+                    <StatusChip kind="ok" label="Documents reviewed" />
                   )}
                   {doc.verification_status === "rejected" && (
                     <StatusChip kind="err" label="Rejected" />
@@ -527,7 +527,7 @@ function SubmitKycDialog({
       return setError("Please select a parcel and add at least one document.");
     if (!hasRequired) return setError("A National ID and a title deed are required.");
     if (forParcel.some((a) => a.status === "approved"))
-      return setError("This parcel is already verified.");
+      return setError("This parcel's documents have already been reviewed.");
     if (forParcel.some((a) => ACTIVE.includes(a.status)))
       return setError("An active KYC application already exists for this parcel.");
 
@@ -770,7 +770,9 @@ export function KycTab() {
       <div className="gd-r flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="gd-h1">KYC Status</h1>
-          <p className="gd-sub">Get your land parcels verified, and track each application.</p>
+          <p className="gd-sub">
+            Submit your listing documents for review, and track each application.
+          </p>
         </div>
         <button type="button" className="gd-btn" onClick={() => setShowSubmit(true)}>
           <Plus size={17} strokeWidth={2.4} aria-hidden="true" /> Submit KYC
@@ -797,8 +799,9 @@ export function KycTab() {
           <Beacon width={26} height={36} />
           <span className="gd-h2">No KYC applications yet</span>
           <span className="max-w-[420px] text-muted-foreground">
-            Verified parcels get a Verified mark on the map, and buyers trust them more. You&apos;ll
-            need your National ID and the title deed.
+            Listings whose documents we have reviewed carry a Documents reviewed badge, which helps
+            buyers move forward with confidence. You&apos;ll need your National ID and the title
+            deed.
           </span>
           <button type="button" className="gd-btn" onClick={() => setShowSubmit(true)}>
             <Plus size={17} strokeWidth={2.4} aria-hidden="true" /> Submit KYC application
