@@ -58,7 +58,7 @@ export function MapLegend({ mode }: { mode: MapMode }) {
                 strokeDasharray="4 3"
               />
             </svg>
-            Available, not yet verified
+            Available, documents not yet reviewed
           </span>
           <span className="gm-lrow" style={{ ["--pc" as string]: "var(--s-lsale)" }}>
             <span

@@ -103,7 +103,7 @@ describe("Help page", () => {
 
   it("shows the topic grid by default with the popular questions list", () => {
     render(<Help />);
-    expect(screen.getByRole("button", { name: /Verification/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Listing documents/ })).toBeInTheDocument();
     expect(screen.getByText("How do you verify a title?")).toBeInTheDocument();
     expect(screen.getByText("How do I pay with M-Pesa?")).toBeInTheDocument();
   });
@@ -139,7 +139,7 @@ describe("Help page", () => {
 
   it("filters by topic when a topic card is clicked, and resets on 'Show all topics'", async () => {
     render(<Help />);
-    await userEvent.click(screen.getByRole("button", { name: /Verification/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Listing documents/ }));
     expect(screen.getByText("How do you verify a title?")).toBeInTheDocument();
     expect(screen.queryByText("How do I pay with M-Pesa?")).not.toBeInTheDocument();
 

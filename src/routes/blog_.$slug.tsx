@@ -386,7 +386,7 @@ function BlogPostPage() {
                 Ready to look for land?
               </span>
               <span style={{ opacity: 0.85 }}>
-                Explore plotted parcels and verified listings on the map.
+                Explore plotted parcels and property listings on the map.
               </span>
             </div>
             <Link to="/explore" className="gs-btn">

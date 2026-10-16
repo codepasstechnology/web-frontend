@@ -37,7 +37,7 @@ export function Hero() {
         </span>
       </h1>
 
-      <p className="gp-sub">Plotted land, verified homes and rentals across Kenya, on one map.</p>
+      <p className="gp-sub">Plotted land, homes and rentals across Kenya, on one map.</p>
 
       <form
         className="gp-search gp-anim"

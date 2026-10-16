@@ -21,7 +21,7 @@ export const Route = createFileRoute("/pricing")({
       { property: "og:title", content: "Pricing — Geo Pin Properties Kenya" },
       {
         property: "og:description",
-        content: "Free, Basic and Pro plans for listing verified land in Kenya.",
+        content: "Free, Basic and Pro plans for listing land and property in Kenya.",
       },
     ],
     links: MARKETING_FONT_LINKS,
@@ -33,7 +33,7 @@ const CARD_COUNT = 3;
 
 const EVERY_PLAN = [
   "Browse the land map",
-  "Plot boundaries and verification status",
+  "Plot boundaries and document review status",
   "Saved plots and alerts",
   "Message owners and agents",
 ];
@@ -127,7 +127,7 @@ function PricingPage() {
         eyebrow="Pricing"
         title="Simple plans for"
         highlight="serious land."
-        lede="Explore the map for free. Upgrade when you are ready to list, verify or manage properties."
+        lede="Explore the map for free. Upgrade when you are ready to list or manage properties."
       >
         <div role="group" aria-label="Billing period" className="gs-billing">
           <button type="button" aria-pressed={!yearly} onClick={() => setYearly(false)}>

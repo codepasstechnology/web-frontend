@@ -1,6 +1,7 @@
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/site/PageHeader";
+import { MarketingShell } from "@/components/site/MarketingShell";
 import { useLegalDoc, type LegalDocType } from "@/lib/content";
 
 function formatDate(value: string) {
@@ -16,56 +17,57 @@ export function LegalDocPage({ type }: { type: LegalDocType }) {
   const notFound = (error as { status?: number } | null)?.status === 404;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <PageHeader eyebrow="Legal" title={doc?.name ?? "Legal document"}>
-        {doc && (
-          <p className="text-sm text-muted-foreground">
-            Version {doc.version}
-            {doc.effective_date && ` · Effective ${formatDate(doc.effective_date)}`}
-          </p>
-        )}
-      </PageHeader>
+    <MarketingShell>
+      <div className="min-h-screen bg-background text-foreground">
+        <PageHeader eyebrow="Legal" title={doc?.name ?? "Legal document"}>
+          {doc && (
+            <p className="text-sm text-muted-foreground">
+              Version {doc.version}
+              {doc.effective_date && ` · Effective ${formatDate(doc.effective_date)}`}
+            </p>
+          )}
+        </PageHeader>
 
-      <main className="mx-auto max-w-[760px] px-4 py-12 md:px-8 md:py-16">
-        {isLoading && (
-          <div className="flex flex-col gap-3">
-            {[95, 88, 80, 92, 75, 85].map((w) => (
-              <Skeleton key={w} className="h-4" style={{ width: `${w}%` }} />
-            ))}
-          </div>
-        )}
-
-        {error && (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-              <AlertCircle aria-hidden className="h-6 w-6 text-muted-foreground" />
+        <main className="mx-auto max-w-[760px] px-4 py-12 md:px-8 md:py-16">
+          {isLoading && (
+            <div className="flex flex-col gap-3">
+              {[95, 88, 80, 92, 75, 85].map((w) => (
+                <Skeleton key={w} className="h-4" style={{ width: `${w}%` }} />
+              ))}
             </div>
-            <h2 className="text-lg font-bold">
-              {notFound ? "Not yet available" : "Couldn't load this document"}
-            </h2>
-            <p className="text-muted-foreground">
-              {notFound
-                ? "This document hasn't been published yet. Check back soon."
-                : "Please check your connection and try again."}
-            </p>
-          </div>
-        )}
+          )}
 
-        {doc && (
-          <article className="rounded-xl border border-border bg-card p-6 text-card-foreground md:p-10">
-            <div
-              className="legal-body text-foreground"
-              dangerouslySetInnerHTML={{ __html: doc.content }}
-            />
-            <p className="mt-10 border-t border-border pt-5 text-xs text-muted-foreground">
-              Last published: {formatDate(doc.published_at)}
-            </p>
-          </article>
-        )}
-      </main>
+          {error && (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                <AlertCircle aria-hidden className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h2 className="text-lg font-bold">
+                {notFound ? "Not yet available" : "Couldn't load this document"}
+              </h2>
+              <p className="text-muted-foreground">
+                {notFound
+                  ? "This document hasn't been published yet. Check back soon."
+                  : "Please check your connection and try again."}
+              </p>
+            </div>
+          )}
 
-      {/* Prose styles for admin-authored HTML content */}
-      <style>{`
+          {doc && (
+            <article className="rounded-xl border border-border bg-card p-6 text-card-foreground md:p-10">
+              <div
+                className="legal-body text-foreground"
+                dangerouslySetInnerHTML={{ __html: doc.content }}
+              />
+              <p className="mt-10 border-t border-border pt-5 text-xs text-muted-foreground">
+                Last published: {formatDate(doc.published_at)}
+              </p>
+            </article>
+          )}
+        </main>
+
+        {/* Prose styles for admin-authored HTML content */}
+        <style>{`
         .legal-body { line-height: 1.75; font-size: 1rem; }
         .legal-body > :first-child { margin-top: 0; }
         .legal-body h1, .legal-body h2, .legal-body h3, .legal-body h4 {
@@ -92,6 +94,7 @@ export function LegalDocPage({ type }: { type: LegalDocType }) {
         .legal-body th { background: var(--muted); font-weight: 600; }
         .legal-body hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
       `}</style>
-    </div>
+      </div>
+    </MarketingShell>
   );
 }

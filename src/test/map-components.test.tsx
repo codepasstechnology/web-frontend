@@ -124,15 +124,15 @@ describe("listing panel", () => {
 
   it("offers verification on an available plot and vouches for a verified one", () => {
     const { unmount } = panel(makeParcel("a"));
-    expect(screen.getByText("Not verified yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /request verification/i })).toHaveAttribute(
+    expect(screen.getByText("Documents not yet reviewed")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /request a document review/i })).toHaveAttribute(
       "href",
       "/login",
     );
     unmount();
 
     panel(makeParcel("a", { status: "verified" }));
-    expect(screen.getByText("Verified by Geo Pin")).toBeInTheDocument();
+    expect(screen.getByText("Documents reviewed by Geo Pin")).toBeInTheDocument();
   });
 });
 
@@ -214,7 +214,7 @@ describe("land filters", () => {
     const status = within(screen.getByRole("group", { name: "Status" }));
     expect(status.getAllByRole("button").map((b) => b.textContent)).toEqual([
       "All",
-      "Verified",
+      "Documents reviewed",
       "Available",
     ]);
     expect(screen.queryByText("Sold")).not.toBeInTheDocument();

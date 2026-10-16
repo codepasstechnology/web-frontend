@@ -181,7 +181,7 @@ describe("Home page", () => {
   it("shows the verified parcel card in the scroll story", () => {
     parcels.data = [parcel];
     render(<HomePage />);
-    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Documents reviewed")).toBeInTheDocument();
     expect(screen.getByText("KES 3,500,000 · Message the owner")).toBeInTheDocument();
   });
 });

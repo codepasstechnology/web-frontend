@@ -897,7 +897,7 @@ export function LandBoundaryMap({
                 style={{ flex: "none", marginTop: 2 }}
               />
               Trace only your own land. Don&apos;t include roads, road reserves or your
-              neighbours&apos; plots. We check boundaries before a listing is verified.
+              neighbours&apos; plots. We check boundaries when we review a listing&apos;s documents.
             </div>
           )}
         </div>

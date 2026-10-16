@@ -60,7 +60,7 @@ export function OverviewTab({
     },
     {
       key: "verify",
-      label: "Get a parcel verified",
+      label: "Get your listing documents reviewed",
       done: kyc.some((a) => a.status === "approved"),
       action: () => onGoTab("kyc"),
     },

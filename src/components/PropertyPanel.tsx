@@ -361,8 +361,12 @@ function VerificationCard({ parcel }: { parcel: LandParcel }) {
       <div className="gm-vcard">
         <ShieldCheck width={22} height={22} aria-hidden style={{ flex: "none" }} />
         <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <strong>Verified by Geo Pin</strong>
-          <p style={{ opacity: 0.85 }}>Ownership documents and boundary checked by our team.</p>
+          <strong>Documents reviewed by Geo Pin</strong>
+          <p style={{ opacity: 0.85 }}>
+            We checked the seller&apos;s ownership documents against this listing. Geo Pin
+            advertises land and does not certify title, so carry out an official search before you
+            pay.
+          </p>
         </span>
       </div>
     );
@@ -380,8 +384,8 @@ function VerificationCard({ parcel }: { parcel: LandParcel }) {
 
   return (
     <div className="gm-vcard gm-plain">
-      <strong>Not verified yet</strong>
-      <p>Ask us to check this parcel&apos;s documents and boundary before you commit.</p>
+      <strong>Documents not yet reviewed</strong>
+      <p>Ask us to review this listing&apos;s ownership documents before you proceed.</p>
       {state === "sent" ? (
         <span
           role="status"
@@ -403,11 +407,11 @@ function VerificationCard({ parcel }: { parcel: LandParcel }) {
             ? "Requesting…"
             : state === "error"
               ? "Couldn't send. Try again"
-              : "Request verification"}
+              : "Request a document review"}
         </button>
       ) : (
         <SignInLink className="gm-btn">
-          <ShieldCheck width={18} height={18} aria-hidden /> Sign in to request verification
+          <ShieldCheck width={18} height={18} aria-hidden /> Sign in to request a document review
         </SignInLink>
       )}
     </div>
@@ -477,7 +481,7 @@ export function ParcelPanel({
             </span>
             {verified ? (
               <span className="gm-vtag">
-                <ShieldCheck width={12} height={12} aria-hidden /> Verified
+                <ShieldCheck width={12} height={12} aria-hidden /> Documents reviewed
               </span>
             ) : (
               <span className="gm-atag" style={{ borderStyle: "solid" }}>
@@ -583,7 +587,7 @@ export function ParcelPanel({
           noun="plot"
           title={parcel.parcelNumber}
           mono
-          meta={`${parcel.size} · ${DEAL_TAG[parcel.listingType]} · ${place}${verified ? " · Verified" : ""}`}
+          meta={`${parcel.size} · ${DEAL_TAG[parcel.listingType]} · ${place}${verified ? " · Documents reviewed" : ""}`}
           price={price + (parcel.listingType === "lease" ? " / yr" : "")}
           url={url}
           waText={`${parcel.size} plot, ${parcel.area || parcel.county} (${parcel.parcelNumber}) ${price} ${url}`}

@@ -1087,7 +1087,7 @@ function UploadPage() {
                         </span>
                         <span>
                           <strong>Trace the boundary</strong> by tapping each corner. Traced plots
-                          show as outlines and are ready for verification.
+                          show as outlines and are ready for document review.
                         </span>
                       </p>
                     </div>

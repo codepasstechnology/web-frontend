@@ -87,20 +87,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Geo Pin Properties Kenya — Verified Land & Property Intelligence" },
+      { title: "Geo Pin Properties Kenya — Land & Property Listings on the Map" },
       {
         name: "description",
         content:
-          "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
+          "Explore plotted land parcels, properties and rentals across Kenya using interactive GIS-powered maps.",
       },
       {
         property: "og:title",
-        content: "Geo Pin Properties Kenya — Verified Land & Property Intelligence",
+        content: "Geo Pin Properties Kenya — Land & Property Listings on the Map",
       },
       {
         property: "og:description",
         content:
-          "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
+          "Explore plotted land parcels, properties and rentals across Kenya using interactive GIS-powered maps.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Geo Pin Properties" },
@@ -173,6 +173,10 @@ const OWN_CHROME_PATHS = new Set([
   "/rentals",
   "/explore",
   "/maintenance",
+  "/privacy",
+  "/terms",
+  "/cookie-policy",
+  "/data-usage",
 ]);
 const NO_NAVBAR_PREFIXES = [
   "/dashboard",

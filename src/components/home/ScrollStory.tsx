@@ -22,7 +22,7 @@ const STEPS = [
   },
   {
     eyebrow: "04 · YOUR PLOT",
-    title: "Pin it. Verify it. Own it.",
+    title: "Pin it. Check it. Own it.",
     body: "Check its status, message the owner and book a viewing.",
   },
 ] as const;
@@ -192,7 +192,7 @@ export function ScrollStory() {
                       >
                         <path d="m5 12 5 5L20 7" />
                       </svg>
-                      Verified
+                      Documents reviewed
                     </span>
                   </div>
                   <span className="gp-card-title">{verified.parcelNumber}</span>

@@ -58,10 +58,10 @@ const TOPICS: Topic[] = [
   },
   {
     id: "verification",
-    title: "Verification",
-    description: "What the badge means and how to get verified.",
+    title: "Listing documents",
+    description: "What the Documents reviewed badge means and how to submit documents.",
     icon: ShieldCheck,
-    aliases: ["verification"],
+    aliases: ["listing documents", "verification"],
   },
   {
     id: "account-billing",
@@ -133,7 +133,7 @@ function HelpPage() {
             id="help-q"
             className="gs-input"
             type="search"
-            placeholder="Try 'verification' or 'list a property'"
+            placeholder="Try 'documents' or 'list a property'"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -234,7 +234,7 @@ function HelpPage() {
               Still need help?
             </h2>
             <p style={{ margin: 0, fontSize: 17, opacity: 0.85 }}>
-              Our team usually replies within [RESPONSE TIME] on working days.
+              Our team aims to reply within 24 hours.
             </p>
           </div>
           <Link to="/contact" className="gs-btn">

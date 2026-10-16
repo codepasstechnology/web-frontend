@@ -220,7 +220,7 @@ function parcelAria(p: LandParcel): string {
     `${DEAL_TAG[p.listingType]}: ${p.parcelNumber}`,
     p.size,
     p.area || p.county,
-    p.status === "verified" ? "verified" : "not yet verified",
+    p.status === "verified" ? "documents reviewed" : "documents not yet reviewed",
     p.polygon ? "" : "approximate location",
   ]
     .filter(Boolean)
@@ -298,7 +298,7 @@ function ParcelShape({
             <Tooltip sticky direction="top" offset={[0, -10]} className="gm-tip">
               <b>{parcel.parcelNumber}</b>
               <span>
-                {verified ? "Verified" : "Available"} · {parcelPrice(parcel)}
+                {verified ? "Documents reviewed" : "Available"} · {parcelPrice(parcel)}
               </span>
             </Tooltip>
           </Polygon>

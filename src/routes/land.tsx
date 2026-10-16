@@ -44,7 +44,7 @@ export const Route = createFileRoute("/land")({
   head: ({ loaderData }) => ({
     ...shareHead(loaderData, {
       title: "Land Parcels Map — Geo Pin Properties Kenya",
-      description: "Interactive GIS map of plotted, verified land parcels across Kenya.",
+      description: "Interactive GIS map of plotted land parcels for sale and lease across Kenya.",
     }),
     links: MARKETING_FONT_LINKS,
   }),
@@ -243,7 +243,7 @@ function LandContent() {
               onChange={(v) => set("status", v)}
               options={[
                 { value: "all", label: "All" },
-                { value: "verified", label: "Verified" },
+                { value: "verified", label: "Documents reviewed" },
                 { value: "available", label: "Available" },
               ]}
             />

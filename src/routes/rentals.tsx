@@ -37,7 +37,7 @@ export const Route = createFileRoute("/rentals")({
   head: ({ loaderData }) => ({
     ...shareHead(loaderData, {
       title: "Rentals Map — Geo Pin Properties Kenya",
-      description: "Browse verified rental properties across Kenya on an interactive map.",
+      description: "Browse rental properties across Kenya on an interactive map.",
     }),
     links: MARKETING_FONT_LINKS,
   }),

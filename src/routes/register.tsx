@@ -26,7 +26,7 @@ type Step = "role" | "details" | "owner" | "agent" | "password";
 const MESSAGES: AuthMessage[] = [
   { h: "Pin your first plot.", n: "karibu! glad you're here" },
   { h: "See boundaries before you visit.", n: "know exactly what you're buying" },
-  { h: "Every listing checked.", n: "we verify, you relax" },
+  { h: "Listings with their papers in order.", n: "documents reviewed by our team" },
 ];
 
 const PERKS = [
@@ -454,7 +454,7 @@ export function RegisterPage() {
             <h1 className="is-small">
               About your agency<span className="ga-dot-mark">.</span>
             </h1>
-            <p>We use this to verify agents, so buyers can trust your listings.</p>
+            <p>We use this to confirm agent details, so buyers know who they are dealing with.</p>
           </div>
           <div className="ga-stack">
             <FloatField

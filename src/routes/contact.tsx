@@ -19,7 +19,7 @@ export const Route = createFileRoute("/contact")({
 // Nairobi as a share of the map's width and height.
 const NAIROBI = { left: 37.14, top: 65.25 };
 
-const topics = ["General", "A listing", "Verification", "My account", "Partnerships"];
+const topics = ["General", "A listing", "Listing documents", "My account", "Partnerships"];
 
 type Field = "name" | "email" | "msg";
 
@@ -58,7 +58,7 @@ function ContactPage() {
     },
     { icon: MessageSquare, label: "WhatsApp", value: "[WHATSAPP NUMBER]" },
     { icon: Phone, label: "Phone", value: "[PHONE NUMBER]" },
-    { icon: Clock, label: "Hours", value: "[WORKING HOURS]" },
+    { icon: Clock, label: "Hours", value: "Monday to Saturday, 9am–5pm EAT" },
   ];
 
   const field = (f: Field) => ({
@@ -103,7 +103,7 @@ function ContactPage() {
         eyebrow="Contact"
         title="Let's"
         highlight="talk land."
-        lede="Questions about a listing, verification or your account? Send us a message and a real person will get back to you."
+        lede="Questions about a listing, document reviews or your account? Send us a message and a real person will get back to you."
       />
 
       <section className="gs-wrap gs-contact">

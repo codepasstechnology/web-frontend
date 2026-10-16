@@ -14,7 +14,7 @@ export function SiteFooter() {
               <span className="text-lg font-bold">Geo Pin Properties</span>
             </div>
             <p className="max-w-[32ch] text-sm leading-relaxed opacity-80">
-              Verified land and homes across Kenya&apos;s 47 counties.
+              Land and homes for sale and rent across Kenya&apos;s 47 counties.
             </p>
           </div>
           <nav aria-label="Marketplace" className="flex flex-col gap-2.5 text-sm">
