@@ -5,6 +5,11 @@
    at the call site. The few below the layer style shadcn/Radix parts (menus,
    popovers, dialogs, toasts) and must win over those components' own utilities. */
 
+/* This file ships as its own stylesheet and can load before styles.css. The
+   first file to name a layer fixes the order, so repeat Tailwind's here;
+   otherwise "components" comes first and Tailwind's base reset wins over it. */
+@layer properties, theme, base, components, utilities;
+
 @layer components {
   .gd-root {
     min-height: 100vh;
