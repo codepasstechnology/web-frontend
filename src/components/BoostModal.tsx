@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Smartphone, CreditCard, CheckCircle2, Loader2, Clock } from "lucide-react";
+import { Lock, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  CheckoutStatus,
+  MethodSwitch,
+  MPESA_PHONE,
+  MpesaPhoneField,
+} from "@/components/CheckoutModal";
 
 interface AddOn {
   id: string;
@@ -27,6 +34,7 @@ export function BoostModal({ addOn, onClose }: Props) {
   const [listingId, setListingId] = useState(listings[0]?.id ?? "");
   const [method, setMethod] = useState<Method>("mpesa");
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -39,12 +47,18 @@ export function BoostModal({ addOn, onClose }: Props) {
 
   const boostType = addOn.id === "featured" ? "featured" : "boost";
 
+  const stopPolling = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setError(null);
+    setStage("form");
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setStage("waiting");
 
     if (method === "card") {
+      setStage("waiting");
       try {
         const { authorizationUrl } = await startBoostCardCheckout(listingId, boostType);
         window.location.href = authorizationUrl;
@@ -59,8 +73,15 @@ export function BoostModal({ addOn, onClose }: Props) {
       return;
     }
 
+    const msisdn = phone.replace(/\s/g, "");
+    if (!MPESA_PHONE.test(msisdn)) {
+      setPhoneTouched(true);
+      return;
+    }
+    setStage("waiting");
+
     try {
-      const { invoiceId } = await startBoostCheckout(listingId, boostType, phone);
+      const { invoiceId } = await startBoostCheckout(listingId, boostType, msisdn);
       const startedAt = Date.now();
       pollRef.current = setInterval(async () => {
         const status = await getInvoiceStatus(invoiceId).catch(() => "pending");
@@ -88,157 +109,94 @@ export function BoostModal({ addOn, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[2100] flex items-center justify-center overflow-y-auto bg-black/60 p-4">
-      <div className="relative w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        {stage === "success" ? (
-          <div className="py-6 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Payment received</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your listing is now {boostType === "featured" ? "featured" : "boosted to the top"} for{" "}
-              {addOn.period}.
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-6 w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
-            >
-              Done
-            </button>
-          </div>
-        ) : stage === "pending" ? (
-          <div className="py-6 text-center">
-            <Clock className="mx-auto h-12 w-12 text-brand" />
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Still processing</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              M-Pesa is taking longer than usual. You don&apos;t need to pay again — if it went
-              through, your listing is updated automatically.
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-6 w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
-            >
-              Done
-            </button>
-          </div>
-        ) : stage === "waiting" && method === "card" ? (
-          <div className="py-6 text-center">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand" />
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Redirecting to checkout…</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Taking you to a secure page to complete your card payment.
-            </p>
-          </div>
-        ) : stage === "waiting" ? (
-          <div className="py-6 text-center">
-            <Smartphone className="mx-auto h-12 w-12 text-brand" />
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Check your phone</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Enter your M-Pesa PIN on the prompt sent to {phone} to complete the payment.
-            </p>
-            <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Waiting for confirmation…
-            </div>
-          </div>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="gd-dialog [&>button:last-child]:hidden">
+        {stage === "waiting" || stage === "success" || stage === "pending" ? (
+          <CheckoutStatus
+            stage={stage}
+            method={method}
+            phone={phone}
+            doneText={`Your listing is now ${boostType === "featured" ? "featured" : "boosted to the top"} for ${addOn.period}.`}
+            pendingText="M-Pesa is taking longer than usual. You don't need to pay again — if it went through, your listing is updated automatically."
+            onCancel={stopPolling}
+            onClose={onClose}
+          />
         ) : (
-          <form onSubmit={submit}>
-            <h2 className="pr-10 text-lg font-semibold text-foreground">{addOn.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Active for {addOn.period}. Pay with {method === "mpesa" ? "M-Pesa" : "card"} to
-              activate.
-            </p>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {(
-                [
-                  { id: "mpesa", label: "M-Pesa", icon: Smartphone },
-                  { id: "card", label: "Card", icon: CreditCard },
-                ] as const
-              ).map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMethod(m.id)}
-                  className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium ${
-                    method === m.id
-                      ? "border-brand bg-brand-subtle text-brand-subtle-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <m.icon className="h-4 w-4" /> {m.label}
-                </button>
-              ))}
+          <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+            <div className="flex justify-between gap-3">
+              <div>
+                <DialogTitle className="gd-h1 text-[26px]">{addOn.name}</DialogTitle>
+                <DialogDescription className="gd-sub">
+                  Active for {addOn.period}. Pay with {method === "mpesa" ? "M-Pesa" : "card"} to
+                  activate.
+                </DialogDescription>
+              </div>
+              <button type="button" className="gd-ib" onClick={onClose} aria-label="Close">
+                <X size={18} aria-hidden="true" />
+              </button>
             </div>
 
             {listings.length === 0 ? (
-              <p className="mt-5 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <div className="rounded-[14px] bg-track px-3.5 py-3 text-sm text-muted-foreground">
                 You need an active listing before you can boost one.
-              </p>
+              </div>
             ) : (
               <>
-                <label
-                  className="mt-4 block text-sm font-medium text-foreground"
-                  htmlFor="boost-listing"
-                >
-                  Choose a listing
-                </label>
-                <select
-                  id="boost-listing"
-                  value={listingId}
-                  onChange={(e) => setListingId(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-brand focus:outline-none"
-                >
-                  {listings.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.title}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="gd-lab" htmlFor="boost-listing">
+                    Choose a listing
+                  </label>
+                  <select
+                    id="boost-listing"
+                    className="gd-input"
+                    value={listingId}
+                    onChange={(e) => setListingId(e.target.value)}
+                  >
+                    {listings.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.parcelNumber} · {l.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <MethodSwitch method={method} onChange={setMethod} />
 
                 {method === "mpesa" ? (
-                  <>
-                    <label
-                      className="mt-4 block text-sm font-medium text-foreground"
-                      htmlFor="boost-phone"
-                    >
-                      M-Pesa phone number
-                    </label>
-                    <input
-                      id="boost-phone"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                      placeholder="07XX XXX XXX"
-                      className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm focus:border-brand focus:outline-none"
-                    />
-                  </>
+                  <MpesaPhoneField
+                    id="boost-phone"
+                    phone={phone}
+                    onChange={setPhone}
+                    showError={phoneTouched}
+                  />
                 ) : (
-                  <p className="mt-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2.5 rounded-[14px] bg-track px-3.5 py-3 text-sm text-muted-foreground">
+                    <Lock size={17} className="shrink-0" aria-hidden="true" />
                     You&apos;ll be redirected to a secure page to enter your card details.
-                  </p>
+                  </div>
                 )}
               </>
             )}
 
-            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+            {error && (
+              <div
+                role="alert"
+                className="rounded-[14px] bg-destructive-subtle px-3.5 py-3 text-sm font-semibold text-destructive"
+              >
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={listings.length === 0}
-              className="mt-5 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
+              className="gd-btn min-h-[52px] text-base"
             >
-              Pay Ksh {addOn.price.toLocaleString()}
+              Pay KES {addOn.price.toLocaleString()}
             </button>
           </form>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

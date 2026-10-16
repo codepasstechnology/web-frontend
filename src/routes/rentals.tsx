@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { List } from "lucide-react";
 import { LandMap } from "@/components/map/LazyMaps";
 import type { FlyTarget } from "@/components/LandMap";
-import { MapSidebar, SegFilter, SelectFilter } from "@/components/MapSidebar";
+import { MapFilterMenu } from "@/components/map/MapFilterMenu";
+import { MapSidebar, PriceRangeFilter, SegFilter, SelectFilter } from "@/components/MapSidebar";
 import { RentalPanel } from "@/components/PropertyPanel";
 import { ListingCard } from "@/components/map/ListingCard";
 import { MapToastOutlet } from "@/components/map/MapToast";
@@ -20,6 +21,7 @@ import {
   type PropertyIntent,
 } from "@/lib/properties";
 import type { Bbox } from "@/lib/mapGeo";
+import { ANY_PRICE, HOME_PRICE_KIND, inRange } from "@/lib/priceRanges";
 import { shareHead, shareQuery } from "@/lib/shareMeta";
 import { api } from "@/lib/api";
 
@@ -59,6 +61,7 @@ function RentalsContent() {
   const navigate = useNavigate();
   const [intent, setIntent] = useState<PropertyIntent | "all">("all");
   const [beds, setBeds] = useState<Beds>("all");
+  const [price, setPrice] = useState(ANY_PRICE);
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const [hotIds, setHotIds] = useState<string[]>([]);
@@ -67,7 +70,10 @@ function RentalsContent() {
   const query = usePublicProperties({ intent }, bbox);
   const loaded = useMemo(() => query.data ?? [], [query.data]);
   const known = useKnownListings(loaded);
-  const properties = useMemo(() => loaded.filter((p) => matchesBeds(p, beds)), [loaded, beds]);
+  const properties = useMemo(
+    () => loaded.filter((p) => matchesBeds(p, beds) && inRange(p.price, price)),
+    [loaded, beds, price],
+  );
 
   // The URL names the open listing. Resolve it from what has loaded when it
   // is there, and fetch it by id when it is not — the feed is paginated and
@@ -107,6 +113,15 @@ function RentalsContent() {
       onOpen: () => handleSelect(p),
     }));
   const filtersActive = intent !== "all" || beds !== "all";
+  // The price is on the chosen type's scale, so changing type clears it.
+  const chooseIntent = (i: PropertyIntent | "all") => {
+    setIntent(i);
+    setPrice(ANY_PRICE);
+  };
+  const resetFilters = () => {
+    chooseIntent("all");
+    setBeds("all");
+  };
 
   return (
     <>
@@ -117,43 +132,10 @@ function RentalsContent() {
         recent={recentChips}
         onClearRecent={recent.clear}
         filtersActive={filtersActive}
-        onReset={() => {
-          setIntent("all");
-          setBeds("all");
-        }}
+        onReset={resetFilters}
         empty={!query.isLoading && properties.length === 0}
         drawerOpen={drawer}
         onCloseDrawer={() => setDrawer(false)}
-        filters={
-          <>
-            <SegFilter
-              label="Listing type"
-              value={intent}
-              onChange={setIntent}
-              options={[
-                { value: "all", label: "All" },
-                { value: "rent", label: "Rent", color: INTENT_COLOR.rent },
-                { value: "sale", label: "Sale", color: INTENT_COLOR.sale },
-                { value: "bnb", label: "BnB", color: INTENT_COLOR.bnb },
-              ]}
-            />
-            <div className="gm-field">
-              <SelectFilter
-                id="f-beds"
-                label="Bedrooms"
-                value={beds}
-                onChange={(v) => setBeds(v as Beds)}
-                options={[
-                  { value: "all", label: "Any" },
-                  { value: "0", label: "Bedsitter / studio" },
-                  { value: "1", label: "1 bedroom" },
-                  { value: "2", label: "2 bedrooms" },
-                  { value: "3", label: "3 or more" },
-                ]}
-              />
-            </div>
-          </>
-        }
       >
         <ul
           aria-label="Listings"
@@ -203,6 +185,42 @@ function RentalsContent() {
           retrying={query.isError && query.isFetching}
           onRetry={() => query.refetch()}
         />
+        <MapFilterMenu active={filtersActive} count={properties.length} onReset={resetFilters}>
+          <>
+            <SegFilter
+              label="Listing type"
+              value={intent}
+              onChange={chooseIntent}
+              options={[
+                { value: "all", label: "All" },
+                { value: "rent", label: "Rent", color: INTENT_COLOR.rent },
+                { value: "sale", label: "Sale", color: INTENT_COLOR.sale },
+                { value: "bnb", label: "BnB", color: INTENT_COLOR.bnb },
+              ]}
+            />
+            <div className="gm-field">
+              <SelectFilter
+                id="f-beds"
+                label="Bedrooms"
+                value={beds}
+                onChange={(v) => setBeds(v as Beds)}
+                options={[
+                  { value: "all", label: "Any" },
+                  { value: "0", label: "Bedsitter / studio" },
+                  { value: "1", label: "1 bedroom" },
+                  { value: "2", label: "2 bedrooms" },
+                  { value: "3", label: "3 or more" },
+                ]}
+              />
+            </div>
+            <PriceRangeFilter
+              kind={intent === "all" ? null : HOME_PRICE_KIND[intent]}
+              value={price}
+              onChange={setPrice}
+              pickFirst="rent, sale or BnB"
+            />
+          </>
+        </MapFilterMenu>
         <button type="button" className="gm-btn gm-fab" onClick={() => setDrawer(true)}>
           <List width={18} height={18} aria-hidden /> Listings ({properties.length})
         </button>

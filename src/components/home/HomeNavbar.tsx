@@ -107,10 +107,13 @@ export function HomeNavbar() {
               {PIN_LINKS.map(({ to, label, icon: Icon, desc }) => (
                 <DropdownMenuItem key={to} asChild className="items-start gap-3 px-3 py-2.5">
                   <Link to={to}>
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                    {/* As tall as the title's line, so the icon centres on it. */}
+                    <span className="flex h-5 shrink-0 items-center">
+                      <Icon className="h-4 w-4 text-brand" />
+                    </span>
                     <div>
-                      <p className="text-sm font-medium text-foreground">{label}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
+                      <p className="m-0 text-sm font-medium leading-5 text-foreground">{label}</p>
+                      <p className="m-0 text-xs text-muted-foreground">{desc}</p>
                     </div>
                   </Link>
                 </DropdownMenuItem>

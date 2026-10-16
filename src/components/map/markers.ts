@@ -86,25 +86,27 @@ export function propertyShortLabel(p: Pick<Property, "bedrooms" | "type">): stri
 }
 
 const HOUSE_SVG =
-  '<svg width="44" height="48" viewBox="0 0 44 48" aria-hidden="true"><path d="M7 38 22 46 22 33 7 25Z" fill="var(--pc)"/><path d="M22 46 37 38 37 25 22 33Z" fill="var(--pc)"/><path d="M22 46 37 38 37 25 22 33Z" fill="rgba(0,0,0,.26)"/><path d="M7 25 22 33 22 9Z" fill="var(--pc)"/><path d="M7 25 22 33 22 9Z" fill="rgba(255,255,255,.22)"/><path d="M22 33 37 25 22 9Z" fill="var(--pc)"/><path d="M22 33 37 25 22 9Z" fill="rgba(0,0,0,.1)"/><path d="M7 38 22 46 22 33 7 25Z M22 46 37 38 37 25 22 33Z M7 25 22 33 22 9Z M22 33 37 25 22 9Z" stroke="var(--surface)" stroke-width="1.3" stroke-linejoin="round" fill="none"/><path d="M12.5 39.8 16.5 41.9 16.5 35.4 12.5 33.3Z" fill="var(--surface)"/><path d="M26.5 37.6 32 34.6 32 30.6 26.5 33.6Z" fill="var(--surface)" opacity=".9"/></svg>';
+  '<svg width="30" height="33" viewBox="0 0 44 48" aria-hidden="true"><path d="M7 38 22 46 22 33 7 25Z" fill="var(--pc)"/><path d="M22 46 37 38 37 25 22 33Z" fill="var(--pc)"/><path d="M22 46 37 38 37 25 22 33Z" fill="rgba(0,0,0,.26)"/><path d="M7 25 22 33 22 9Z" fill="var(--pc)"/><path d="M7 25 22 33 22 9Z" fill="rgba(255,255,255,.22)"/><path d="M22 33 37 25 22 9Z" fill="var(--pc)"/><path d="M22 33 37 25 22 9Z" fill="rgba(0,0,0,.1)"/><path d="M7 38 22 46 22 33 7 25Z M22 46 37 38 37 25 22 33Z M7 25 22 33 22 9Z M22 33 37 25 22 9Z" stroke="var(--surface)" stroke-width="1.3" stroke-linejoin="round" fill="none"/><path d="M12.5 39.8 16.5 41.9 16.5 35.4 12.5 33.3Z" fill="var(--surface)"/><path d="M26.5 37.6 32 34.6 32 30.6 26.5 33.6Z" fill="var(--surface)" opacity=".9"/></svg>';
 
 const APT_SVG =
-  '<svg width="44" height="48" viewBox="0 0 44 48" aria-hidden="true"><path d="M11 40 22 46 22 16 11 10Z" fill="var(--pc)"/><path d="M22 46 33 40 33 10 22 16Z" fill="var(--pc)"/><path d="M22 46 33 40 33 10 22 16Z" fill="rgba(0,0,0,.26)"/><path d="M11 10 22 4 33 10 22 16Z" fill="var(--pc)"/><path d="M11 10 22 4 33 10 22 16Z" fill="rgba(255,255,255,.25)"/><path d="M13.5 16.4 19.5 19.7 19.5 22.4 13.5 19.1Z M13.5 23 19.5 26.3 19.5 29 13.5 25.7Z M13.5 29.6 19.5 32.9 19.5 35.6 13.5 32.3Z M13.5 36.2 19.5 39.5 19.5 42.2 13.5 38.9Z" fill="var(--surface)" opacity=".9"/><path d="M24.5 19.7 30.5 16.4 30.5 19.1 24.5 22.4Z M24.5 26.3 30.5 23 30.5 25.7 24.5 29Z M24.5 32.9 30.5 29.6 30.5 32.3 24.5 35.6Z M24.5 39.5 30.5 36.2 30.5 38.9 24.5 42.2Z" fill="var(--surface)" opacity=".55"/><path d="M11 40 22 46 22 16 11 10Z M22 46 33 40 33 10 22 16Z M11 10 22 4 33 10 22 16Z" stroke="var(--surface)" stroke-width="1.3" stroke-linejoin="round" fill="none"/></svg>';
+  '<svg width="30" height="33" viewBox="0 0 44 48" aria-hidden="true"><path d="M11 40 22 46 22 16 11 10Z" fill="var(--pc)"/><path d="M22 46 33 40 33 10 22 16Z" fill="var(--pc)"/><path d="M22 46 33 40 33 10 22 16Z" fill="rgba(0,0,0,.26)"/><path d="M11 10 22 4 33 10 22 16Z" fill="var(--pc)"/><path d="M11 10 22 4 33 10 22 16Z" fill="rgba(255,255,255,.25)"/><path d="M13.5 16.4 19.5 19.7 19.5 22.4 13.5 19.1Z M13.5 23 19.5 26.3 19.5 29 13.5 25.7Z M13.5 29.6 19.5 32.9 19.5 35.6 13.5 32.3Z M13.5 36.2 19.5 39.5 19.5 42.2 13.5 38.9Z" fill="var(--surface)" opacity=".9"/><path d="M24.5 19.7 30.5 16.4 30.5 19.1 24.5 22.4Z M24.5 26.3 30.5 23 30.5 25.7 24.5 29Z M24.5 32.9 30.5 29.6 30.5 32.3 24.5 35.6Z M24.5 39.5 30.5 36.2 30.5 38.9 24.5 42.2Z" fill="var(--surface)" opacity=".55"/><path d="M11 40 22 46 22 16 11 10Z M22 46 33 40 33 10 22 16Z M11 10 22 4 33 10 22 16Z" stroke="var(--surface)" stroke-width="1.3" stroke-linejoin="round" fill="none"/></svg>';
 
 /** 3D house or apartment block, anchored bottom centre on the pin. */
 export function propertyIcon(opts: {
   kind: PropertyKind;
   color: string;
-  label: string;
+  /** Left out when zoomed out, where labels pile up on each other. */
+  label?: string;
   on: boolean;
   seen: boolean;
   aria: string;
 }): L.DivIcon {
+  const label = opts.label ? `<span class="gm-lbl">${esc(opts.label)}</span>` : "";
   return L.divIcon({
     className: `lv-pin-icon${opts.on ? " lv-pin-icon-selected" : ""}`,
-    html: `<button type="button" class="gm-pin" data-on="${opts.on}" data-seen="${opts.seen}" style="--pc:${opts.color}" aria-label="${esc(opts.aria)}"><span class="gm-ground"></span><span class="gm-ring"></span><span class="gm-mk">${opts.kind === "house" ? HOUSE_SVG : APT_SVG}</span><span class="gm-lbl">${esc(opts.label)}</span></button>`,
-    iconSize: [44, 48],
-    iconAnchor: [22, 48],
+    html: `<button type="button" class="gm-pin" data-on="${opts.on}" data-seen="${opts.seen}" style="--pc:${opts.color}" aria-label="${esc(opts.aria)}"><span class="gm-ground"></span><span class="gm-ring"></span><span class="gm-mk">${opts.kind === "house" ? HOUSE_SVG : APT_SVG}</span>${label}</button>`,
+    iconSize: [30, 33],
+    iconAnchor: [15, 33],
   });
 }
 
@@ -116,7 +118,7 @@ export function clusterIcon(opts: {
   segments: { color: string; share: number }[];
   on: boolean;
 }): L.DivIcon {
-  const size = 40 + Math.min(opts.count, 8) * 4;
+  const size = 30 + Math.min(opts.count, 8) * 2;
   let acc = 0;
   const stops = opts.segments
     .map((s) => {

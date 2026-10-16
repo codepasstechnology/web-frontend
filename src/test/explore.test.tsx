@@ -96,6 +96,7 @@ describe("Explore map", () => {
   it("puts land and rentals on one map by default", async () => {
     render(<ExplorePage />);
     expect(await screen.findByTestId("map")).toHaveTextContent("1 parcels, 1 properties");
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(screen.getByRole("button", { name: "Land 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rentals 1" })).toBeInTheDocument();
   });
@@ -104,6 +105,7 @@ describe("Explore map", () => {
     mockSearch.mockReturnValue({ show: "land" });
     const { unmount } = render(<ExplorePage />);
     expect(await screen.findByTestId("map")).toHaveTextContent("1 parcels, 0 properties");
+    await userEvent.click(screen.getByRole("button", { name: /^Filters/ }));
     expect(screen.getByRole("button", { name: "Land 1" })).toHaveAttribute("aria-pressed", "true");
     unmount();
 
@@ -114,6 +116,7 @@ describe("Explore map", () => {
 
   it("writes the chosen kind to the URL", async () => {
     render(<ExplorePage />);
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     await userEvent.click(screen.getByRole("button", { name: "Rentals 1" }));
     expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/explore" }));
     const { search } = mockNavigate.mock.calls[0][0] as {

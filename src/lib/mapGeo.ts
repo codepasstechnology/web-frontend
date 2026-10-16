@@ -88,7 +88,7 @@ export interface ScreenPoint {
 }
 
 /** Map icons need about this much room before they start to touch. */
-export const TOUCH_PX = 58;
+export const TOUCH_PX = 40;
 
 /**
  * Greedy collision clustering: a point joins the first group whose centre is

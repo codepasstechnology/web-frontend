@@ -12,6 +12,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import type { LandParcel } from "@/lib/landData";
 import { parcelPrice } from "@/lib/parcelFilters";
 import { formatPrice, INTENT_LABELS, type Property } from "@/lib/properties";
@@ -86,6 +87,8 @@ interface Props {
 
 /** Below this zoom a plot is only a few pixels wide, so its corner beacons are hidden. */
 const BEACON_MIN_ZOOM = 15;
+/** Home labels ("3 bd") only show once there's room; hovering or selecting shows one sooner. */
+const LABEL_MIN_ZOOM = 15;
 
 const isMobileWidth = () => window.innerWidth <= 900;
 
@@ -166,20 +169,28 @@ function MapController({
   return null;
 }
 
+/** How far past each edge of the view to load, as a share of its size. */
+const BBOX_PAD = 0.5;
+
 function BoundsWatcher({ onChange }: { onChange?: (bbox: Bbox) => void }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loaded = useRef<L.LatLngBounds | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
   useMapEvents({
     moveend(e) {
       if (!onChangeRef.current) return;
-      const b = (e.target as L.Map).getBounds();
+      const view = (e.target as L.Map).getBounds();
+      // Zooming in or a short pan stays inside the padded area already loaded,
+      // so its listings are on hand and there is nothing to fetch.
+      if (loaded.current?.contains(view)) return;
       clearTimeout(timer.current ?? undefined);
-      timer.current = setTimeout(
-        () => onChangeRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]),
-        300,
-      );
+      timer.current = setTimeout(() => {
+        const b = view.pad(BBOX_PAD);
+        loaded.current = b;
+        onChangeRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+      }, 200);
     },
   });
   return null;
@@ -338,12 +349,14 @@ function PropertyPin({
   property,
   on,
   seen,
+  showLabel,
   onSelect,
   onHover,
 }: {
   property: Property;
   on: boolean;
   seen: boolean;
+  showLabel: boolean;
   onSelect: () => void;
   onHover: (ids: string[]) => void;
 }) {
@@ -352,12 +365,12 @@ function PropertyPin({
       propertyIcon({
         kind: propertyKind(property.type),
         color: INTENT_COLOR[property.intent],
-        label: propertyShortLabel(property),
+        label: showLabel || on ? propertyShortLabel(property) : undefined,
         on,
         seen,
         aria: `${INTENT_LABELS[property.intent]}: ${property.title}, ${property.area || property.county}, ${formatPrice(property.price, property.pricePeriod)}`,
       }),
-    [property, on, seen],
+    [property, on, seen, showLabel],
   );
   return (
     <Marker
@@ -490,6 +503,7 @@ function Layers({
             property={it.property}
             on={it.id === selectedId || hotIds.includes(it.id)}
             seen={seenIds.includes(it.id) && it.id !== selectedId}
+            showLabel={zoom >= LABEL_MIN_ZOOM}
             onSelect={() => onSelectProperty?.(it.property)}
             onHover={onHover}
           />
@@ -517,12 +531,25 @@ export function LandMap({
   onRetry,
 }: Props) {
   const [mounted, setMounted] = useState(false);
-  const [isSatellite, setIsSatellite] = useState(false);
+  const preferSatellite = useAuth().user?.defaultMapView === "satellite";
+  const [isSatellite, setIsSatellite] = useState(preferSatellite);
+  // The signed-in user can load after the map mounts.
+  useEffect(() => setIsSatellite(preferSatellite), [preferSatellite]);
   const [searchTarget, setSearchTarget] = useState<FlyTarget | null>(null);
   const [me, setMe] = useState<[number, number] | null>(null);
   const [allClustered, setAllClustered] = useState(false);
   const dark = useIsDark();
   useEffect(() => setMounted(true), []);
+  // Most area loads finish quickly; only say so when one is actually slow.
+  const [slowLoad, setSlowLoad] = useState(false);
+  useEffect(() => {
+    if (!areaLoading) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 500);
+    return () => clearTimeout(t);
+  }, [areaLoading]);
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -555,7 +582,7 @@ export function LandMap({
   }
 
   return (
-    <div className="gm-mapfill">
+    <div className="gm-mapfill" data-satellite={isSatellite || undefined}>
       <MapContainer
         center={[-1.286389, 36.817223]}
         zoom={11}
@@ -600,7 +627,7 @@ export function LandMap({
         onNearMe={(lat, lng) => setMe([lat, lng])}
       />
       <div className="gm-ctl gm-ctl-chips">
-        {areaLoading && (
+        {slowLoad && (
           <span className="gm-chipx" role="status">
             <span className="gm-spin" aria-hidden>
               <Spinner14 />

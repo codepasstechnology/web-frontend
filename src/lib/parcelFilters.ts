@@ -1,4 +1,5 @@
 import type { LandParcel, LandStatus, ListingType, PostedBy } from "./landData";
+import { inRange } from "./priceRanges";
 
 export interface Filters {
   query: string;
@@ -30,8 +31,7 @@ export function matchesFilters(p: LandParcel, f: Filters): boolean {
     (f.status === "all" || p.status === f.status) &&
     (f.listingType === "all" || p.listingType === f.listingType) &&
     (f.postedBy === "all" || p.postedBy === f.postedBy) &&
-    (!f.minPrice || p.price >= f.minPrice) &&
-    (!f.maxPrice || p.price <= f.maxPrice)
+    inRange(p.price, { min: f.minPrice, max: f.maxPrice })
   );
 }
 
