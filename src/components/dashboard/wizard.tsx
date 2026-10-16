@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -342,9 +342,13 @@ export function ReviewRows({
   return (
     <div className="gd-review">
       {rows.map((r) => (
-        <div key={r.label} className="contents">
+        <Fragment key={r.label}>
           <span className="gd-eyebrow self-center">{r.label}</span>
-          <span className={`text-[15px] font-medium ${r.mono ? "gd-mono" : ""}`}>{r.value}</span>
+          <span
+            className={`min-w-0 break-words text-[15px] font-medium ${r.mono ? "gd-mono" : ""}`}
+          >
+            {r.value}
+          </span>
           <button
             type="button"
             className="gd-link justify-self-end text-[13px]"
@@ -353,7 +357,7 @@ export function ReviewRows({
           >
             Edit
           </button>
-        </div>
+        </Fragment>
       ))}
     </div>
   );
