@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Smartphone } from "lucide-react";
+import { X } from "lucide-react";
 import { api } from "@/lib/api";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { CheckoutStatus, MPESA_PHONE, MpesaPhoneField } from "@/components/CheckoutModal";
 
 type Phase = "phone" | "waiting" | "paid" | "failed";
 
@@ -23,6 +25,7 @@ interface Props {
 export function StkCheckoutModal({ initiatePath, payload, amount, title, onPaid, onClose }: Props) {
   const [phase, setPhase] = useState<Phase>("phone");
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [error, setError] = useState("");
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -64,13 +67,19 @@ export function StkCheckoutModal({ initiatePath, payload, amount, title, onPaid,
     };
   }, [phase, invoiceId, onPaid]);
 
-  const start = async () => {
+  const start = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const msisdn = phone.replace(/\s/g, "");
+    if (!MPESA_PHONE.test(msisdn)) {
+      setPhoneTouched(true);
+      return;
+    }
     setError("");
     setPhase("waiting");
     try {
       const { invoice_id } = await api.post<{ invoice_id: string }>(initiatePath, {
         ...payload,
-        phone,
+        phone: msisdn,
       });
       setInvoiceId(invoice_id);
     } catch (err: unknown) {
@@ -86,86 +95,51 @@ export function StkCheckoutModal({ initiatePath, payload, amount, title, onPaid,
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            <p className="text-xs text-muted-foreground">KES {amount.toLocaleString()}</p>
-          </div>
-          <button
-            onClick={phase === "waiting" ? cancel : onClose}
-            aria-label="Close"
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {error && (
-          <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
-        )}
-
-        {phase === "phone" && (
-          <>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              M-Pesa phone number
-            </label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="07XX XXX XXX"
-              inputMode="tel"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+    <Dialog open onOpenChange={(o) => !o && (phase === "waiting" ? cancel() : onClose())}>
+      <DialogContent className="gd-dialog [&>button:last-child]:hidden">
+        {phase === "waiting" || phase === "paid" ? (
+          <CheckoutStatus
+            stage={phase === "paid" ? "success" : "waiting"}
+            method="mpesa"
+            phone={phone}
+            doneText="Thanks. Your receipt is in your email."
+            pendingText=""
+            onCancel={cancel}
+            onClose={onClose}
+          />
+        ) : (
+          <form onSubmit={start} className="flex flex-col gap-4" noValidate>
+            <div className="flex justify-between gap-3">
+              <div>
+                <DialogTitle className="gd-h1 text-[26px]">{title}</DialogTitle>
+                <DialogDescription className="gd-sub">
+                  KES {amount.toLocaleString()} · approve the charge on your phone.
+                </DialogDescription>
+              </div>
+              <button type="button" className="gd-ib" onClick={onClose} aria-label="Close">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <MpesaPhoneField
+              id="stk-phone"
+              phone={phone}
+              onChange={setPhone}
+              showError={phoneTouched}
             />
-            <button
-              onClick={start}
-              disabled={phone.trim().length < 9}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
-            >
-              <Smartphone className="h-4 w-4" /> Send payment request
+            {error && (
+              <div
+                role="alert"
+                className="rounded-[14px] bg-destructive-subtle px-3.5 py-3 text-sm font-semibold text-destructive"
+              >
+                {error}
+              </div>
+            )}
+            <button type="submit" className="gd-btn min-h-[52px] text-base">
+              {phase === "failed" ? "Try again" : `Pay KES ${amount.toLocaleString()}`}
             </button>
-          </>
+          </form>
         )}
-
-        {phase === "waiting" && (
-          <div className="py-4 text-center">
-            <p className="text-sm font-medium text-foreground">Check your phone</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Enter your M-Pesa PIN to complete the payment. This screen updates on its own.
-            </p>
-            <button
-              onClick={cancel}
-              className="mt-4 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-            >
-              Cancel payment
-            </button>
-          </div>
-        )}
-
-        {phase === "paid" && (
-          <div className="py-4 text-center">
-            <p className="text-sm font-medium text-success">Payment received</p>
-            <button
-              onClick={onClose}
-              className="mt-4 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
-            >
-              Done
-            </button>
-          </div>
-        )}
-
-        {phase === "failed" && (
-          <button
-            onClick={() => setPhase("phone")}
-            className="mt-2 w-full rounded-md border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
-          >
-            Try again
-          </button>
-        )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

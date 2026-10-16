@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api, type BlogPost, type Faq, type Paginated } from "./api";
 
 export interface LegalDoc {
@@ -27,8 +27,8 @@ export function useBlogPosts() {
   });
 }
 
-export function useBlogPost(slug: string) {
-  return useQuery({
+export function blogPostQuery(slug: string) {
+  return queryOptions({
     queryKey: ["blog-post", slug],
     queryFn: () => api.get<BlogPost>(`/blog/${slug}`),
     staleTime: 5 * 60_000,

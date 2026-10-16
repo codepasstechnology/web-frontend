@@ -12,8 +12,8 @@
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ * The :root and .dark blocks define the actual color values: the green and
+ * cream palette from design/dashboard/DASHBOARD_BRIEF.md, as hex.
  *
  * To add a new semantic color:
  * 1. Add the variable to :root (light value) and .dark (dark value)
@@ -80,45 +80,54 @@
 
 :root {
   --radius: 0.5rem;
-  /* Geo Pin Properties — enterprise GIS palette, navy + green brand (no gradients, solid colors only) */
-  --background: oklch(0.984 0.003 247.858); /* #F8FAFC */
-  --foreground: oklch(0.198 0.04 265.6); /* #0F172A */
-  --card: oklch(1 0 0); /* #FFFFFF */
-  --card-foreground: oklch(0.198 0.04 265.6);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.198 0.04 265.6);
-  --primary: oklch(0.198 0.04 265.6); /* #0F172A — logo navy */
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.27 0.041 260); /* #1E293B */
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.5 0.038 257.4); /* #475569 */
+  /* Geo Pin Properties — green and cream palette (DASHBOARD_BRIEF.md). */
+  --background: #f6f0e2;
+  --foreground: #1e2418;
+  --card: #fffaf2;
+  --card-foreground: #1e2418;
+  --popover: #fffaf2;
+  --popover-foreground: #1e2418;
+  --primary: #3f5a2a;
+  --primary-foreground: #fffaf2;
+  --secondary: #35502a;
+  --secondary-foreground: #fffaf2;
+  --muted: #efe7d4;
+  --muted-foreground: #56594a;
   /* --accent is shadcn's generic hover-tint primitive, kept neutral so it
      never competes with --brand as "the" accent color. */
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.198 0.04 265.6);
-  /* Brand green, from the Geo Pin Properties logo's pin mark. */
-  --brand: oklch(0.527 0.154 150.069); /* #15803D */
-  --brand-foreground: oklch(1 0 0);
-  --brand-hover: oklch(0.448 0.119 151.328); /* #166534 */
-  --brand-active: oklch(0.393 0.095 152.535); /* #14532D */
-  --brand-subtle: oklch(0.962 0.044 156.743); /* #DCFCE7 */
-  --brand-subtle-foreground: oklch(0.448 0.119 151.328); /* #166534 */
-  --destructive: oklch(0.59 0.222 27); /* #DC2626 */
-  --destructive-foreground: oklch(1 0 0);
-  --destructive-subtle: oklch(0.958 0.02 17.4); /* #FEF2F2 */
-  --destructive-subtle-foreground: oklch(0.505 0.19 27); /* #B91C1C */
-  --success: oklch(0.62 0.18 145); /* #16A34A */
-  --success-foreground: oklch(1 0 0);
-  --success-subtle: oklch(0.966 0.03 152); /* #F0FDF4 */
-  --success-subtle-foreground: oklch(0.448 0.119 151.328); /* #166534 */
-  --warning: oklch(0.68 0.16 55); /* #D97706 */
-  --warning-foreground: oklch(1 0 0);
-  --warning-subtle: oklch(0.966 0.04 85); /* #FFFBEB */
-  --warning-subtle-foreground: oklch(0.47 0.13 55); /* #92400E */
-  --border: oklch(0.918 0.014 255.5); /* #E2E8F0 */
-  --input: oklch(0.918 0.014 255.5);
-  --ring: oklch(0.527 0.154 150.069);
+  --accent: #efe7d4;
+  --accent-foreground: #1e2418;
+  --brand: #3f5a2a;
+  --brand-foreground: #fffaf2;
+  --brand-hover: #35502a;
+  --brand-active: #2f4520;
+  --brand-subtle: #e3ebd3;
+  --brand-subtle-foreground: #2f4520;
+  --destructive: #b3261e;
+  --destructive-foreground: #fffaf2;
+  --destructive-subtle: #f7ded7;
+  --destructive-subtle-foreground: #b3261e;
+  --success: #3f5a2a;
+  --success-foreground: #fffaf2;
+  --success-subtle: #e3ebd3;
+  --success-subtle-foreground: #2f4520;
+  --warning: #8a5a0b;
+  --warning-foreground: #fffaf2;
+  --warning-subtle: #f5e8c9;
+  --warning-subtle-foreground: #8a5a0b;
+  --border: #dcd3bf;
+  --input: #dcd3bf;
+  --ring: #3f5a2a;
+  --background-2: #ece4d0;
+  --surface-2: #ffffff;
+  --border-subtle: #e6dfcd;
+  --faint: #8c8a78;
+  --track: #efe7d4;
+  --neutral-subtle: #e9e4d6;
+  --chart-fill: rgba(63, 90, 42, 0.14);
+  --chart-grid: rgba(30, 36, 24, 0.08);
+  --deep: #3f5a2a;
+  --deep-foreground: #fff6ea;
   /* Map parcel/status colors — kept as their own tokens (not aliased to
      brand/success) because the map legend needs "available" and "verified"
      to read as visually distinct statuses even though both are green-family. */
@@ -129,19 +138,19 @@
   --map-sold: oklch(0.552 0.014 257.4); /* #64748B */
   --map-rent: oklch(0.27 0.041 260); /* #1E293B */
   --map-bnb: oklch(0.508 0.219 296.9); /* #7C3AED */
-  --chart-1: oklch(0.198 0.04 265.6); /* navy */
-  --chart-2: oklch(0.527 0.154 150.069); /* brand green */
-  --chart-3: oklch(0.68 0.16 55); /* amber */
-  --chart-4: oklch(0.552 0.014 257.4); /* slate */
-  --chart-5: oklch(0.6 0.118 200); /* teal */
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.527 0.154 150.069);
+  --chart-1: #3f5a2a;
+  --chart-2: #9db27f;
+  --chart-3: #dcd3bf;
+  --chart-4: #8c8a78;
+  --chart-5: #56594a;
+  --sidebar: #f6f0e2;
+  --sidebar-foreground: #1e2418;
+  --sidebar-primary: #3f5a2a;
+  --sidebar-primary-foreground: #fffaf2;
+  --sidebar-accent: #e3ebd3;
+  --sidebar-accent-foreground: #2f4520;
+  --sidebar-border: #e6dfcd;
+  --sidebar-ring: #3f5a2a;
 }
 
 @theme inline {
@@ -161,6 +170,16 @@
   --color-warning-subtle-foreground: var(--warning-subtle-foreground);
   --color-destructive-subtle: var(--destructive-subtle);
   --color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
+  --color-background-2: var(--background-2);
+  --color-surface-2: var(--surface-2);
+  --color-border-subtle: var(--border-subtle);
+  --color-faint: var(--faint);
+  --color-track: var(--track);
+  --color-neutral-subtle: var(--neutral-subtle);
+  --color-chart-fill: var(--chart-fill);
+  --color-chart-grid: var(--chart-grid);
+  --color-deep: var(--deep);
+  --color-deep-foreground: var(--deep-foreground);
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --animate-pin-pulse: pin-pulse 2.4s ease-out infinite;
@@ -189,41 +208,51 @@
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --brand: oklch(0.723 0.219 149.579); /* #22C55E — brighter on dark navy */
-  --brand-foreground: oklch(0.129 0.042 264.695);
-  --brand-hover: oklch(0.792 0.209 151.711); /* #4ADE80 */
-  --brand-active: oklch(0.871 0.15 154.449); /* #86EFAC */
-  --brand-subtle: oklch(0.279 0.06 155); /* dark green tint over navy */
-  --brand-subtle-foreground: oklch(0.871 0.15 154.449); /* #86EFAC */
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.129 0.042 264.695);
-  --destructive-subtle: oklch(0.279 0.07 22);
-  --destructive-subtle-foreground: oklch(0.808 0.13 22);
-  --success: oklch(0.723 0.219 149.579);
-  --success-foreground: oklch(0.129 0.042 264.695);
-  --success-subtle: oklch(0.279 0.06 155);
-  --success-subtle-foreground: oklch(0.871 0.15 154.449);
-  --warning: oklch(0.769 0.188 70.08);
-  --warning-foreground: oklch(0.129 0.042 264.695);
-  --warning-subtle: oklch(0.279 0.06 70);
-  --warning-subtle-foreground: oklch(0.87 0.14 75);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.723 0.219 149.579);
+  --background: #15140f;
+  --foreground: #f4eee2;
+  --card: #1f1d17;
+  --card-foreground: #f4eee2;
+  --popover: #1f1d17;
+  --popover-foreground: #f4eee2;
+  --primary: #a9c97a;
+  --primary-foreground: #15140f;
+  --secondary: #bdd893;
+  --secondary-foreground: #15140f;
+  --muted: rgba(244, 238, 226, 0.07);
+  --muted-foreground: #b9b2a1;
+  --accent: rgba(244, 238, 226, 0.07);
+  --accent-foreground: #f4eee2;
+  --brand: #a9c97a;
+  --brand-foreground: #15140f;
+  --brand-hover: #bdd893;
+  --brand-active: #c9dda4;
+  --brand-subtle: #263220;
+  --brand-subtle-foreground: #c9dda4;
+  --destructive: #f2877e;
+  --destructive-foreground: #15140f;
+  --destructive-subtle: #3d221d;
+  --destructive-subtle-foreground: #f2877e;
+  --success: #a9c97a;
+  --success-foreground: #15140f;
+  --success-subtle: #263220;
+  --success-subtle-foreground: #c9dda4;
+  --warning: #e6b45e;
+  --warning-foreground: #15140f;
+  --warning-subtle: #3a2e17;
+  --warning-subtle-foreground: #e6b45e;
+  --border: #3a372d;
+  --input: #3a372d;
+  --ring: #a9c97a;
+  --background-2: #1d1b14;
+  --surface-2: #25231c;
+  --border-subtle: #2e2b23;
+  --faint: #8f8a7a;
+  --track: rgba(244, 238, 226, 0.07);
+  --neutral-subtle: #2a2820;
+  --chart-fill: rgba(169, 201, 122, 0.16);
+  --chart-grid: rgba(244, 238, 226, 0.08);
+  --deep: #263220;
+  --deep-foreground: #f4eee2;
   --map-available: oklch(0.723 0.219 149.579); /* #22C55E */
   --map-verified: oklch(0.792 0.209 151.711); /* #4ADE80 */
   --map-reserved: oklch(0.769 0.188 70.08);
@@ -231,19 +260,19 @@
   --map-sold: oklch(0.704 0.04 256.788);
   --map-rent: oklch(0.704 0.04 256.788);
   --map-bnb: oklch(0.627 0.265 303.9);
-  --chart-1: oklch(0.929 0.013 255.508); /* near-white */
-  --chart-2: oklch(0.723 0.219 149.579); /* brand green */
-  --chart-3: oklch(0.769 0.188 70.08); /* amber */
-  --chart-4: oklch(0.704 0.04 256.788); /* slate */
-  --chart-5: oklch(0.696 0.17 195); /* teal */
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.723 0.219 149.579);
-  --sidebar-primary-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.723 0.219 149.579);
+  --chart-1: #a9c97a;
+  --chart-2: #5e7444;
+  --chart-3: #3a372d;
+  --chart-4: #8f8a7a;
+  --chart-5: #b9b2a1;
+  --sidebar: #15140f;
+  --sidebar-foreground: #f4eee2;
+  --sidebar-primary: #a9c97a;
+  --sidebar-primary-foreground: #15140f;
+  --sidebar-accent: #263220;
+  --sidebar-accent-foreground: #c9dda4;
+  --sidebar-border: #2e2b23;
+  --sidebar-ring: #a9c97a;
 }
 
 @layer base {
@@ -268,6 +297,62 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Theme toggle circle-wipe. useTheme()'s toggle() sets --wx/--wy to the
+   toggle's position before calling document.startViewTransition(); the new
+   theme's snapshot grows from there while the old one just sits underneath,
+   so colours flip the instant the circle finishes covering the screen. */
+::view-transition-old(root) {
+  animation: none;
+}
+
+::view-transition-new(root) {
+  animation: gpThemeCircle 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.12s both;
+}
+
+@keyframes gpThemeCircle {
+  from {
+    clip-path: circle(0px at var(--wx, 50%) var(--wy, 50%));
+  }
+  to {
+    clip-path: circle(150vmax at var(--wx, 50%) var(--wy, 50%));
+  }
+}
+
+/* Safety net: the hook skips startViewTransition under reduced motion, but
+   OS motion settings can change between renders, so the pseudo-elements
+   (not reachable by the `*` rule above) get their own instant-swap guard. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+/* useTheme()'s fallback when the View Transitions API is missing: an overlay
+   in the new theme's background grows the same circle, the theme flips under
+   it, then the overlay fades out. */
+.theme-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: gpThemeCircle 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.theme-wipe-out {
+  animation: themeWipeFade 0.45s ease forwards;
+}
+
+@keyframes themeWipeFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 

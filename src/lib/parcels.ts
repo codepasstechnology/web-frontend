@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import type { LandParcel, LandStatus } from "./landData";
+import { bboxParam, type Bbox } from "./mapGeo";
 
 interface ApiParcelSummary {
   id: string;
@@ -61,6 +62,7 @@ export interface ApiParcel {
   longitude: number;
   boundary: { lat: number; lng: number }[] | null;
   boundary_source: string | null;
+  sv_available?: boolean | null;
   seller_name: string;
   seller_phone: string;
   seller_agency: string;
@@ -111,14 +113,47 @@ export function mapApiParcel(p: ApiParcel): LandParcel {
         : undefined,
     latitude: p.latitude != null ? Number(p.latitude) : undefined,
     longitude: p.longitude != null ? Number(p.longitude) : undefined,
+    area: p.area || undefined,
+    landUse: p.land_type ? p.land_type.charAt(0).toUpperCase() + p.land_type.slice(1) : undefined,
+    svAvailable: p.sv_available ?? null,
   };
 }
 
-/** Full parcels, with boundaries and seller details, for the map pages. */
-export function useMapParcels() {
+/**
+ * Full parcels, with boundaries and seller details, for the map pages. With a
+ * bbox only the visible area is loaded; the previous result stays on screen
+ * until the new one arrives, and a superseded request is cancelled.
+ */
+export function useMapParcels(bbox: Bbox | null = null, refetchInterval?: number) {
   return useQuery({
-    queryKey: ["parcels", "map"],
-    queryFn: async () => (await api.get<ApiParcel[]>("/parcels")).map(mapApiParcel),
+    queryKey: ["parcels", "map", bbox],
+    queryFn: async ({ signal }) =>
+      (
+        await api.get<ApiParcel[]>(bbox ? `/parcels?bbox=${bboxParam(bbox)}` : "/parcels", signal)
+      ).map(mapApiParcel),
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    refetchInterval,
   });
+}
+
+/** The signed-in buyer's saved parcels, and a toggle that keeps the list in sync. */
+export function useSavedParcels(signedIn: boolean) {
+  const queryClient = useQueryClient();
+  const { data = [] } = useQuery({
+    queryKey: ["favorites"],
+    queryFn: () => api.get<string[]>("/user/favorites"),
+    enabled: signedIn,
+  });
+  const toggle = useMutation({
+    mutationFn: (id: string) => api.post<{ saved: boolean }>(`/parcels/${id}/favorite`),
+    onSuccess: ({ saved }, id) =>
+      queryClient.setQueryData<string[]>(["favorites"], (prev = []) =>
+        saved ? [...prev.filter((x) => x !== id), id] : prev.filter((x) => x !== id),
+      ),
+  });
+  return {
+    savedIds: signedIn ? data : [],
+    toggleSaved: (id: string) => toggle.mutate(id),
+  };
 }

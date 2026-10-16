@@ -9,6 +9,9 @@ describe("mapApiParcel", () => {
       price: 100,
       status: "verified",
       listing_type: "sale",
+      land_type: "residential",
+      area: "Kitengela",
+      sv_available: true,
       latitude: "-1.5",
       longitude: "36.9",
       boundary: [
@@ -29,5 +32,22 @@ describe("mapApiParcel", () => {
     expect(p.latitude).toBe(-1.5);
     expect(p.photos).toEqual([]);
     expect(p.seller.name).toBe("—");
+    expect(p.area).toBe("Kitengela");
+    expect(p.landUse).toBe("Residential");
+    expect(p.svAvailable).toBe(true);
+  });
+
+  it("treats a missing Street View result as not checked yet", () => {
+    const p = mapApiParcel({
+      id: "a",
+      parcel_number: "KAJ/1",
+      status: "available",
+      boundary: null,
+      photos: null,
+      amenities: null,
+    } as unknown as ApiParcel);
+
+    expect(p.svAvailable).toBeNull();
+    expect(p.polygon).toBeUndefined();
   });
 });

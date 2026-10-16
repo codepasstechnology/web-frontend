@@ -2,13 +2,19 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { MyProperty } from "@/lib/properties";
-import type { AppUser, UserListing } from "@/lib/auth";
+import type { AppUser, ListingDetail, UserListing } from "@/lib/auth";
 
 const mockDeleteProperty = vi.fn<(id: string) => Promise<unknown>>(() => Promise.resolve({}));
 const mockMarkTaken = vi.fn<(id: string) => Promise<unknown>>(() => Promise.resolve({}));
+const mockSetAvailability = vi.fn<(args: { id: string; status: string }) => Promise<unknown>>(() =>
+  Promise.resolve({}),
+);
 const mockRemoveListing = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
 const mockMarkSold = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
+const mockFetchListing = vi.fn<(id: string) => Promise<ListingDetail>>();
+const mockApiGet = vi.fn<(path: string) => Promise<unknown>>();
 const mockNavigate = vi.fn();
 const mockProperties = vi.fn<() => { data: MyProperty[]; isLoading: boolean; isError: boolean }>(
   () => ({ data: [], isLoading: false, isError: false }),
@@ -30,6 +36,7 @@ vi.mock("@/lib/properties", async (importOriginal) => {
     useMyProperties: () => ({ ...mockProperties(), refetch: vi.fn() }),
     useDeleteProperty: () => ({ mutateAsync: mockDeleteProperty, isPending: false }),
     useMarkPropertyTaken: () => ({ mutateAsync: mockMarkTaken, isPending: false }),
+    useSetPropertyAvailability: () => ({ mutateAsync: mockSetAvailability, isPending: false }),
   };
 });
 
@@ -39,16 +46,21 @@ vi.mock("@/lib/auth", () => ({
     ready: true,
     removeListing: mockRemoveListing,
     markListingSold: mockMarkSold,
+    fetchListing: mockFetchListing,
   }),
 }));
 
 vi.mock("@/lib/api", () => ({
-  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn(), getBlob: vi.fn() },
+  api: { get: mockApiGet, post: vi.fn(), delete: vi.fn(), getBlob: vi.fn() },
 }));
 
 vi.mock("@/lib/plans", () => ({ usePlans: () => ({ data: [] }), addOns: [] }));
 
 vi.mock("@/components/LandBoundaryMap", () => ({ LandBoundaryMap: () => <div /> }));
+
+const mockToastSuccess = vi.fn();
+const mockToastError = vi.fn();
+vi.mock("sonner", () => ({ toast: { success: mockToastSuccess, error: mockToastError } }));
 
 const { ListingsTab } = await import("@/components/dashboard/ListingsTab");
 
@@ -83,8 +95,15 @@ const property: MyProperty = {
 
 const user = { listings: [land], customReports: false } as unknown as AppUser;
 
+/** Desktop table rows, header excluded. */
+const rows = () =>
+  within(screen.getByRole("table", { name: "Your listings" }))
+    .getAllByRole("row")
+    .slice(1);
+
 /** The mobile card list — one entry per visible row. */
-const cards = (c: HTMLElement) => Array.from(c.querySelectorAll("ul.md\\:hidden > li"));
+const cards = () =>
+  within(screen.getByRole("list", { name: "Your listings" })).getAllByRole("listitem");
 
 describe("ListingsTab — land and rentals in one list", () => {
   beforeEach(() => {
@@ -94,42 +113,68 @@ describe("ListingsTab — land and rentals in one list", () => {
   });
 
   it("lists both kinds, newest first", () => {
-    const { container } = render(<ListingsTab />);
+    render(<ListingsTab />);
 
-    const rows = container.querySelectorAll("tbody tr");
-    expect(rows).toHaveLength(2);
-    expect(within(rows[0] as HTMLElement).getByText("Kilimani 2BR Apartment")).toBeInTheDocument();
-    expect(within(rows[1] as HTMLElement).getByText("NRB/BLK12/456")).toBeInTheDocument();
+    expect(rows()).toHaveLength(2);
+    expect(within(rows()[0]).getByText("Kilimani 2BR Apartment")).toBeInTheDocument();
+    expect(within(rows()[1]).getByText("NRB/BLK12/456")).toBeInTheDocument();
   });
 
   it("filters down to each kind", async () => {
-    const { container } = render(<ListingsTab />);
+    render(<ListingsTab />);
 
     expect(screen.getByRole("button", { name: "All 2" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Land 1" }));
-    expect(cards(container)).toHaveLength(1);
+    expect(cards()).toHaveLength(1);
     expect(screen.getAllByText("NRB/BLK12/456").length).toBeGreaterThan(0);
     expect(screen.queryByText("Kilimani 2BR Apartment")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Rentals 1" }));
-    expect(cards(container)).toHaveLength(1);
+    expect(cards()).toHaveLength(1);
     expect(screen.getAllByText("Kilimani 2BR Apartment").length).toBeGreaterThan(0);
     expect(screen.queryByText("NRB/BLK12/456")).not.toBeInTheDocument();
   });
 
-  /** Only land has an edit flow, so the action set has to follow the row. */
-  it("offers Edit on land and not on a rental", () => {
-    const { container } = render(<ListingsTab />);
+  it("matches the search box on title number, reference or place", async () => {
+    render(<ListingsTab />);
 
-    const rows = container.querySelectorAll("tbody tr");
-    const rental = within(rows[0] as HTMLElement);
-    const parcel = within(rows[1] as HTMLElement);
+    await userEvent.type(
+      screen.getByPlaceholderText("Title number, reference or place"),
+      "kilimani",
+    );
+    expect(rows()).toHaveLength(1);
+    expect(within(rows()[0]).getByText("Kilimani 2BR Apartment")).toBeInTheDocument();
 
-    expect(parcel.getByTitle("Edit")).toBeInTheDocument();
-    expect(parcel.getByTitle("Mark as sold")).toBeInTheDocument();
-    expect(rental.queryByTitle("Edit")).not.toBeInTheDocument();
-    expect(rental.getByTitle("Mark as taken")).toBeInTheDocument();
+    await userEvent.clear(screen.getByPlaceholderText("Title number, reference or place"));
+    await userEvent.type(screen.getByPlaceholderText("Title number, reference or place"), "zzz");
+    expect(screen.getByText("Nothing here under this filter")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show all listings" }));
+    expect(rows()).toHaveLength(2);
+  });
+
+  it("offers Edit on both kinds, each to its own wizard", async () => {
+    render(<ListingsTab />);
+
+    const rental = within(rows()[0]);
+    const parcel = within(rows()[1]);
+    expect(
+      parcel.getByRole("button", { name: `Mark as sold: ${land.parcelNumber}` }),
+    ).toBeInTheDocument();
+    expect(
+      rental.getByRole("button", { name: `Mark as taken: ${property.title}` }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(parcel.getByRole("button", { name: `Edit ${land.parcelNumber}` }));
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/dashboard/upload",
+      search: { edit: land.id, type: undefined },
+    });
+    await userEvent.click(rental.getByRole("button", { name: `Edit ${property.title}` }));
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/dashboard/properties",
+      search: { edit: property.id },
+    });
   });
 
   /** View counts are an analytics metric, which is part of the paid plan. */
@@ -209,7 +254,7 @@ describe("ListingsTab — confirmations", () => {
   it("confirms before marking a rental taken", async () => {
     render(<ListingsTab />);
 
-    await userEvent.click(screen.getAllByTitle("Mark as taken")[0]);
+    await userEvent.click(screen.getByRole("button", { name: `Mark as taken: ${property.title}` }));
     expect(mockMarkTaken).not.toHaveBeenCalled();
 
     await userEvent.click(
@@ -221,7 +266,217 @@ describe("ListingsTab — confirmations", () => {
   it("confirms before marking land sold", async () => {
     render(<ListingsTab />);
 
-    await userEvent.click(screen.getAllByTitle("Mark as sold")[0]);
+    await userEvent.click(
+      screen.getByRole("button", { name: `Mark as sold: ${land.parcelNumber}` }),
+    );
+    expect(mockMarkSold).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as sold" }),
+    );
+    expect(mockMarkSold).toHaveBeenCalledWith(land.id);
+    expect(mockToastSuccess).toHaveBeenCalledWith(`${land.parcelNumber} marked as sold.`);
+  });
+
+  it("tells the seller when marking fails, and keeps the dialog open", async () => {
+    mockMarkSold.mockRejectedValueOnce(new Error("offline"));
+    render(<ListingsTab />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: `Mark as sold: ${land.parcelNumber}` }),
+    );
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as sold" }),
+    );
+
+    expect(mockToastError).toHaveBeenCalledWith("Couldn't mark this listing as sold. Try again.");
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+  });
+});
+
+describe("ListingsTab — BnB availability", () => {
+  const bnb: MyProperty = { ...property, id: "p-2", title: "Diani Beach BnB", intent: "bnb" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUser.mockReturnValue({ ...user, listings: [] } as AppUser);
+  });
+
+  it("offers occupied and closed instead of taken on a live BnB", () => {
+    mockProperties.mockReturnValue({ data: [bnb], isLoading: false, isError: false });
+    render(<ListingsTab />);
+    const row = within(rows()[0]);
+
+    expect(row.getByRole("button", { name: /^Mark as occupied/ })).toBeInTheDocument();
+    expect(row.getByRole("button", { name: /^Mark as closed/ })).toBeInTheDocument();
+    expect(row.queryByRole("button", { name: /^Mark as available/ })).not.toBeInTheDocument();
+    expect(row.queryByRole("button", { name: /^Mark as taken/ })).not.toBeInTheDocument();
+  });
+
+  it("lets an occupied BnB be reopened", () => {
+    mockProperties.mockReturnValue({
+      data: [{ ...bnb, status: "occupied" }],
+      isLoading: false,
+      isError: false,
+    });
+    render(<ListingsTab />);
+    const row = within(rows()[0]);
+
+    expect(row.getByRole("button", { name: /^Mark as available/ })).toBeInTheDocument();
+    expect(row.getByRole("button", { name: /^Mark as closed/ })).toBeInTheDocument();
+    expect(row.queryByRole("button", { name: /^Mark as occupied/ })).not.toBeInTheDocument();
+  });
+
+  it("confirms before closing a BnB", async () => {
+    mockProperties.mockReturnValue({ data: [bnb], isLoading: false, isError: false });
+    render(<ListingsTab />);
+
+    await userEvent.click(screen.getByRole("button", { name: `Mark as closed: ${bnb.title}` }));
+    expect(mockSetAvailability).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as closed" }),
+    );
+    expect(mockSetAvailability).toHaveBeenCalledWith({ id: bnb.id, status: "closed" });
+    expect(mockMarkTaken).not.toHaveBeenCalled();
+  });
+});
+
+const landDetail: ListingDetail = {
+  id: "l-1",
+  title: "Kiambu 2-Acre Plot",
+  parcelNumber: "NRB/BLK12/456",
+  county: "Kiambu",
+  phone: "0712345678",
+  area: "Ruiru",
+  size: "100 × 200 ft",
+  areaAcres: 2,
+  price: 8500000,
+  description: "Gently sloping red-soil plot.",
+  latitude: -1.1462,
+  longitude: 36.9634,
+  boundary: null,
+  boundarySource: "traced",
+  listingType: "sale",
+  landType: "mixed_use",
+  utilities: ["Borehole", "Electricity"],
+  status: "active",
+  photos: [],
+};
+
+const propertyDetail = {
+  id: "p-1",
+  reference_number: "PRP-ABC12345",
+  title: "Kilimani 2BR Apartment",
+  county: "Nairobi",
+  area: "Kilimani",
+  intent: "rent",
+  type: "apartment",
+  price: 75000,
+  price_period: "month",
+  status: "available",
+  posting_payment_status: "not_required",
+  views: 12,
+  created_at: "2026-09-04",
+  cover_photo_url: null,
+  description: "Bright corner unit near Yaya Centre.",
+  bedrooms: 2,
+  bathrooms: 1,
+  furnished: true,
+  amenities: ["Parking", "Backup generator"],
+  min_nights: null,
+  cleaning_fee: null,
+  posted_by: "broker",
+  agent_name: "Wanjiku Kamau",
+  agent_phone: "0722000111",
+  agent_agency: "Kamau Homes",
+  latitude: -1.2921,
+  longitude: 36.7822,
+  posting_fee_amount: 0,
+  photos: [],
+};
+
+function renderTab() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <ListingsTab />
+    </QueryClientProvider>,
+  );
+}
+
+describe("ListingsTab — preview", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUser.mockReturnValue(user);
+    mockProperties.mockReturnValue({ data: [property], isLoading: false, isError: false });
+    mockFetchListing.mockResolvedValue(landDetail);
+    mockApiGet.mockResolvedValue(propertyDetail);
+  });
+
+  it("opens a land row with its full details", async () => {
+    renderTab();
+
+    await userEvent.click(rows()[1]);
+
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(mockFetchListing).toHaveBeenCalledWith(land.id);
+    expect(await dialog.findByText("Gently sloping red-soil plot.")).toBeInTheDocument();
+    expect(dialog.getByText("Kiambu 2-Acre Plot")).toBeInTheDocument();
+    expect(dialog.getByText("Mixed use")).toBeInTheDocument();
+    expect(dialog.getByText("Borehole")).toBeInTheDocument();
+    expect(dialog.getByText("0712345678")).toBeInTheDocument();
+  });
+
+  it("opens a rental row with its full details", async () => {
+    renderTab();
+
+    await userEvent.click(rows()[0]);
+
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(mockApiGet).toHaveBeenCalledWith(`/user/properties/${property.id}`);
+    expect(await dialog.findByText("Bright corner unit near Yaya Centre.")).toBeInTheDocument();
+    expect(dialog.getByText("KES 75,000 / month")).toBeInTheDocument();
+    expect(dialog.getByText("Backup generator")).toBeInTheDocument();
+    expect(dialog.getByText("Wanjiku Kamau")).toBeInTheDocument();
+    expect(dialog.getByRole("button", { name: /Edit/ })).toBeInTheDocument();
+  });
+
+  it("offers a retry when the details fail to load", async () => {
+    mockFetchListing.mockRejectedValueOnce(new Error("offline"));
+    renderTab();
+
+    await userEvent.keyboard("{Tab}");
+    rows()[1].focus();
+    await userEvent.keyboard("{Enter}");
+    const dialog = within(await screen.findByRole("dialog"));
+    await userEvent.click(await dialog.findByRole("button", { name: "Try again" }));
+
+    expect(await dialog.findByText("Gently sloping red-soil plot.")).toBeInTheDocument();
+  });
+
+  /** The row is clickable, so its own action buttons must not also open the preview. */
+  it("keeps the row actions out of the preview", async () => {
+    renderTab();
+
+    await userEvent.click(screen.getAllByLabelText(`Delete ${land.parcelNumber}`)[0]);
+
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockFetchListing).not.toHaveBeenCalled();
+  });
+
+  /** jsdom has no media queries, so both layouts render; each is gated to its breakpoint. */
+  it("opens from the mobile card and hands actions to the confirmation", async () => {
+    renderTab();
+
+    expect(screen.getByRole("table", { name: "Your listings" })).toBeInTheDocument();
+    const landCard = within(cards()[1]).getByRole("button");
+    await userEvent.click(landCard);
+
+    const dialog = within(await screen.findByRole("dialog"));
+    await userEvent.click(dialog.getByRole("button", { name: "Mark as sold" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockMarkSold).not.toHaveBeenCalled();
 
     await userEvent.click(

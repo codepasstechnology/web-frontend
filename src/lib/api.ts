@@ -1,3 +1,5 @@
+import { goToMaintenance } from "@/lib/maintenanceRedirect";
+
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost/Landconnect/backend/public/api";
 const TOKEN_KEY = "lv_token_v1";
 
@@ -25,7 +27,7 @@ export function clearToken(): void {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; body?: unknown } = {},
+  opts: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
   const isFormData = opts.body instanceof FormData;
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -36,6 +38,7 @@ async function request<T>(
   const res = await fetch(`${BASE}${path}`, {
     method: opts.method ?? "GET",
     headers,
+    signal: opts.signal,
     body:
       opts.body !== undefined
         ? isFormData
@@ -49,6 +52,8 @@ async function request<T>(
     if (typeof window !== "undefined") window.location.href = "/login";
     throw new Error("Unauthenticated");
   }
+
+  if (res.status === 503) goToMaintenance();
 
   if (!res.ok) {
     const payload = await res.json().catch(() => ({ message: fallbackErrorMessage(res.status) }));
@@ -99,6 +104,8 @@ function uploadWithProgress<T>(
         return;
       }
 
+      if (xhr.status === 503) goToMaintenance();
+
       let payload: { message?: string; errors?: Record<string, string[]> };
       try {
         payload = JSON.parse(xhr.responseText);
@@ -136,6 +143,8 @@ async function requestBlob(path: string): Promise<Blob> {
     throw new Error("Unauthenticated");
   }
 
+  if (res.status === 503) goToMaintenance();
+
   if (!res.ok) throw new Error("Request failed");
 
   return res.blob();
@@ -152,6 +161,8 @@ export interface BlogPostAuthor {
   name: string;
   avatar: string | null;
   avatar_color: string | null;
+  /** Only returned by the single-post endpoint. */
+  bio?: string | null;
 }
 
 export interface BlogPost {
@@ -166,6 +177,8 @@ export interface BlogPost {
   author: BlogPostAuthor | null;
   /** Only returned by the single-post endpoint. */
   content?: string;
+  /** Up to three related articles, only returned by the single-post endpoint. */
+  related?: BlogPost[];
 }
 
 export interface Paginated<T> {
@@ -175,8 +188,10 @@ export interface Paginated<T> {
   total: number;
 }
 
+export const API_BASE = BASE;
+
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),

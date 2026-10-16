@@ -13,8 +13,11 @@ import {
   MapPinned,
   LandPlot,
   House,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/hooks/useTheme";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LogoMark } from "@/components/ui/logo";
 import {
@@ -56,6 +59,7 @@ export function Navbar({
   const [scrolled, setScrolled] = useState(false);
   const [overHero, setOverHero] = useState(overlay);
   const { user, logout } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const onPinPage = pinLinks.some(({ to }) => pathname.startsWith(to));
@@ -249,6 +253,19 @@ export function Navbar({
             />
           </div>
           {user && <NotificationBell />}
+          <button
+            type="button"
+            onClick={(e) => toggleTheme({ clientX: e.clientX, clientY: e.clientY })}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className={`hidden rounded-md border p-2 transition-colors sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              dark
+                ? "border-white/20 text-white/80 hover:bg-white/10"
+                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
           {user ? (
             <>
               <Link
@@ -376,6 +393,17 @@ export function Navbar({
                   Dashboard
                 </Link>
               )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  toggleTheme({ clientX: e.clientX, clientY: e.clientY });
+                  setMenuOpen(false);
+                }}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dark ? "text-white/80 hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              </button>
               <div
                 className={`mt-2 flex gap-2 border-t pt-2 ${dark ? "border-white/10" : "border-border"}`}
               >

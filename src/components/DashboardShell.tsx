@@ -8,17 +8,21 @@ import {
   Settings,
   ShieldCheck,
   MoreHorizontal,
+  Crown,
 } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { usePlans } from "@/lib/plans";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
-import { Navbar } from "@/components/Navbar";
+import { HomeNavbar } from "@/components/home/HomeNavbar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import "@/components/home/home.css";
+import "@/components/dashboard/dashboard.css";
 
 export type DashTab =
   "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
@@ -26,38 +30,18 @@ export type DashTab =
 // `short` is what the bottom nav's expanded pill shows; `label` stays the full
 // name for the sidebar and for every button's accessible name.
 const items: { id: DashTab; label: string; short: string; icon: ReactNode }[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    short: "Overview",
-    icon: <LayoutGrid className="h-4 w-4" />,
-  },
-  { id: "listings", label: "My Listings", short: "Listings", icon: <List className="h-4 w-4" /> },
-  { id: "upload", label: "Upload", short: "Upload", icon: <Upload className="h-4 w-4" /> },
-  {
-    id: "analytics",
-    label: "Analytics",
-    short: "Analytics",
-    icon: <BarChart3 className="h-4 w-4" />,
-  },
-  {
-    id: "billing",
-    label: "Billing & Plan",
-    short: "Billing",
-    icon: <Wallet className="h-4 w-4" />,
-  },
-  { id: "kyc", label: "KYC Status", short: "KYC", icon: <ShieldCheck className="h-4 w-4" /> },
-  {
-    id: "settings",
-    label: "Account Settings",
-    short: "Settings",
-    icon: <Settings className="h-4 w-4" />,
-  },
+  { id: "overview", label: "Overview", short: "Overview", icon: <LayoutGrid size={19} /> },
+  { id: "listings", label: "My Listings", short: "Listings", icon: <List size={19} /> },
+  { id: "upload", label: "Upload", short: "Upload", icon: <Upload size={19} /> },
+  { id: "analytics", label: "Analytics", short: "Analytics", icon: <BarChart3 size={19} /> },
+  { id: "billing", label: "Billing & Plan", short: "Billing", icon: <Wallet size={19} /> },
+  { id: "kyc", label: "KYC Status", short: "KYC", icon: <ShieldCheck size={19} /> },
+  { id: "settings", label: "Account Settings", short: "Settings", icon: <Settings size={19} /> },
 ];
 
 /**
- * One slot of the floating bottom bar. Collapsed it is a 44px icon-only circle;
- * expanded it grows into a pill carrying a filled badge and the label.
+ * One slot of the floating bottom bar. Collapsed it is an icon-only tile;
+ * expanded it carries a filled icon tile and the label.
  *
  * The label's width is animated through a 0fr -> 1fr grid column rather than a
  * width, so the pill sizes itself to whatever text it holds without anything
@@ -77,26 +61,19 @@ const NavPill = forwardRef<
       ref={ref}
       type="button"
       aria-label={label}
-      className={`flex h-11 items-center rounded-full transition-colors duration-300 ease-in-out motion-reduce:transition-none ${
-        expanded ? "min-w-0 bg-brand/10 pl-1.5 pr-3" : "w-11 shrink-0 justify-center hover:bg-muted"
-      } ${className ?? ""}`}
+      data-expanded={expanded}
+      className={`gd-mb transition-[padding,background-color] duration-300 ease-in-out motion-reduce:transition-none ${className ?? ""}`}
       {...rest}
     >
-      <span
-        className={`flex shrink-0 items-center justify-center rounded-full transition-all duration-300 ease-in-out motion-reduce:transition-none ${
-          expanded ? "h-8 w-8 bg-brand text-brand-foreground" : "text-muted-foreground"
-        }`}
-      >
-        {icon}
-      </span>
+      <span className="gd-mbi">{icon}</span>
       <span
         aria-hidden
         className="grid transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none"
         style={{ gridTemplateColumns: expanded ? "1fr" : "0fr" }}
       >
         <span
-          className={`overflow-hidden whitespace-nowrap text-xs font-medium text-foreground transition-opacity duration-200 motion-reduce:transition-none ${
-            expanded ? "pl-2 opacity-100" : "opacity-0"
+          className={`overflow-hidden whitespace-nowrap transition-opacity duration-200 motion-reduce:transition-none ${
+            expanded ? "opacity-100" : "opacity-0"
           }`}
         >
           {short}
@@ -115,11 +92,14 @@ const mobileOverflowItems = items.slice(4);
 interface Props {
   active: DashTab;
   onChange?: (t: DashTab) => void;
+  /** Opens the upgrade flow; without it the plan card goes to Billing. */
+  onUpgrade?: () => void;
   children: ReactNode;
 }
 
-export function DashboardShell({ active, onChange, children }: Props) {
+export function DashboardShell({ active, onChange, onUpgrade, children }: Props) {
   const { user } = useAuth();
+  const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
   const overflowActive = mobileOverflowItems.find((it) => it.id === active);
 
@@ -132,89 +112,126 @@ export function DashboardShell({ active, onChange, children }: Props) {
     navigate({ to: "/dashboard", search: { tab: t } });
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+  const planName = plans.find((p) => p.id === user?.plan)?.name ?? user?.plan;
+  const used = user?.listings.length ?? 0;
+  const unlimited = user?.maxListings === Infinity;
+  const usedPct = !user ? 0 : unlimited ? 12 : Math.min(100, (used / user.maxListings) * 100);
+  const canUpgrade = !!user && user.plan !== "pro" && user.plan !== "enterprise";
 
-      <div className="flex">
-        {/* Sidebar (desktop) */}
-        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-border bg-card sm:top-16 sm:h-[calc(100vh-4rem)] md:block">
-          <nav className="p-3">
-            {items.map((it) => {
-              const isActive = it.id === "upload" ? false : it.id === active;
-              return (
-                <button
-                  key={it.id}
-                  onClick={() => handleSelect(it.id)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`mb-1 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-brand/10 text-brand"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {it.icon}
-                  {it.label}
-                </button>
-              );
-            })}
+  return (
+    <div className="gd-root">
+      {/* The site navbar, so signed-in users keep every link. Its colours come
+          from .geo-home; display: contents keeps the header sticky to the page. */}
+      <div className="geo-home" style={{ display: "contents" }}>
+        <HomeNavbar />
+      </div>
+
+      <div className="gd-app">
+        <aside className="gd-side" aria-label="Dashboard">
+          <nav className="flex flex-col gap-0.5">
+            {items.map((it) => (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => handleSelect(it.id)}
+                aria-current={it.id === active ? "page" : undefined}
+                className="gd-nav"
+              >
+                {it.icon}
+                {it.label}
+              </button>
+            ))}
           </nav>
+
+          <div className="flex-1" />
+
+          {user && (
+            <div className="gd-plancard">
+              <svg
+                className="gd-plancard-art"
+                viewBox="0 0 220 120"
+                width="220"
+                height="120"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 100 60 20 120 70 190 10 210 90 120 110Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeDasharray="4 4"
+                />
+                <circle cx="60" cy="20" r="3" fill="currentColor" />
+                <circle cx="120" cy="70" r="3" fill="currentColor" />
+                <circle cx="190" cy="10" r="3" fill="currentColor" />
+                <circle cx="210" cy="90" r="3" fill="currentColor" />
+              </svg>
+              <span className="gd-plancard-label">
+                <Crown size={15} aria-hidden="true" /> {planName} plan
+              </span>
+              <span className="relative text-sm">
+                {unlimited
+                  ? `${used} listings · unlimited`
+                  : `${used} of ${user.maxListings} listings used`}
+              </span>
+              <span className="gd-plancard-bar">
+                <span style={{ width: `${usedPct}%` }} />
+              </span>
+              {canUpgrade && (
+                <button
+                  type="button"
+                  className="gd-plancard-upgrade"
+                  onClick={() => (onUpgrade ? onUpgrade() : handleSelect("billing"))}
+                >
+                  Upgrade to Pro
+                </button>
+              )}
+            </div>
+          )}
         </aside>
 
-        <main className="min-w-0 flex-1 px-4 py-6 pb-24 md:py-8 md:pb-8">{children}</main>
+        <main className="gd-main">
+          <div className="gd-in">{children}</div>
+        </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <div className="fixed inset-x-3 bottom-3 z-30 pb-[env(safe-area-inset-bottom)] md:hidden">
-        <nav
-          aria-label="Dashboard sections"
-          className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card p-1.5 shadow-lg"
-        >
-          {mobilePrimaryItems.map((it) => (
+      <nav aria-label="Dashboard sections" className="gd-mbar">
+        {mobilePrimaryItems.map((it) => (
+          <NavPill
+            key={it.id}
+            icon={it.icon}
+            label={it.label}
+            short={it.short}
+            expanded={it.id === active}
+            aria-current={it.id === active ? "page" : undefined}
+            onClick={() => handleSelect(it.id)}
+          />
+        ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <NavPill
-              key={it.id}
-              icon={it.icon}
-              label={it.label}
-              short={it.short}
-              expanded={it.id === active}
-              aria-current={it.id === active ? "page" : undefined}
-              onClick={() => handleSelect(it.id)}
+              icon={<MoreHorizontal size={20} strokeWidth={2.6} />}
+              label="More sections"
+              short={overflowActive?.short ?? "More"}
+              expanded={!!overflowActive}
             />
-          ))}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <NavPill
-                icon={<MoreHorizontal className="h-4 w-4" />}
-                label="More sections"
-                short={overflowActive?.short ?? "More"}
-                expanded={!!overflowActive}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              align="end"
-              sideOffset={10}
-              className="w-52 rounded-xl p-1.5"
-            >
-              {mobileOverflowItems.map((it) => (
-                <DropdownMenuItem
-                  key={it.id}
-                  onSelect={() => handleSelect(it.id)}
-                  aria-current={it.id === active ? "page" : undefined}
-                  className={`gap-2.5 rounded-lg px-3 py-2.5 font-medium ${
-                    it.id === active
-                      ? "bg-brand/10 text-brand focus:bg-brand/10 focus:text-brand"
-                      : ""
-                  }`}
-                >
-                  {it.icon}
-                  {it.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </nav>
-      </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="end" sideOffset={12} className="gd-pop w-[220px]">
+            {mobileOverflowItems.map((it) => (
+              <DropdownMenuItem
+                key={it.id}
+                onSelect={() => handleSelect(it.id)}
+                aria-current={it.id === active ? "page" : undefined}
+                className="gd-mi"
+              >
+                {it.icon}
+                {it.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </nav>
 
       {user && user.emailVerificationRequired && !user.emailVerified && <VerifyAccountModal />}
     </div>

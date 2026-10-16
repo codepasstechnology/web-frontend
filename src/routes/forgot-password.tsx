@@ -94,8 +94,8 @@ function ForgotPasswordPage() {
               Check your email<span className="ga-dot-mark">.</span>
             </h1>
             <p>
-              We sent a reset link to <strong style={{ color: "#1E2418" }}>{sentTo}</strong>. Open
-              it to choose a new password.
+              We sent a reset link to <strong className="ga-strong">{sentTo}</strong>. Open it to
+              choose a new password.
             </p>
           </div>
 

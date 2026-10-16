@@ -5,8 +5,8 @@ const ITEMS: { title: string; body: string; paths: string[] }[] = [
     paths: ["M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z", "M9 3v15M15 6v15"],
   },
   {
-    title: "Verified properties",
-    body: "A clear badge on every checked listing.",
+    title: "Document-checked listings",
+    body: "A clear badge on listings whose ownership documents we have reviewed.",
     paths: ["M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z", "m8.5 12 2.5 2.5 4.5-5"],
   },
   {

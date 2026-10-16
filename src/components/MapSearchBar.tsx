@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
-import { LocateFixed, Map as MapIcon, Satellite, Search } from "lucide-react";
+import { LocateFixed, MapPin, Search } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-
-export const OSM_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-export const SATELLITE_TILES =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 export function MapSatelliteToggle({
   satellite,
@@ -15,25 +11,14 @@ export function MapSatelliteToggle({
   onToggle: () => void;
 }) {
   return (
-    <button
-      onClick={onToggle}
-      title={satellite ? "Switch to street map" : "Switch to satellite view"}
-      className={`pointer-events-auto absolute left-2.5 top-[90px] z-[800] flex h-[30px] items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold tracking-wide shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        satellite
-          ? "border-white/15 bg-primary/90 text-primary-foreground hover:bg-primary"
-          : "border-border bg-card/95 text-foreground hover:bg-muted"
-      }`}
-    >
-      {satellite ? (
-        <>
-          <MapIcon className="h-3.5 w-3.5" /> Map
-        </>
-      ) : (
-        <>
-          <Satellite className="h-3.5 w-3.5" /> Satellite
-        </>
-      )}
-    </button>
+    <div className="gm-ctl gm-ctl-tl gm-seg" role="group" aria-label="Map style">
+      <button type="button" aria-pressed={!satellite} onClick={() => satellite && onToggle()}>
+        Map
+      </button>
+      <button type="button" aria-pressed={satellite} onClick={() => !satellite && onToggle()}>
+        Satellite
+      </button>
+    </div>
   );
 }
 
@@ -63,7 +48,7 @@ export function MapSearchBar({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [results, setResults] = useState<NominatimResult[] | null>(null);
   const [open, setOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState("");
@@ -71,8 +56,7 @@ export function MapSearchBar({
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
-      setResults([]);
-      setOpen(false);
+      setResults(null);
       return;
     }
     const t = setTimeout(() => {
@@ -81,10 +65,7 @@ export function MapSearchBar({
         { headers: { "Accept-Language": "en" } },
       )
         .then((r) => r.json())
-        .then((data: NominatimResult[]) => {
-          setResults(data);
-          setOpen(data.length > 0);
-        })
+        .then((data: NominatimResult[]) => setResults(data))
         .catch(() => {});
     }, 400);
     return () => clearTimeout(t);
@@ -123,53 +104,69 @@ export function MapSearchBar({
   };
 
   return (
-    <div
-      ref={wrapRef}
-      className="pointer-events-auto absolute left-28 right-3 top-3 z-[800] md:left-1/2 md:right-auto md:top-2.5 md:w-[300px] md:max-w-[calc(100%-70px)] md:-translate-x-1/2"
-    >
-      <div className="flex gap-1.5">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search location in Kenya…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => results.length > 0 && setOpen(true)}
-            className="h-[34px] w-full rounded-md border border-border bg-card/95 pl-8 pr-2 text-xs text-foreground shadow-sm outline-none transition-colors hover:border-muted-foreground/40 focus:border-brand"
-          />
-          {open && results.length > 0 && (
-            <div className="absolute inset-x-0 top-[calc(100%+4px)] z-[801] overflow-hidden rounded-md border border-border bg-card shadow-md">
-              {results.map((r, i) => (
+    <div ref={wrapRef} className="gm-ctl gm-ctl-top">
+      <div className="gm-search">
+        <label htmlFor="gm-place" className="gm-sr">
+          Search a place in Kenya
+        </label>
+        <Search width={18} height={18} aria-hidden />
+        <input
+          id="gm-place"
+          type="search"
+          autoComplete="off"
+          className="gm-input"
+          placeholder="Search a place in Kenya"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+        />
+        {open && results && (
+          <div className="gm-sres" role="listbox" aria-label="Places">
+            {results.map((r, i) => {
+              const [name, ...rest] = r.display_name.split(",");
+              return (
                 <button
                   key={i}
+                  type="button"
+                  role="option"
+                  aria-selected={false}
                   onClick={() => {
                     onFly(parseFloat(r.lat), parseFloat(r.lon));
-                    setQuery(r.display_name.split(",")[0].trim());
+                    setQuery(name.trim());
                     setOpen(false);
                   }}
-                  className="block w-full truncate border-b border-border px-2.5 py-1.5 text-left text-xs text-foreground transition-colors last:border-0 hover:bg-muted"
                 >
-                  {r.display_name}
+                  <MapPin width={18} height={18} aria-hidden style={{ color: "var(--accent)" }} />
+                  <span>
+                    <span style={{ fontWeight: 600 }}>{name.trim()}</span>
+                    <small>{rest.slice(0, 2).join(",").trim()}</small>
+                  </span>
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <button
-          onClick={handleNearMe}
-          disabled={locating}
-          title={onNearMe ? "Drop pin at my location" : "Show what's near me"}
-          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-md border border-border bg-card/95 text-foreground shadow-sm transition-colors hover:bg-muted disabled:cursor-default disabled:opacity-60"
-        >
-          {locating ? <Spinner size="sm" /> : <LocateFixed className="h-3.5 w-3.5" />}
-        </button>
+              );
+            })}
+            {results.length === 0 && <span>No places found in Kenya</span>}
+          </div>
+        )}
         {locateError && (
-          <div className="absolute inset-x-0 top-[calc(100%+6px)] z-[801] rounded-md border border-destructive/30 bg-destructive-subtle px-2 py-1.5 text-[11px] text-destructive-subtle-foreground shadow-sm">
-            {locateError}
+          <div className="gm-sres" role="alert">
+            <span>{locateError}</span>
           </div>
         )}
       </div>
+      <button
+        type="button"
+        onClick={handleNearMe}
+        disabled={locating}
+        aria-label="Near me"
+        title={onNearMe ? "Use my location" : "Near me"}
+        className="gm-mbtn"
+        style={{ borderRadius: "50%", width: 46, height: 46 }}
+      >
+        {locating ? <Spinner size="sm" /> : <LocateFixed width={20} height={20} aria-hidden />}
+      </button>
     </div>
   );
 }

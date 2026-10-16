@@ -1,0 +1,58 @@
+name: Deploy main to production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify deploy secrets are set
+        run: |
+          missing=""
+          [ -z "${{ secrets.DEPLOY_HOST }}" ] && missing="$missing DEPLOY_HOST"
+          [ -z "${{ secrets.DEPLOY_USER }}" ] && missing="$missing DEPLOY_USER"
+          [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ] && missing="$missing DEPLOY_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secret(s):$missing — add them to the production environment under Settings > Environments."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create cPanel env
+        run: printf 'VITE_API_URL=https://api.geopinproperties.co.ke/api\nVITE_CPANEL=true\nVITE_GOOGLE_CLIENT_ID=78845422587-grvji9pj20gt9u1teea8sac8kheqg9ju.apps.googleusercontent.com\nVITE_SITE_URL=https://geopinproperties.co.ke\n' > .env.cpanel
+
+      - name: Build (cPanel)
+        run: npm run build:cpanel
+
+      - name: Load deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Trust host key
+        run: ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync build to server
+        run: |
+          rsync -az --delete \
+            dist-cpanel/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/geopinproperties.co.ke/public_html/"

@@ -7,6 +7,8 @@ import {
   useLocation,
   HeadContent,
   Scripts,
+  redirect,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
@@ -15,6 +17,8 @@ import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
+import { isUnderMaintenance } from "@/lib/maintenance";
+import { ALWAYS_OPEN_PATHS } from "@/lib/maintenanceRedirect";
 
 const AUTH_BG_URLS = [
   "https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop",
@@ -43,7 +47,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
 
@@ -83,20 +87,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Geo Pin Properties Kenya — Verified Land & Property Intelligence" },
+      { title: "Geo Pin Properties Kenya — Land & Property Listings on the Map" },
       {
         name: "description",
         content:
-          "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
+          "Explore plotted land parcels, properties and rentals across Kenya using interactive GIS-powered maps.",
       },
       {
         property: "og:title",
-        content: "Geo Pin Properties Kenya — Verified Land & Property Intelligence",
+        content: "Geo Pin Properties Kenya — Land & Property Listings on the Map",
       },
       {
         property: "og:description",
         content:
-          "Explore plotted land parcels, verified properties, and rentals across Kenya using interactive GIS-powered maps.",
+          "Explore plotted land parcels, properties and rentals across Kenya using interactive GIS-powered maps.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Geo Pin Properties" },
@@ -128,16 +132,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           ]),
     ],
   }),
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined" || ALWAYS_OPEN_PATHS.has(location.pathname)) return;
+    if (await isUnderMaintenance()) {
+      throw redirect({ to: "/maintenance", search: { from: location.href } });
+    }
+  },
   shellComponent: import.meta.env.VITE_CPANEL ? undefined : RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("lv_theme");if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})()`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -148,6 +161,23 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+// The home page, the marketing pages, blog posts and the map pages bring their own chrome.
+const OWN_CHROME_PATHS = new Set([
+  "/",
+  "/pricing",
+  "/blog",
+  "/about",
+  "/help",
+  "/contact",
+  "/land",
+  "/rentals",
+  "/explore",
+  "/maintenance",
+  "/privacy",
+  "/terms",
+  "/cookie-policy",
+  "/data-usage",
+]);
 const NO_NAVBAR_PREFIXES = [
   "/dashboard",
   "/manager",
@@ -157,16 +187,15 @@ const NO_NAVBAR_PREFIXES = [
   "/forgot-password",
   "/reset-password",
 ];
-// Full-screen map pages have no room for a page footer.
-const NO_FOOTER_PREFIXES = ["/land", "/rentals", "/explore"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { pathname } = useLocation();
-  // The home page brings its own header and footer.
-  const isHome = pathname === "/";
-  const showNavbar = !isHome && !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
-  const showFooter = showNavbar && !NO_FOOTER_PREFIXES.some((p) => pathname.startsWith(p));
+  const showNavbar =
+    !OWN_CHROME_PATHS.has(pathname) &&
+    !pathname.startsWith("/blog/") &&
+    !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
+  const showFooter = showNavbar;
 
   useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {
@@ -180,7 +209,7 @@ function RootComponent() {
         {showNavbar && <Navbar scrollAware />}
         <Outlet />
         {showFooter && <SiteFooter />}
-        <Toaster position="top-right" richColors />
+        <Toaster position="bottom-center" />
       </AuthProvider>
     </QueryClientProvider>
   );

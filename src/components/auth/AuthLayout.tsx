@@ -1,7 +1,44 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { KenyaMap } from "./KenyaMap";
+import { useTheme } from "@/hooks/useTheme";
 import "./auth.css";
+
+function SunIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z" />
+    </svg>
+  );
+}
 
 export interface AuthMessage {
   h: string;
@@ -29,6 +66,7 @@ export function AuthLayout({
   children: ReactNode;
   wide?: boolean;
 }) {
+  const { theme, toggle } = useTheme();
   const [index, setIndex] = useState(0);
   const [run, setRun] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -126,6 +164,28 @@ export function AuthLayout({
         </aside>
 
         <main className="ga-main">
+          <button
+            type="button"
+            className="ga-theme"
+            onClick={(e: MouseEvent<HTMLButtonElement>) =>
+              toggle({ clientX: e.clientX, clientY: e.clientY })
+            }
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            <span
+              className={`ga-theme-icon ${theme === "dark" ? "ga-theme-icon-left" : "ga-theme-icon-right"}`}
+              aria-hidden="true"
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            </span>
+            <span
+              className={`ga-knob ${theme === "dark" ? "ga-knob-r" : "ga-knob-l"}`}
+              aria-hidden="true"
+            >
+              {theme === "dark" ? <MoonIcon /> : <SunIcon />}
+            </span>
+          </button>
           <div className={`ga-form-col${wide ? " is-wide" : ""}`}>{children}</div>
         </main>
       </div>

@@ -1,9 +1,20 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ParcelSummary } from "@/lib/parcels";
 import type { Property } from "@/lib/properties";
+
+beforeAll(() => {
+  window.matchMedia ??= ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+  })) as unknown as typeof window.matchMedia;
+});
 
 const navigate = vi.fn();
 
@@ -64,6 +75,7 @@ const rental: Property = {
   type: "apartment",
   price: 85000,
   pricePeriod: "month",
+  status: "available",
   minNights: null,
   cleaningFee: null,
   bedrooms: 2,
@@ -169,7 +181,7 @@ describe("Home page", () => {
   it("shows the verified parcel card in the scroll story", () => {
     parcels.data = [parcel];
     render(<HomePage />);
-    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Documents reviewed")).toBeInTheDocument();
     expect(screen.getByText("KES 3,500,000 · Message the owner")).toBeInTheDocument();
   });
 });

@@ -2,26 +2,53 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
-  ArrowRight,
-  Building2,
-  CheckCircle2,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  FileText,
   Lock,
-  Map as MapIcon,
-  Star,
-  UploadCloud,
+  MapPin,
+  Paperclip,
+  Spline,
   X,
 } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
+import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
+import { DOC_TYPES, REQUIRED_DOCS } from "@/lib/kyc";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { CheckoutModal } from "@/components/CheckoutModal";
 import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { useAuth, type NewListingInput } from "@/lib/auth";
-import { kenyaCounties, usePlans } from "@/lib/plans";
+import { api } from "@/lib/api";
+import { kenyaCounties, usePlans, type Plan } from "@/lib/plans";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
+import { hasSelfIntersection, polygonAreaAcres } from "@/lib/mapGeo";
+import { plotStatus } from "@/lib/plotting";
+import { Beacon } from "@/components/dashboard/parts";
+import {
+  DraftNotice,
+  ErrorBox,
+  Field,
+  PhotoPicker,
+  ReviewRows,
+  Segmented,
+  StepHeading,
+  SuccessPanel,
+  ToggleChips,
+  WarnBox,
+  WizardFooter,
+  WizardHeader,
+} from "@/components/dashboard/wizard";
+import "@/components/site/site-pages.css";
+import "@/components/map/map.css";
 
 export const Route = createFileRoute("/dashboard/upload")({
-  head: () => ({ meta: [{ title: "Upload Land — Geo Pin Properties Kenya" }] }),
+  head: () => ({
+    meta: [{ title: "Upload Land — Geo Pin Properties Kenya" }],
+    links: MARKETING_FONT_LINKS,
+  }),
   component: UploadPage,
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
@@ -30,20 +57,20 @@ export const Route = createFileRoute("/dashboard/upload")({
   }),
 });
 
-const steps = ["Basic Details", "Location on Map", "Photos & Documents", "Review & Submit"];
+const steps = ["Basic details", "Location on map", "Photos & documents", "Review & submit"];
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_DEED_BYTES = 10 * 1024 * 1024;
+const DESCRIPTION_MAX = 5000;
+const TITLE_NUMBER = /^[A-Z0-9]+(\/[A-Z0-9]+)+$/;
 
-const DOC_TYPES = [
-  { value: "national_id", label: "National ID" },
-  { value: "title_deed", label: "Title Deed" },
-  { value: "mutation", label: "Mutation Form" },
-  { value: "lease_agreement", label: "Lease Agreement" },
-  { value: "certificate_of_occupancy", label: "Certificate of Occupancy" },
-  { value: "survey_map", label: "Survey Map" },
-  { value: "other", label: "Other" },
-];
+const LAND_TYPES: Record<NonNullable<NewListingInput["landType"]>, string> = {
+  residential: "Residential",
+  commercial: "Commercial",
+  agricultural: "Agricultural",
+  mixed_use: "Mixed Use",
+  industrial: "Industrial",
+};
 
 type SizeUnit = "acres" | "hectares" | "feet";
 
@@ -116,102 +143,140 @@ function sizeToDisplay(
   return widthFt && lengthFt ? `${widthFt} x ${lengthFt} ft` : "";
 }
 
-type LatLng = { lat: number; lng: number };
-
-function segmentsIntersect(p1: LatLng, p2: LatLng, p3: LatLng, p4: LatLng): boolean {
-  const d = (a: LatLng, b: LatLng, c: LatLng) =>
-    (c.lng - a.lng) * (b.lat - a.lat) - (b.lng - a.lng) * (c.lat - a.lat);
-  const d1 = d(p3, p4, p1);
-  const d2 = d(p3, p4, p2);
-  const d3 = d(p1, p2, p3);
-  const d4 = d(p1, p2, p4);
-  return (d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)
-    ? (d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)
-    : false;
-}
-
-function hasSelfIntersection(points: LatLng[]): boolean {
-  const n = points.length;
-  if (n < 4) return false;
-  for (let i = 0; i < n; i++) {
-    const a1 = points[i];
-    const a2 = points[(i + 1) % n];
-    for (let j = i + 1; j < n; j++) {
-      if (j === i || (j + 1) % n === i || (i + 1) % n === j) continue;
-      if (segmentsIntersect(a1, a2, points[j], points[(j + 1) % n])) return true;
-    }
-  }
-  return false;
-}
-
-function polygonAreaAcres(points: { lat: number; lng: number }[]): number {
-  const R = 6378137;
-  const lat0 = (points.reduce((s, p) => s + p.lat, 0) / points.length) * (Math.PI / 180);
-  const xy = points.map((p): [number, number] => [
-    R * (p.lng * (Math.PI / 180)) * Math.cos(lat0),
-    R * (p.lat * (Math.PI / 180)),
-  ]);
-  let area = 0;
-  for (let i = 0; i < xy.length; i++) {
-    const [x1, y1] = xy[i];
-    const [x2, y2] = xy[(i + 1) % xy.length];
-    area += x1 * y2 - x2 * y1;
-  }
-  return Math.abs(area) / 2 / 4046.8564224;
-}
-
 function ListingTypeChooser({
+  photoLimit,
   onLand,
   onProperty,
 }: {
+  photoLimit: number | null;
   onLand: () => void;
   onProperty: () => void;
 }) {
-  const options = [
-    {
-      icon: <MapIcon className="h-6 w-6 text-[#15803D]" />,
-      title: "Land parcel",
-      body: "A plot or acreage with a mapped boundary and title documents.",
-      cta: "Upload land",
-      onClick: onLand,
-    },
-    {
-      icon: <Building2 className="h-6 w-6 text-[#15803D]" />,
-      title: "Rental, BnB or home for sale",
-      body: "An apartment, house or short stay pinned to a single location.",
-      cta: "Post a property",
-      onClick: onProperty,
-    },
-  ];
-
+  const photos = photoLimit ? `Up to ${photoLimit} photos` : "Photos";
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="text-xl font-semibold text-foreground md:text-2xl">What are you posting?</h1>
-      <p className="text-sm text-muted-foreground">Both go live once our team approves them.</p>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {options.map((o) => (
-          <button
-            key={o.title}
-            onClick={o.onClick}
-            className="flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-colors hover:border-[#15803D] hover:bg-muted/40"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#15803D]/10">
-              {o.icon}
-            </div>
-            <div>
-              <div className="text-base font-semibold text-foreground">{o.title}</div>
-              <p className="mt-1 text-sm text-muted-foreground">{o.body}</p>
-            </div>
-            <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-[#15803D]">
-              {o.cta} <ArrowRight className="h-4 w-4" />
-            </span>
-          </button>
-        ))}
+    <>
+      <div className="gd-r">
+        <h1 className="gd-h1">What are you posting?</h1>
+        <p className="gd-sub">Both go live once our team approves them, usually within 24 hours.</p>
       </div>
-    </div>
+      <div className="gd-r gd-choose">
+        <button type="button" className="gd-card gd-pick" onClick={onLand}>
+          <span className="gd-art" style={{ height: 130 }}>
+            <svg
+              viewBox="0 0 220 120"
+              width="100%"
+              height="130"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+            >
+              <path
+                d="M0 98 C 60 90, 120 112, 220 80"
+                stroke="var(--card)"
+                strokeWidth="12"
+                fill="none"
+              />
+              <path
+                d="M44 30 152 16 176 92 66 106Z"
+                fill="var(--brand)"
+                fillOpacity=".18"
+                stroke="var(--brand)"
+                strokeWidth="2.5"
+                strokeDasharray="7 5"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {[
+              [36, 10],
+              [144, -4],
+              [168, 72],
+              [58, 86],
+            ].map(([x, y]) => (
+              <span
+                key={`${x}-${y}`}
+                className="absolute"
+                style={{ left: `calc(50% - 110px + ${x}px)`, top: y }}
+              >
+                <Beacon width={16} height={22} />
+              </span>
+            ))}
+          </span>
+          <span className="gd-h2 text-[22px]">Land parcel</span>
+          <span className="leading-normal text-muted-foreground">
+            A plot or acreage with a mapped boundary and title documents.
+          </span>
+          <span className="gd-need">
+            <span>Title number</span>
+            <span>National ID + title deed</span>
+            <span>{photos}</span>
+          </span>
+          <span className="gd-link">
+            Upload land <ChevronRight size={16} aria-hidden="true" />
+          </span>
+        </button>
+        <button type="button" className="gd-card gd-pick" onClick={onProperty}>
+          <span className="gd-art" style={{ height: 130 }}>
+            <svg
+              viewBox="0 0 220 120"
+              width="100%"
+              height="130"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+            >
+              <path
+                d="M0 98 C 60 90, 120 112, 220 80"
+                stroke="var(--card)"
+                strokeWidth="12"
+                fill="none"
+              />
+              <path d="M84 92V58l26-22 26 22v34Z" fill="var(--brand)" />
+              <path d="M102 92V74h16v18" fill="var(--background-2)" />
+              <path d="M140 92V48h40v44Z" fill="var(--brand)" fillOpacity=".55" />
+              <path
+                d="M148 56h8v8h-8zM164 56h8v8h-8zM148 70h8v8h-8zM164 70h8v8h-8z"
+                fill="var(--background-2)"
+              />
+            </svg>
+          </span>
+          <span className="gd-h2 text-[22px]">Rental, BnB or home for sale</span>
+          <span className="leading-normal text-muted-foreground">
+            An apartment, house or short stay pinned to a single location.
+          </span>
+          <span className="gd-need">
+            <span>Estate or address</span>
+            <span>{photos}</span>
+            <span>Posting fee for rentals</span>
+          </span>
+          <span className="gd-link">
+            Post a property <ChevronRight size={16} aria-hidden="true" />
+          </span>
+        </button>
+      </div>
+    </>
   );
 }
+
+const emptyForm = {
+  parcelNumber: "",
+  phone: "",
+  county: "",
+  area: "",
+  sizeUnit: "acres" as SizeUnit,
+  sizeAcres: "",
+  sizeHectares: "",
+  sizeWidthFt: "",
+  sizeLengthFt: "",
+  price: "",
+  description: "",
+  listingType: "sale" as "sale" | "lease",
+  landType: "residential" as NewListingInput["landType"],
+  utilities: [] as string[],
+  pin: null as [number, number] | null,
+  boundary: null as { lat: number; lng: number }[] | null,
+  photos: [] as { name: string; url: string; file: File }[],
+  documents: [] as { type: string; file: File }[],
+};
+
+type BasicsField = "parcelNumber" | "county" | "size" | "price";
 
 function UploadPage() {
   const { user, ready, addListing, fetchListing, updateListing } = useAuth();
@@ -222,16 +287,19 @@ function UploadPage() {
   const editId = search.edit;
   const draft = useRef(editId ? null : loadDraft()).current;
   const [step, setStep] = useState(draft?.step ?? 0);
+  const [maxStep, setMaxStep] = useState(draft?.step ?? 0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const [fileError, setFileError] = useState("");
-  const [dragActive, setDragActive] = useState(false);
+  const [docError, setDocError] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [showDraftNotice, setShowDraftNotice] = useState(!!draft);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
+  const [showErrors, setShowErrors] = useState(false);
   const [loadingListing, setLoadingListing] = useState(!!editId);
   const [loadError, setLoadError] = useState("");
   const [existingPhotos, setExistingPhotos] = useState<
@@ -239,26 +307,32 @@ function UploadPage() {
   >([]);
   const [removePhotoIds, setRemovePhotoIds] = useState<string[]>([]);
   const [coverPhotoId, setCoverPhotoId] = useState<string | undefined>(undefined);
+  // Bumped to shake the "crosses itself" note, and to open the map's walkthrough.
+  const [mapAttention, setMapAttention] = useState(0);
+  const [tutorialKey, setTutorialKey] = useState(0);
+  const [overlapWarning, setOverlapWarning] = useState(false);
+  const [savedWithOverlap, setSavedWithOverlap] = useState(false);
+  const docInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState({
-    parcelNumber: draft?.parcelNumber ?? "",
-    phone: draft?.phone ?? "",
-    county: draft?.county ?? "",
-    area: draft?.area ?? "",
-    sizeUnit: draft?.sizeUnit ?? ("acres" as SizeUnit),
-    sizeAcres: draft?.sizeAcres ?? "",
-    sizeHectares: draft?.sizeHectares ?? "",
-    sizeWidthFt: draft?.sizeWidthFt ?? "",
-    sizeLengthFt: draft?.sizeLengthFt ?? "",
-    price: draft?.price ?? "",
-    description: draft?.description ?? "",
-    listingType: draft?.listingType ?? ("sale" as "sale" | "lease"),
-    landType: draft?.landType ?? ("residential" as NewListingInput["landType"]),
-    utilities: draft?.utilities ?? ([] as string[]),
-    pin: draft?.pin ?? (null as [number, number] | null),
-    boundary: draft?.boundary ?? (null as { lat: number; lng: number }[] | null),
-    photos: [] as { name: string; url: string; file: File }[],
-    documents: [] as { type: string; file: File }[],
+    parcelNumber: draft?.parcelNumber ?? emptyForm.parcelNumber,
+    phone: draft?.phone ?? emptyForm.phone,
+    county: draft?.county ?? emptyForm.county,
+    area: draft?.area ?? emptyForm.area,
+    sizeUnit: draft?.sizeUnit ?? emptyForm.sizeUnit,
+    sizeAcres: draft?.sizeAcres ?? emptyForm.sizeAcres,
+    sizeHectares: draft?.sizeHectares ?? emptyForm.sizeHectares,
+    sizeWidthFt: draft?.sizeWidthFt ?? emptyForm.sizeWidthFt,
+    sizeLengthFt: draft?.sizeLengthFt ?? emptyForm.sizeLengthFt,
+    price: draft?.price ?? emptyForm.price,
+    description: draft?.description ?? emptyForm.description,
+    listingType: draft?.listingType ?? emptyForm.listingType,
+    landType: draft?.landType ?? emptyForm.landType,
+    utilities: draft?.utilities ?? emptyForm.utilities,
+    pin: draft?.pin ?? emptyForm.pin,
+    boundary: draft?.boundary ?? emptyForm.boundary,
+    photos: emptyForm.photos,
+    documents: emptyForm.documents,
   });
 
   useEffect(() => {
@@ -298,6 +372,7 @@ function UploadPage() {
         }));
         setExistingPhotos(d.photos.map((p) => ({ id: p.id, url: p.url, isCover: p.isCover })));
         setCoverPhotoId(d.photos.find((p) => p.isCover)?.id);
+        setMaxStep(steps.length - 1);
       })
       .catch(() => setLoadError("Couldn't load this listing. Please try again."))
       .finally(() => setLoadingListing(false));
@@ -314,6 +389,32 @@ function UploadPage() {
     const { photos: _photos, documents: _documents, ...draftFields } = form;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, ...draftFields }));
   }, [step, form, editId]);
+
+  // Warn while plotting when the location covers land that is already listed.
+  // The server flags it for review on submit either way; this only gives an
+  // honest seller the chance to fix a mistake first.
+  useEffect(() => {
+    if (step !== 1 || (!form.pin && !form.boundary)) {
+      setOverlapWarning(false);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      api
+        .post<{ overlaps: boolean }>("/user/listings/overlap-check", {
+          ...(form.boundary
+            ? { boundary: form.boundary }
+            : { latitude: form.pin?.[0], longitude: form.pin?.[1] }),
+          except_id: editId,
+        })
+        .then(({ overlaps }) => !cancelled && setOverlapWarning(overlaps))
+        .catch(() => {});
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [step, form.pin, form.boundary, editId]);
 
   // Photos live in IndexedDB (File objects aren't JSON-serializable, unlike
   // the fields above) so they're saved separately, in their own effect.
@@ -343,31 +444,32 @@ function UploadPage() {
 
   if (!user || user.role === "account_manager") return null;
 
+  const plan = plans.find((p) => p.id === user.plan);
+
   if (!editId && search.type !== "land") {
     return (
       <DashboardShell active="upload" onChange={() => {}}>
         <ListingTypeChooser
+          photoLimit={plan?.photos ?? null}
           onLand={() =>
             navigate({ to: "/dashboard/upload", search: { edit: undefined, type: "land" } })
           }
-          onProperty={() => navigate({ to: "/dashboard/properties" })}
+          onProperty={() => navigate({ to: "/dashboard/properties", search: { edit: undefined } })}
         />
       </DashboardShell>
     );
   }
 
-  const plan = plans.find((p) => p.id === user.plan);
   const used = user.listings.length;
   const remaining = user.maxListings === Infinity ? Infinity : user.maxListings - used;
   const limitReached = !editId && remaining <= 0;
+  const planName = plan?.name ?? user.plan;
   const photoLimit = plan?.photos ?? 0;
   const totalPhotoCount = existingPhotos.length + form.photos.length;
   const documentLimit = plan?.documents ?? 0;
   const propertyDocCount = form.documents.filter((d) => d.type !== "national_id").length;
-  const hasRequiredDocs =
-    !!editId ||
-    (form.documents.some((d) => d.type === "national_id") &&
-      form.documents.some((d) => d.type === "title_deed"));
+  const attachedTypes = new Set(form.documents.map((d) => d.type));
+  const hasRequiredDocs = !!editId || REQUIRED_DOCS.every((r) => attachedTypes.has(r.value));
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -408,14 +510,62 @@ function UploadPage() {
   const tracedAreaAcres = form.boundary ? polygonAreaAcres(form.boundary) : null;
   const boundarySelfIntersects = form.boundary ? hasSelfIntersection(form.boundary) : false;
 
+  const basicsErrors: Partial<Record<BasicsField, string>> = {};
+  if (!form.parcelNumber) basicsErrors.parcelNumber = "Enter the title number from the title deed.";
+  else if (!TITLE_NUMBER.test(form.parcelNumber))
+    basicsErrors.parcelNumber = "Use the format on the deed, like KAJ/KTG/4521.";
+  if (!form.county) basicsErrors.county = "Choose the county the land is in.";
+  if (sizeAcres == null) basicsErrors.size = "Enter a size greater than 0.";
+  if (!(Number(form.price) > 0)) basicsErrors.price = "Enter the asking price in KES.";
+  const shownErrors = showErrors ? basicsErrors : {};
+
   const canNext =
     step === 0
-      ? !!(form.parcelNumber && form.county && sizeAcres != null && form.price)
+      ? true
       : step === 1
-        ? (!!form.pin || !!form.boundary) && !boundarySelfIntersects
+        ? !!form.pin || !!form.boundary
         : step === 2
           ? hasRequiredDocs
           : true;
+
+  const goTo = (s: number) => {
+    setStep(s);
+    setMaxStep((m) => Math.max(m, s));
+  };
+
+  // Step 1 is checked on Next rather than by disabling it, so the seller sees
+  // what's missing. A boundary that crosses itself shakes the map note instead.
+  const goNext = () => {
+    if (step === 0) {
+      const first = (["parcelNumber", "county", "size", "price"] as const).find(
+        (k) => basicsErrors[k],
+      );
+      if (first) {
+        setShowErrors(true);
+        document.getElementById(`u-${first}`)?.focus();
+        return;
+      }
+    }
+    if (step === 1 && boundarySelfIntersects) {
+      setMapAttention((n) => n + 1);
+      return;
+    }
+    goTo(step + 1);
+  };
+
+  const addDocument = (f: File | null) => {
+    if (!f) return;
+    if (f.type && f.type !== "application/pdf" && !f.type.startsWith("image/")) {
+      setDocError(`${f.name} must be a PDF or image file.`);
+      return;
+    }
+    if (f.size > MAX_DEED_BYTES) {
+      setDocError(`${f.name} is over the 10MB limit per document.`);
+      return;
+    }
+    setDocError("");
+    set("documents", [...form.documents, { type: docType, file: f }]);
+  };
 
   const submit = async () => {
     if (limitReached) {
@@ -447,7 +597,7 @@ function UploadPage() {
     };
     try {
       if (editId) {
-        await updateListing(
+        const saved = await updateListing(
           editId,
           {
             ...payload,
@@ -457,8 +607,10 @@ function UploadPage() {
           setUploadProgress,
           abortRef,
         );
+        setSavedWithOverlap(saved.locationOverlaps);
       } else {
-        await addListing(payload, setUploadProgress, abortRef);
+        const saved = await addListing(payload, setUploadProgress, abortRef);
+        setSavedWithOverlap(saved.locationOverlaps);
         clearDraft();
       }
       setSubmitted(true);
@@ -472,24 +624,81 @@ function UploadPage() {
     }
   };
 
+  // New photos go up in order and the first becomes the cover, so starring one
+  // moves it to the front. Existing photos (editing) take a cover id instead.
+  const pickerPhotos = [
+    ...existingPhotos.map((p) => ({ key: p.id, url: p.url })),
+    ...form.photos.map((p) => ({ key: p.url, url: p.url })),
+  ];
+  const coverKey = editId
+    ? (coverPhotoId ?? (existingPhotos.length ? undefined : form.photos[0]?.url))
+    : form.photos[0]?.url;
+
+  const reviewRows = [
+    { label: "Title number", value: form.parcelNumber || "—", step: 0, mono: true },
+    { label: "County", value: `${form.county}${form.area ? ` · ${form.area}` : ""}`, step: 0 },
+    { label: "Size", value: sizeDisplay || "—", step: 0 },
+    {
+      label: "Price",
+      value: form.price ? `KES ${Number(form.price).toLocaleString()}` : "—",
+      step: 0,
+    },
+    { label: "Contact phone", value: form.phone || "From your profile", step: 0 },
+    {
+      label: "Listing type",
+      value: form.listingType === "sale" ? "For sale" : "For lease",
+      step: 0,
+    },
+    { label: "Land type", value: LAND_TYPES[form.landType!] ?? "—", step: 0 },
+    {
+      label: "Location",
+      value: form.boundary
+        ? `Traced (${form.boundary.length} corners)`
+        : form.pin
+          ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
+          : "Not set",
+      step: 1,
+      mono: !form.boundary && !!form.pin,
+    },
+    { label: "Photos", value: `${totalPhotoCount} attached`, step: 2 },
+    {
+      label: "Documents",
+      value: form.documents.length ? `${form.documents.length} attached` : "None",
+      step: 2,
+    },
+  ];
+
+  const nextLabel =
+    step < steps.length - 1
+      ? "Next"
+      : submitting
+        ? editId
+          ? "Saving…"
+          : "Publishing…"
+        : editId
+          ? "Save changes"
+          : "Publish listing";
+
   return (
     <DashboardShell active="upload" onChange={() => {}}>
       {step === 1 && isMobile && !submitted && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
+        <div className="gs-root gm-full">
+          <div className="gm-mtop">
+            <button type="button" className="gm-link" onClick={() => setStep(0)}>
               <ArrowLeft className="h-4 w-4" /> Back
             </button>
-            <span className="mx-auto text-sm font-semibold text-foreground">
-              Pin or trace your land
-            </span>
-            <span className="w-12 shrink-0" aria-hidden="true" />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Pin or trace your land</span>
+            <button
+              type="button"
+              className="gm-mbtn"
+              onClick={() => setTutorialKey((n) => n + 1)}
+              aria-label="How it works"
+              style={{ width: 40, height: 40, borderRadius: "50%", boxShadow: "none" }}
+            >
+              <CircleHelp className="h-[18px] w-[18px]" />
+            </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden p-3">
+          <div className="gm-fullmap">
             <LandBoundaryMap
               pin={form.pin}
               boundary={form.boundary}
@@ -497,166 +706,144 @@ function UploadPage() {
               onBoundaryChange={(b) => set("boundary", b)}
               county={form.county}
               hintText=""
-              heightClassName="h-[calc(100dvh-12rem)]"
+              heightClassName="h-full"
+              notes={false}
+              openTutorialKey={tutorialKey}
             />
           </div>
-          <div className="shrink-0 border-t border-border p-3">
-            <p
-              className={`mb-2 truncate text-xs font-medium ${
-                boundarySelfIntersects ? "text-destructive" : "text-muted-foreground"
-              }`}
-            >
-              {boundarySelfIntersects
-                ? 'This boundary crosses itself — tap "Retrace boundary" to redraw it.'
-                : form.boundary
-                  ? `Boundary traced — ${form.boundary.length} points${
-                      tracedAreaAcres != null ? ` · ≈ ${tracedAreaAcres.toFixed(2)} acres` : ""
-                    }`
-                  : form.pin
-                    ? `Pin set — ${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
-                    : "Tap the map to drop a pin, or trace your land's exact edge."}
-            </p>
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              disabled={!canNext}
-              className="w-full rounded-md bg-[#15803D] px-4 py-3 text-sm font-semibold text-white hover:bg-[#166534] disabled:opacity-50"
-            >
+          <div className="gm-mbot">
+            <span className="gm-pline" role="status" style={{ fontWeight: 600 }}>
+              {plotStatus(form.pin, form.boundary)}
+            </span>
+            {overlapWarning && (
+              <span className="gm-pline" data-tone="warn" role="status" style={{ fontSize: 13 }}>
+                Part of this location is already listed. We&apos;ll compare title deeds before it
+                goes live.
+              </span>
+            )}
+            {boundarySelfIntersects && (
+              <span
+                key={mapAttention}
+                className={`gm-pline${mapAttention ? " gm-shake" : ""}`}
+                data-tone="error"
+                role="alert"
+                style={{ fontSize: 13 }}
+              >
+                This boundary crosses itself. Tap &quot;Retrace boundary&quot; to redraw it.
+              </span>
+            )}
+            <button type="button" className="gm-btn" onClick={goNext} disabled={!canNext}>
               Confirm location
             </button>
           </div>
         </div>
       )}
-      <div className="mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl">
-        <button
-          onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })}
-          className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
-        </button>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {editId ? "Edit Listing" : "Upload Land"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {editId
+
+      <WizardHeader
+        backLabel={editId ? "Back to my listings" : "What are you posting?"}
+        onBack={() =>
+          editId
+            ? navigate({ to: "/dashboard", search: { tab: "listings" } })
+            : navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } })
+        }
+        title={editId ? "Edit listing" : "Upload land"}
+        sub={
+          editId
             ? "Changes go back under review before they're visible again."
-            : "List a parcel in 4 quick steps."}
-        </p>
+            : "List a parcel in 4 quick steps. Everything saves as you go."
+        }
+        steps={steps}
+        step={submitted ? steps.length : step}
+        maxStep={submitted ? -1 : maxStep}
+        onStep={setStep}
+      />
 
-        {/* Step indicator */}
-        <div className="mt-6 flex items-center gap-2">
-          {steps.map((s, i) => (
-            <div key={s} className="flex flex-1 items-center gap-2">
-              <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                  i < step
-                    ? "bg-[#15803D] text-white"
-                    : i === step
-                      ? "border-2 border-[#15803D] bg-card text-[#15803D]"
-                      : "border border-border bg-card text-muted-foreground"
-                }`}
-              >
-                {i + 1}
-              </div>
-              <div className="hidden text-xs font-medium text-foreground sm:block">{s}</div>
-              {i < steps.length - 1 && (
-                <div className={`h-px flex-1 ${i < step ? "bg-[#15803D]" : "bg-border"}`} />
-              )}
-            </div>
-          ))}
-        </div>
+      {showDraftNotice && !submitted && !editId && (
+        <DraftNotice
+          text="Restored your unsaved draft from earlier, including your photos. Documents aren't saved in drafts, so you'll need to re-attach those."
+          onDismiss={() => setShowDraftNotice(false)}
+        />
+      )}
 
-        {showDraftNotice && !submitted && !editId && (
-          <div className="mt-4 flex items-center justify-between rounded-md border border-[#15803D]/30 bg-[#15803D]/5 px-3 py-2 text-xs text-foreground">
-            <span>
-              Restored your unsaved draft from earlier, including your photos. Documents aren't
-              saved in drafts — you'll need to re-attach those.
-            </span>
-            <button
-              onClick={() => setShowDraftNotice(false)}
-              className="font-medium text-[#15803D] hover:underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
+      <div className="gd-r gd-card p-[26px]">
         {loadingListing ? (
-          <div className="mt-8 flex justify-center">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#15803D] border-t-transparent" />
+          <div className="flex justify-center py-10">
+            <span className="gd-spin" />
           </div>
         ) : loadError ? (
-          <div className="mt-8 rounded-lg border border-red-300 bg-red-50 p-6 text-center text-sm text-red-700">
-            {loadError}
-          </div>
+          <ErrorBox>{loadError}</ErrorBox>
         ) : submitted ? (
-          <div className="mt-8 rounded-lg border border-border bg-card p-8 text-center shadow-sm">
-            <CheckCircle2 className="mx-auto h-10 w-10 text-[#16A34A]" />
-            <h2 className="mt-3 text-lg font-semibold text-foreground">
-              {editId ? "Changes saved" : "Listing submitted"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {editId
+          <SuccessPanel
+            title={editId ? "Changes saved" : "Listing submitted"}
+            text={
+              editId
                 ? "Your changes have been saved and the listing is back under review."
-                : "Your listing is under review and will appear on the map within 24 hours."}
-            </p>
-            <div className="mt-5 flex justify-center gap-2">
+                : "Your listing is under review and will appear on the map within 24 hours."
+            }
+          >
+            {savedWithOverlap && (
+              <div className="max-w-[520px]">
+                <WarnBox>
+                  This location overlaps another listing, so our team will compare the title deeds
+                  before it goes live. This can take a little longer.
+                </WarnBox>
+              </div>
+            )}
+            <div className="mt-1.5 flex flex-wrap justify-center gap-2.5">
               <button
-                onClick={() => navigate({ to: "/dashboard", search: { tab: undefined } })}
-                className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                type="button"
+                className="gd-btn"
+                onClick={() => navigate({ to: "/dashboard", search: { tab: "listings" } })}
               >
-                Go to dashboard
+                Go to my listings
               </button>
               {!editId && (
                 <button
+                  type="button"
+                  className="gd-btn gd-o"
                   onClick={() => {
                     setSubmitted(false);
                     setStep(0);
-                    setForm({
-                      parcelNumber: "",
-                      phone: "",
-                      county: "",
-                      area: "",
-                      sizeUnit: "acres",
-                      sizeAcres: "",
-                      sizeHectares: "",
-                      sizeWidthFt: "",
-                      sizeLengthFt: "",
-                      price: "",
-                      description: "",
-                      listingType: "sale",
-                      landType: "residential",
-                      utilities: [],
-                      pin: null,
-                      boundary: null,
-                      photos: [],
-                      documents: [],
-                    });
+                    setMaxStep(0);
+                    setShowErrors(false);
+                    setForm(emptyForm);
                   }}
-                  className="rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534]"
                 >
                   Upload another
                 </button>
               )}
             </div>
-          </div>
+          </SuccessPanel>
         ) : (
-          <div className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <>
+            <StepHeading title={steps[step]} step={step} total={steps.length} />
+
             {step === 0 && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Title number" full>
+              <div className="gd-form">
+                <Field
+                  id="u-parcelNumber"
+                  label="Title number"
+                  hint="Exactly as it appears on the title deed."
+                  error={shownErrors.parcelNumber}
+                  full
+                >
                   <input
-                    className="lv-input"
+                    id="u-parcelNumber"
+                    className="gd-input gd-mono"
                     placeholder="e.g. KAJ/KTG/4521"
+                    autoCapitalize="characters"
                     value={form.parcelNumber}
-                    onChange={(e) => set("parcelNumber", e.target.value)}
+                    onChange={(e) => set("parcelNumber", e.target.value.toUpperCase())}
+                    aria-invalid={!!shownErrors.parcelNumber}
                   />
                 </Field>
-                <Field label="County">
+                <Field id="u-county" label="County" error={shownErrors.county}>
                   <select
-                    className="lv-input"
+                    id="u-county"
+                    className="gd-input"
                     value={form.county}
                     onChange={(e) => set("county", e.target.value)}
+                    aria-invalid={!!shownErrors.county}
                   >
                     <option value="">Select county</option>
                     {kenyaCounties.map((c) => (
@@ -666,99 +853,105 @@ function UploadPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Sub-county / Area">
+                <Field id="u-area" label="Sub-county / Area" optional>
                   <input
-                    className="lv-input"
+                    id="u-area"
+                    className="gd-input"
                     placeholder="e.g. Kitengela"
                     value={form.area}
                     onChange={(e) => set("area", e.target.value)}
                   />
                 </Field>
-                <Field label="Land size" full>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="w-40">
-                      <select
-                        className="lv-input"
-                        value={form.sizeUnit}
-                        onChange={(e) => set("sizeUnit", e.target.value as SizeUnit)}
-                      >
-                        <option value="acres">Acres</option>
-                        <option value="hectares">Hectares</option>
-                        <option value="feet">Feet (W x L)</option>
-                      </select>
-                    </div>
-                    {form.sizeUnit === "acres" && (
-                      <div className="w-28">
-                        <input
-                          className="lv-input"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="e.g. 1.5"
-                          value={form.sizeAcres}
-                          onChange={(e) => set("sizeAcres", e.target.value)}
-                        />
-                      </div>
-                    )}
-                    {form.sizeUnit === "hectares" && (
-                      <div className="w-28">
-                        <input
-                          className="lv-input"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="e.g. 0.5"
-                          value={form.sizeHectares}
-                          onChange={(e) => set("sizeHectares", e.target.value)}
-                        />
-                      </div>
-                    )}
-                    {form.sizeUnit === "feet" && (
+                <Field label="Land size" error={shownErrors.size} full>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <Segmented
+                      label="Size unit"
+                      value={form.sizeUnit}
+                      onChange={(u) => set("sizeUnit", u)}
+                      options={[
+                        ["acres", "Acres"],
+                        ["hectares", "Hectares"],
+                        ["feet", "Feet W × L"],
+                      ]}
+                    />
+                    {form.sizeUnit === "feet" ? (
                       <>
-                        <div className="w-24">
-                          <input
-                            className="lv-input"
-                            type="number"
-                            min="0"
-                            placeholder="Width"
-                            value={form.sizeWidthFt}
-                            onChange={(e) => set("sizeWidthFt", e.target.value)}
-                          />
-                        </div>
-                        <span className="text-sm text-muted-foreground">x</span>
-                        <div className="w-24">
-                          <input
-                            className="lv-input"
-                            type="number"
-                            min="0"
-                            placeholder="Length"
-                            value={form.sizeLengthFt}
-                            onChange={(e) => set("sizeLengthFt", e.target.value)}
-                          />
-                        </div>
-                        <span className="text-sm text-muted-foreground">ft</span>
+                        <input
+                          id="u-size"
+                          className="gd-input w-[120px]"
+                          type="number"
+                          min="0"
+                          inputMode="decimal"
+                          placeholder="Width"
+                          aria-label="Width in feet"
+                          value={form.sizeWidthFt}
+                          onChange={(e) => set("sizeWidthFt", e.target.value)}
+                          aria-invalid={!!shownErrors.size}
+                        />
+                        <span className="text-muted-foreground">×</span>
+                        <input
+                          className="gd-input w-[120px]"
+                          type="number"
+                          min="0"
+                          inputMode="decimal"
+                          placeholder="Length"
+                          aria-label="Length in feet"
+                          value={form.sizeLengthFt}
+                          onChange={(e) => set("sizeLengthFt", e.target.value)}
+                          aria-invalid={!!shownErrors.size}
+                        />
+                        <span className="text-muted-foreground">ft</span>
                       </>
+                    ) : (
+                      <input
+                        id="u-size"
+                        className="gd-input w-40"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        aria-label={
+                          form.sizeUnit === "acres" ? "Size in acres" : "Size in hectares"
+                        }
+                        placeholder={form.sizeUnit === "acres" ? "e.g. 1.5" : "e.g. 0.5"}
+                        value={form.sizeUnit === "acres" ? form.sizeAcres : form.sizeHectares}
+                        onChange={(e) =>
+                          set(
+                            form.sizeUnit === "acres" ? "sizeAcres" : "sizeHectares",
+                            e.target.value,
+                          )
+                        }
+                        aria-invalid={!!shownErrors.size}
+                      />
+                    )}
+                    {sizeAcres != null && form.sizeUnit !== "acres" && (
+                      <span className="gd-mono text-[13.5px] text-muted-foreground">
+                        ≈ {sizeAcres.toFixed(2)} acres
+                      </span>
                     )}
                   </div>
-                  {sizeAcres != null && form.sizeUnit !== "acres" && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      ≈ {sizeAcres.toFixed(2)} acres
-                    </p>
-                  )}
                 </Field>
-                <Field label="Asking price (Ksh)">
+                <Field id="u-price" label="Asking price (KES)" error={shownErrors.price}>
                   <input
-                    className="lv-input"
+                    id="u-price"
+                    className="gd-input"
                     type="text"
                     inputMode="numeric"
                     placeholder="e.g. 1,850,000"
                     value={formatThousands(form.price)}
                     onChange={(e) => set("price", toDigits(e.target.value))}
+                    aria-invalid={!!shownErrors.price}
                   />
                 </Field>
-                <Field label="Contact phone">
+                <Field
+                  id="u-phone"
+                  label="Contact phone"
+                  optional
+                  hint="Leave blank to use the number on your profile."
+                >
                   <input
-                    className="lv-input"
+                    id="u-phone"
+                    className="gd-input"
                     type="tel"
                     placeholder="+254 7XX XXX XXX"
                     value={form.phone}
@@ -766,65 +959,49 @@ function UploadPage() {
                   />
                 </Field>
                 <Field label="Listing type">
-                  <select
-                    className="lv-input"
+                  <Segmented
+                    label="Listing type"
+                    grid
                     value={form.listingType}
-                    onChange={(e) => set("listingType", e.target.value as "sale" | "lease")}
-                  >
-                    <option value="sale">For Sale</option>
-                    <option value="lease">For Lease</option>
-                  </select>
+                    onChange={(v) => set("listingType", v)}
+                    options={[
+                      ["sale", "For sale"],
+                      ["lease", "For lease"],
+                    ]}
+                  />
                 </Field>
-                <Field label="Land type">
+                <Field id="u-use" label="Land type">
                   <select
-                    className="lv-input"
+                    id="u-use"
+                    className="gd-input"
                     value={form.landType}
                     onChange={(e) => set("landType", e.target.value as NewListingInput["landType"])}
                   >
-                    <option value="residential">Residential</option>
-                    <option value="commercial">Commercial</option>
-                    <option value="agricultural">Agricultural</option>
-                    <option value="mixed_use">Mixed Use</option>
-                    <option value="industrial">Industrial</option>
+                    {Object.entries(LAND_TYPES).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="Utilities available" full>
-                  <div className="flex flex-wrap gap-2">
-                    {["Water", "Electricity", "Fibre", "Sewer", "3-Phase"].map((u) => {
-                      const checked = form.utilities.includes(u);
-                      return (
-                        <label
-                          key={u}
-                          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium ${
-                            checked
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background text-foreground hover:bg-muted"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={checked}
-                            onChange={() =>
-                              set(
-                                "utilities",
-                                checked
-                                  ? form.utilities.filter((x) => x !== u)
-                                  : [...form.utilities, u],
-                              )
-                            }
-                          />
-                          {u}
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <ToggleChips
+                    options={["Water", "Electricity", "Fibre", "Sewer", "3-Phase"]}
+                    selected={form.utilities}
+                    onChange={(v) => set("utilities", v)}
+                  />
                 </Field>
-                <Field label="Description" full>
+                <Field
+                  id="u-desc"
+                  label="Description"
+                  hint={`${form.description.length.toLocaleString()} / ${DESCRIPTION_MAX.toLocaleString()}`}
+                  full
+                >
                   <textarea
-                    className="lv-input"
+                    id="u-desc"
+                    className="gd-input"
                     rows={4}
-                    maxLength={5000}
+                    maxLength={DESCRIPTION_MAX}
                     placeholder="Describe the parcel — access, nearby developments, why it's a good investment…"
                     value={form.description}
                     onChange={(e) => set("description", e.target.value)}
@@ -834,240 +1011,247 @@ function UploadPage() {
             )}
 
             {step === 1 && !isMobile && (
-              <div>
-                <LandBoundaryMap
-                  pin={form.pin}
-                  boundary={form.boundary}
-                  onPinChange={(p) => set("pin", p)}
-                  onBoundaryChange={(b) => set("boundary", b)}
-                  county={form.county}
-                />
-                {boundarySelfIntersects && (
-                  <p className="mt-2 text-xs font-medium text-destructive">
-                    This boundary crosses itself — tap &quot;Retrace boundary&quot; to redraw it
-                    before continuing.
+              <div className="gs-root gm-wiz">
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <h2 className="gm-h" style={{ fontSize: "clamp(26px, 3vw, 36px)" }}>
+                    Where is your land?
+                  </h2>
+                  <p style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>
+                    Drop a pin, or trace your boundary so buyers can see exactly what they are
+                    getting.
                   </p>
-                )}
-                {form.boundary && tracedAreaAcres != null && (
-                  <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    Traced boundary: {form.boundary.length} points · ≈ {tracedAreaAcres.toFixed(2)}{" "}
-                    acres
+                </div>
+                <div className="gm-wizgrid">
+                  <div style={{ minWidth: 0 }}>
+                    <LandBoundaryMap
+                      pin={form.pin}
+                      boundary={form.boundary}
+                      onPinChange={(p) => set("pin", p)}
+                      onBoundaryChange={(b) => set("boundary", b)}
+                      county={form.county}
+                      hintText=""
+                      heightClassName="h-[560px] xl:h-[640px]"
+                      typedSize={sizeAcres ? { acres: sizeAcres, label: sizeDisplay } : null}
+                      attentionKey={mapAttention}
+                      openTutorialKey={tutorialKey}
+                      overlapWarning={overlapWarning}
+                    />
+                    {form.boundary && tracedAreaAcres != null && !boundarySelfIntersects && (
+                      <button
+                        type="button"
+                        className="gd-link mt-1.5"
+                        onClick={() => {
+                          set("sizeUnit", "acres");
+                          set("sizeAcres", tracedAreaAcres.toFixed(2));
+                        }}
+                      >
+                        <Check size={15} aria-hidden="true" /> Use ≈ {tracedAreaAcres.toFixed(2)}{" "}
+                        acres as the land size
+                      </button>
+                    )}
+                  </div>
+                  <aside className="gm-wizaside">
+                    <div className="gm-wcard">
+                      <span className="gm-mono gm-eyebrow">FROM STEP 1</span>
+                      <span className="gm-h" style={{ fontSize: 22 }}>
+                        {form.parcelNumber || "Your listing"}
+                      </span>
+                      <dl className="gm-facts">
+                        <dt>County</dt>
+                        <dd>{form.county || "—"}</dd>
+                        <dt>Size</dt>
+                        <dd>{sizeDisplay || "—"}</dd>
+                        <dt>Listing</dt>
+                        <dd>{form.listingType === "lease" ? "For lease" : "For sale"}</dd>
+                      </dl>
+                      <button type="button" className="gm-link" onClick={() => setStep(0)}>
+                        Edit basic details
+                      </button>
+                    </div>
+                    <div className="gm-wcard">
+                      <span className="gm-h" style={{ fontSize: 19 }}>
+                        Pin or trace?
+                      </span>
+                      <p className="gm-choice">
+                        <span>
+                          <MapPin className="h-[18px] w-[18px]" />
+                        </span>
+                        <span>
+                          <strong>Drop a pin</strong> if you don&apos;t know the exact shape. Buyers
+                          see an approximate area.
+                        </span>
+                      </p>
+                      <p className="gm-choice">
+                        <span>
+                          <Spline className="h-[18px] w-[18px]" />
+                        </span>
+                        <span>
+                          <strong>Trace the boundary</strong> by tapping each corner. Traced plots
+                          show as outlines and are ready for document review.
+                        </span>
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        set("sizeUnit", "acres");
-                        set("sizeAcres", tracedAreaAcres.toFixed(2));
-                      }}
-                      className="font-medium text-[#15803D] hover:underline"
+                      className="gm-btn gm-ghost"
+                      onClick={() => setTutorialKey((n) => n + 1)}
                     >
-                      Use this as land size
+                      <CircleHelp className="h-[18px] w-[18px]" /> How it works
                     </button>
-                  </p>
-                )}
-                {!form.boundary && form.pin && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Pin: {form.pin[0].toFixed(5)}, {form.pin[1].toFixed(5)}
-                  </p>
-                )}
+                  </aside>
+                </div>
               </div>
             )}
 
             {step === 2 && (
-              <div>
-                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    Photos ({totalPhotoCount}/{photoLimit} allowed on {plan?.name ?? user.plan})
-                  </span>
-                  {totalPhotoCount >= photoLimit && (
-                    <button
-                      onClick={() => setUpgradeOpen(true)}
-                      className="font-medium text-[#15803D] hover:underline"
-                    >
-                      Upgrade to upload more
-                    </button>
-                  )}
-                </div>
-                <label
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragActive(true);
+              <div className="flex flex-col gap-[22px]">
+                <PhotoPicker
+                  photos={pickerPhotos}
+                  coverKey={coverKey}
+                  limit={photoLimit}
+                  planName={planName}
+                  error={fileError}
+                  sizeLine={
+                    form.photos.length > 0 || form.documents.length > 0
+                      ? `Total upload size: ${(
+                          (form.photos.reduce((s, p) => s + p.file.size, 0) +
+                            form.documents.reduce((s, d) => s + d.file.size, 0)) /
+                          (1024 * 1024)
+                        ).toFixed(1)} MB`
+                      : undefined
+                  }
+                  onAdd={handlePhotos}
+                  onUpgrade={() => setUpgradeOpen(true)}
+                  onRemove={(key) => {
+                    const existing = existingPhotos.find((p) => p.id === key);
+                    if (existing) {
+                      setExistingPhotos((prev) => prev.filter((x) => x.id !== key));
+                      setRemovePhotoIds((prev) => [...prev, key]);
+                      if (coverPhotoId === key) setCoverPhotoId(undefined);
+                      return;
+                    }
+                    URL.revokeObjectURL(key);
+                    set(
+                      "photos",
+                      form.photos.filter((p) => p.url !== key),
+                    );
                   }}
-                  onDragLeave={() => setDragActive(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragActive(false);
-                    handlePhotos(e.dataTransfer.files);
+                  onCover={(key) => {
+                    if (existingPhotos.some((p) => p.id === key)) {
+                      setCoverPhotoId(key);
+                      return;
+                    }
+                    const chosen = form.photos.find((p) => p.url === key);
+                    if (!chosen) return;
+                    set("photos", [chosen, ...form.photos.filter((p) => p !== chosen)]);
+                    if (editId) setCoverPhotoId(undefined);
                   }}
-                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed py-10 text-sm text-muted-foreground hover:border-[#15803D] ${
-                    dragActive ? "border-[#15803D] bg-[#15803D]/5" : "border-border bg-background"
-                  }`}
-                >
-                  <UploadCloud className="h-6 w-6" />
-                  <span>Drag and drop photos, or click to browse</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handlePhotos(e.target.files)}
-                    disabled={totalPhotoCount >= photoLimit}
-                  />
-                </label>
-                {(existingPhotos.length > 0 || form.photos.length > 0) && (
-                  <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {existingPhotos.map((p) => (
-                      <div key={p.id} className="relative">
-                        <img src={p.url} alt="" className="h-20 w-full rounded-md object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setCoverPhotoId(p.id)}
-                          title={coverPhotoId === p.id ? "Cover photo" : "Set as cover"}
-                          className={`absolute left-1 top-1 rounded-full p-1 ${
-                            coverPhotoId === p.id
-                              ? "bg-[#15803D] text-white"
-                              : "bg-black/60 text-white hover:bg-black/80"
-                          }`}
-                        >
-                          <Star
-                            className="h-3 w-3"
-                            fill={coverPhotoId === p.id ? "currentColor" : "none"}
-                          />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExistingPhotos((prev) => prev.filter((x) => x.id !== p.id));
-                            setRemovePhotoIds((prev) => [...prev, p.id]);
-                            if (coverPhotoId === p.id) setCoverPhotoId(undefined);
-                          }}
-                          className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                    {form.photos.map((p, i) => (
-                      <div key={i} className="relative">
-                        <img src={p.url} alt="" className="h-20 w-full rounded-md object-cover" />
-                        <button
-                          onClick={() => {
-                            URL.revokeObjectURL(p.url);
-                            set(
-                              "photos",
-                              form.photos.filter((_, j) => j !== i),
-                            );
-                          }}
-                          className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {fileError && (
-                  <p className="mt-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-700">
-                    {fileError}
-                  </p>
-                )}
-                {(form.photos.length > 0 || form.documents.length > 0) && (
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    Total upload size:{" "}
-                    {(
-                      (form.photos.reduce((s, p) => s + p.file.size, 0) +
-                        form.documents.reduce((s, d) => s + d.file.size, 0)) /
-                      (1024 * 1024)
-                    ).toFixed(1)}{" "}
-                    MB
-                  </p>
-                )}
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      Documents ({propertyDocCount}/{documentLimit} allowed on{" "}
-                      {plan?.name ?? user.plan})
-                    </span>
-                    {propertyDocCount >= documentLimit && (
-                      <button
-                        onClick={() => setUpgradeOpen(true)}
-                        className="font-medium text-[#15803D] hover:underline"
-                      >
-                        Upgrade to add more
-                      </button>
-                    )}
-                  </div>
-                  <Field label="Documents — National ID and Title Deed required">
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <select
-                        className="lv-input sm:w-56"
-                        value={docType}
-                        onChange={(e) => setDocType(e.target.value)}
-                      >
-                        {DOC_TYPES.map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="file"
-                        accept="application/pdf,image/*"
-                        className="lv-input"
-                        disabled={docType !== "national_id" && propertyDocCount >= documentLimit}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] ?? null;
-                          e.target.value = "";
-                          if (!f) return;
-                          if (
-                            f.type &&
-                            f.type !== "application/pdf" &&
-                            !f.type.startsWith("image/")
-                          ) {
-                            setFileError(`${f.name} must be a PDF or image file.`);
-                            return;
-                          }
-                          if (f.size > MAX_DEED_BYTES) {
-                            setFileError(`${f.name} is over the 10MB limit per document.`);
-                            return;
-                          }
-                          setFileError("");
-                          set("documents", [...form.documents, { type: docType, file: f }]);
-                        }}
-                      />
-                    </div>
-                  </Field>
-                  {!editId && !hasRequiredDocs && (
-                    <p className="mt-2 text-xs text-amber-600">
-                      A National ID and a Title Deed are required to continue.
-                    </p>
-                  )}
-                  {form.documents.length > 0 && (
-                    <ul className="mt-2 space-y-1.5">
-                      {form.documents.map((d, i) => (
-                        <li
-                          key={i}
-                          className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-1.5 text-xs"
-                        >
-                          <span>
-                            <span className="font-medium text-foreground">
-                              {DOC_TYPES.find((t) => t.value === d.type)?.label}:
-                            </span>{" "}
-                            <span className="text-muted-foreground">{d.file.name}</span>
-                          </span>
+                />
+
+                <div className="flex flex-col gap-2.5 border-t border-dashed border-border pt-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="gd-h2">Documents</span>
+                    <span className="text-[13.5px] text-muted-foreground">
+                      {propertyDocCount} of {documentLimit} on {planName}
+                      {propertyDocCount >= documentLimit && (
+                        <>
+                          {" · "}
                           <button
                             type="button"
-                            onClick={() =>
-                              set(
-                                "documents",
-                                form.documents.filter((_, j) => j !== i),
-                              )
-                            }
-                            className="text-muted-foreground hover:text-destructive"
+                            className="gd-link"
+                            onClick={() => setUpgradeOpen(true)}
                           >
-                            <X className="h-3.5 w-3.5" />
+                            Upgrade to add more
                           </button>
-                        </li>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    A National ID and a Title Deed are required. Buyers never see your documents;
+                    only our review team does.
+                  </span>
+                  <div className="gd-req">
+                    {REQUIRED_DOCS.map((r) => (
+                      <span key={r.value} className="gd-reqi" data-ok={attachedTypes.has(r.value)}>
+                        <span className="gd-tick2">
+                          <Check size={12} strokeWidth={3} aria-hidden="true" />
+                        </span>
+                        {r.label}
+                        <span className="sr-only">
+                          {attachedTypes.has(r.value) ? "(attached)" : "(missing)"}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      className="gd-input w-[240px]"
+                      aria-label="Document type"
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                    >
+                      {DOC_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
                       ))}
+                    </select>
+                    <input
+                      ref={docInputRef}
+                      type="file"
+                      accept="application/pdf,image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        addDocument(e.target.files?.[0] ?? null);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="gd-btn gd-o min-h-12"
+                      disabled={docType !== "national_id" && propertyDocCount >= documentLimit}
+                      onClick={() => docInputRef.current?.click()}
+                    >
+                      <Paperclip size={16} aria-hidden="true" /> Attach file
+                    </button>
+                  </div>
+                  <span className="text-[13px] text-muted-foreground">
+                    PDF or image · max 10 MB per document
+                  </span>
+                  {docError && <ErrorBox>{docError}</ErrorBox>}
+                  {form.documents.length > 0 && (
+                    <ul className="flex flex-col gap-1.5">
+                      {form.documents.map((d, i) => {
+                        const label = DOC_TYPES.find((t) => t.value === d.type)?.label;
+                        return (
+                          <li
+                            key={`${d.type}-${d.file.name}-${i}`}
+                            className="flex items-center gap-3 rounded-[14px] border border-border bg-card px-3 py-2.5"
+                          >
+                            <FileText size={17} className="text-brand" aria-hidden="true" />
+                            <span className="min-w-0 flex-1 truncate text-[14.5px]">
+                              <strong>{label}</strong> ·{" "}
+                              <span className="gd-mono text-[13px] text-muted-foreground">
+                                {d.file.name}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              className="gd-ib gd-del"
+                              aria-label={`Remove ${label}`}
+                              onClick={() =>
+                                set(
+                                  "documents",
+                                  form.documents.filter((_, j) => j !== i),
+                                )
+                              }
+                            >
+                              <X size={16} aria-hidden="true" />
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -1075,141 +1259,70 @@ function UploadPage() {
             )}
 
             {step === 3 && (
-              <div className="space-y-4 text-sm">
-                <Summary label="Title number" value={form.parcelNumber || "—"} />
-                <Summary
-                  label="County"
-                  value={`${form.county}${form.area ? " · " + form.area : ""}`}
-                />
-                <Summary label="Size" value={sizeDisplay || "—"} />
-                <Summary
-                  label="Price"
-                  value={form.price ? `Ksh ${Number(form.price).toLocaleString()}` : "—"}
-                />
-                <Summary label="Contact phone" value={form.phone || "—"} />
-                <Summary
-                  label="Listing type"
-                  value={form.listingType === "sale" ? "For Sale" : "For Lease"}
-                />
-                <Summary
-                  label="Land type"
-                  value={
-                    {
-                      residential: "Residential",
-                      commercial: "Commercial",
-                      agricultural: "Agricultural",
-                      mixed_use: "Mixed Use",
-                      industrial: "Industrial",
-                    }[form.landType!] ?? "—"
-                  }
-                />
-                <Summary
-                  label="Location"
-                  value={
-                    form.boundary
-                      ? `Traced (${form.boundary.length} points)`
-                      : form.pin
-                        ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}`
-                        : "Not set"
-                  }
-                />
-                <Summary label="Photos" value={`${totalPhotoCount} attached`} />
-                <Summary
-                  label="Documents"
-                  value={form.documents.length ? `${form.documents.length} attached` : "None"}
-                />
-                <div className="rounded-md border border-border bg-background p-4">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Plan</div>
-                  <div className="mt-1 text-sm font-medium text-foreground">
-                    {plan?.name ?? user.plan} — {used}/
-                    {user.maxListings === Infinity ? "∞" : user.maxListings} listings used
-                  </div>
+              <div className="flex flex-col gap-4">
+                <ReviewRows rows={reviewRows} onEdit={setStep} />
+                <div className="flex flex-wrap justify-between gap-3 rounded-2xl bg-track px-4 py-3.5">
+                  <span className="gd-eyebrow self-center">Plan</span>
+                  <span className="font-semibold">
+                    {planName} · {used} of{" "}
+                    {user.maxListings === Infinity ? "unlimited" : user.maxListings} listings used
+                  </span>
                 </div>
-                {submitting && uploadProgress != null && (
-                  <div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-[#15803D] transition-all"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {uploadProgress < 100
-                          ? `Uploading… ${uploadProgress}%`
-                          : "Upload complete — finishing up…"}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => abortRef.current?.()}
-                        className="text-xs font-medium text-destructive hover:underline"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {submitErr && (
-                  <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-                    {submitErr}
-                  </div>
-                )}
                 {limitReached && (
-                  <div className="rounded-md border border-[#D97706]/40 bg-[#D97706]/10 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[#D97706]">
-                      <Lock className="h-4 w-4" /> Listing limit reached
-                    </div>
-                    <p className="mt-1 text-xs text-foreground">
-                      You've used all {user.maxListings} listings on the {plan?.name ?? user.plan}{" "}
-                      plan. Upgrade to publish this listing.
-                    </p>
+                  <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-warning-subtle p-4 text-warning">
+                    <Lock size={20} aria-hidden="true" />
+                    <span className="min-w-[220px] flex-1">
+                      <strong className="block">Listing limit reached</strong>
+                      <span className="text-sm">
+                        You&apos;ve used all {user.maxListings} listings on the {planName} plan.
+                        Upgrade to publish this listing.
+                      </span>
+                    </span>
                     <button
+                      type="button"
+                      className="gd-btn gd-sm"
                       onClick={() => setUpgradeOpen(true)}
-                      className="mt-3 rounded-md bg-[#15803D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#166534]"
                     >
                       View plans
                     </button>
                   </div>
                 )}
+                {submitting && uploadProgress != null && (
+                  <div className="flex flex-col gap-2" role="status">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-semibold">
+                        {uploadProgress < 100
+                          ? `Uploading… ${uploadProgress}%`
+                          : "Upload complete — finishing up…"}
+                      </span>
+                      <button
+                        type="button"
+                        className="gd-link"
+                        style={{ color: "var(--destructive)" }}
+                        onClick={() => abortRef.current?.()}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div className="gd-bar">
+                      <span style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+                {submitErr && <ErrorBox>{submitErr}</ErrorBox>}
               </div>
             )}
 
-            <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
-              <button
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-                disabled={step === 0}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back
-              </button>
-              {step < steps.length - 1 ? (
-                <button
-                  onClick={() => setStep((s) => s + 1)}
-                  disabled={!canNext}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-50"
-                >
-                  Next <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              ) : (
-                <button
-                  onClick={submit}
-                  disabled={submitting}
-                  className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534] disabled:opacity-60"
-                >
-                  {submitting && (
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  )}
-                  {submitting
-                    ? editId
-                      ? "Saving…"
-                      : "Submitting…"
-                    : editId
-                      ? "Save changes"
-                      : "Publish Listing"}
-                </button>
-              )}
-            </div>
-          </div>
+            <WizardFooter
+              prevLabel={step === 1 ? "Basic details" : "Back"}
+              onPrev={() => setStep((s) => Math.max(0, s - 1))}
+              prevDisabled={step === 0}
+              nextLabel={nextLabel}
+              onNext={step < steps.length - 1 ? goNext : submit}
+              nextDisabled={step < steps.length - 1 ? !canNext : submitting}
+              arrow={step < steps.length - 1}
+            />
+          </>
         )}
       </div>
 
@@ -1217,37 +1330,14 @@ function UploadPage() {
         open={upgradeOpen}
         currentPlan={user.plan}
         onClose={() => setUpgradeOpen(false)}
-        onSelect={() => {}}
+        onSelect={(id) => {
+          const selected = plans.find((p) => p.id === id);
+          if (selected && selected.price > 0) setCheckoutPlan(selected);
+        }}
         reason="Upgrade to unlock more listings and photos."
       />
 
-      <style>{`.lv-input{display:block;height:40px;width:100%;border:1px solid #E2E8F0;border-radius:6px;padding:0 12px;font-size:14px;background:#fff;color:#0F172A;outline:none}.lv-input:focus{border-color:#15803D}textarea.lv-input{height:auto;padding:8px 12px}`}</style>
+      {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />}
     </DashboardShell>
-  );
-}
-
-function Field({
-  label,
-  children,
-  full,
-}: {
-  label: string;
-  children: React.ReactNode;
-  full?: boolean;
-}) {
-  return (
-    <label className={`block ${full ? "sm:col-span-2" : ""}`}>
-      <span className="mb-1 block text-xs font-medium text-foreground">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-border pb-2 last:border-0">
-      <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-right text-sm font-medium text-foreground">{value || "—"}</span>
-    </div>
   );
 }

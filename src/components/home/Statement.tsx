@@ -24,9 +24,10 @@ export function Statement() {
           </span>
         </h2>
         <p className="gp-reveal gp-lede">
-          Every listing sits on its surveyed boundary, with its verification status right beside it.
+          Every listing sits on its surveyed boundary, with its document review status right beside
+          it.
         </p>
-        <span className="gp-reveal gp-note-forest">we check, so you can breathe easy ✓</span>
+        <span className="gp-reveal gp-note-forest">documents reviewed, details in the open ✓</span>
       </div>
     </section>
   );

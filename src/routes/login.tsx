@@ -156,7 +156,7 @@ export function LoginPage() {
             </h1>
             <p>
               We sent a 6-digit sign-in code to{" "}
-              <strong style={{ color: "#1E2418" }}>{challenge.email}</strong>.
+              <strong className="ga-strong">{challenge.email}</strong>.
             </p>
           </div>
 
