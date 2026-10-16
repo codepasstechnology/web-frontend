@@ -39,49 +39,66 @@ export function VerifyAccountModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-subtle">
-          <ShieldCheck className="h-5 w-5 text-brand-subtle-foreground" />
+    <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-[rgba(10,10,8,.48)] p-6 max-md:items-end max-md:p-0">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="verify-title"
+        className="flex w-full max-w-[460px] flex-col gap-4 rounded-[26px] bg-background p-[26px] text-foreground shadow-[0_30px_70px_rgba(0,0,0,.35)] max-md:max-w-none max-md:rounded-b-none"
+      >
+        <span className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-brand-subtle text-brand-subtle-foreground">
+          <ShieldCheck size={26} aria-hidden="true" />
+        </span>
+        <div>
+          <h2 id="verify-title" className="gd-h1 text-[26px]">
+            Verify your account
+          </h2>
+          <p className="gd-sub">
+            We sent a 6-digit code to <strong className="text-foreground">{user?.email}</strong>.
+            Enter it below to continue.
+          </p>
         </div>
-        <h2 className="mt-3 text-base font-semibold text-foreground">Verify your account</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          We sent a 6-digit code to{" "}
-          <span className="font-medium text-foreground">{user?.email}</span>. Enter it below to
-          continue.
-        </p>
 
+        <label className="gd-lab m-0" htmlFor="verify-code">
+          Verification code
+        </label>
         <input
+          id="verify-code"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           placeholder="000000"
           inputMode="numeric"
+          autoComplete="one-time-code"
           maxLength={6}
-          className="mt-4 h-11 w-full rounded-md border border-border bg-background px-3 text-center text-lg font-semibold tracking-[0.3em] focus:border-brand focus:outline-none"
+          aria-invalid={!!error}
+          className="gd-input gd-mono min-h-[60px] text-center text-2xl tracking-[.5em]"
         />
 
-        {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+        {error && (
+          <div className="gd-err m-0" role="alert">
+            {error}
+          </div>
+        )}
         {resent && !error && (
-          <p className="mt-2 text-sm text-success-subtle-foreground">A new code has been sent.</p>
+          <div className="text-sm font-semibold text-brand-subtle-foreground">
+            A new code has been sent.
+          </div>
         )}
 
         <button
+          type="button"
           onClick={submit}
           disabled={verifying || code.length !== 6}
-          className="mt-4 h-10 w-full rounded-md bg-brand text-sm font-medium text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
+          className="gd-btn min-h-[52px]"
         >
           {verifying ? "Verifying…" : "Verify"}
         </button>
 
-        <div className="mt-3 flex items-center justify-between text-xs">
-          <button
-            onClick={resend}
-            disabled={resending}
-            className="font-medium text-brand hover:underline disabled:opacity-60"
-          >
+        <div className="flex justify-between">
+          <button type="button" onClick={resend} disabled={resending} className="gd-link">
             {resending ? "Sending…" : "Resend code"}
           </button>
-          <button onClick={() => logout()} className="text-muted-foreground hover:underline">
+          <button type="button" onClick={() => logout()} className="gd-link" data-tone="muted">
             Sign out
           </button>
         </div>

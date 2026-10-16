@@ -1,23 +1,18 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, Tag, Trash2 } from "lucide-react";
+import { Camera, Pencil, Tag, Trash2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMyProperty, formatPrice, INTENT_LABELS, TYPE_LABELS } from "@/lib/properties";
 import type { ListingRow } from "@/components/dashboard/ListingsTab";
+import { ListingThumb } from "@/components/dashboard/parts";
 import { PhotoViewer } from "@/components/PhotoViewer";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
 
 type Fact = [label: string, value: string];
 
@@ -39,9 +34,23 @@ const titleCase = (value: string) => value.replace(/_/g, " ").replace(/^./, (c) 
 const present = (facts: (Fact | false)[]) =>
   facts.filter((f): f is Fact => f !== false && f[1] !== "");
 
-function Photos({ photos, title }: { photos: string[]; title: string }) {
+function Photos({
+  photos,
+  title,
+  kind,
+}: {
+  photos: string[];
+  title: string;
+  kind: ListingRow["kind"];
+}) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
-  if (photos.length === 0) return null;
+  if (photos.length === 0) {
+    return (
+      <div className="gd-thumb flex h-[240px] w-full items-center justify-center rounded-[18px]">
+        <ListingThumb kind={kind} coverPhotoUrl={null} width={120} height={90} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -49,9 +58,13 @@ function Photos({ photos, title }: { photos: string[]; title: string }) {
         type="button"
         onClick={() => setViewerIndex(0)}
         aria-label={`View photo 1 of ${photos.length}`}
-        className="h-48 cursor-zoom-in overflow-hidden rounded-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-64"
+        className="gd-thumb relative h-[240px] w-full cursor-zoom-in rounded-[18px]"
       >
         <img src={photos[0]} alt="" className="h-full w-full object-cover" />
+        <span className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/55 px-2.5 py-1 text-[12.5px] font-semibold text-[#fffaf2]">
+          <Camera size={14} aria-hidden="true" /> {photos.length}{" "}
+          {photos.length === 1 ? "photo" : "photos"}
+        </span>
       </button>
       {photos.length > 1 && (
         <div className="flex gap-2 overflow-x-auto">
@@ -61,7 +74,7 @@ function Photos({ photos, title }: { photos: string[]; title: string }) {
               type="button"
               onClick={() => setViewerIndex(i + 1)}
               aria-label={`View photo ${i + 2} of ${photos.length}`}
-              className="h-14 w-20 shrink-0 cursor-zoom-in overflow-hidden rounded-md bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="gd-thumb h-14 w-20 shrink-0 cursor-zoom-in"
             >
               <img src={url} alt="" className="h-full w-full object-cover" />
             </button>
@@ -81,21 +94,19 @@ function Photos({ photos, title }: { photos: string[]; title: string }) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
+      <h3 className="gd-eyebrow">{title}</h3>
       {children}
     </section>
   );
 }
 
-function FactRows({ facts }: { facts: Fact[] }) {
+function FactRows({ facts, mono = [] }: { facts: Fact[]; mono?: string[] }) {
   return (
-    <dl className="flex flex-col gap-1.5 text-sm">
+    <dl className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-1.5 text-[14.5px]">
       {facts.map(([label, value]) => (
-        <div key={label} className="flex items-start justify-between gap-4">
+        <div key={label} className="contents">
           <dt className="text-muted-foreground">{label}</dt>
-          <dd className="text-right font-medium">{value}</dd>
+          <dd className={mono.includes(label) ? "gd-mono" : ""}>{value}</dd>
         </div>
       ))}
     </dl>
@@ -103,56 +114,62 @@ function FactRows({ facts }: { facts: Fact[] }) {
 }
 
 function PreviewContent({
-  title,
+  row,
   preview,
   isError,
   refetch,
 }: {
-  title: string;
+  row: ListingRow;
   preview: Preview | undefined;
   isError: boolean;
   refetch: () => void;
 }) {
   if (isError) {
     return (
-      <Alert variant="destructive" className="flex items-center justify-between gap-3">
-        <AlertDescription>Could not load this listing.</AlertDescription>
-        <Button variant="outline" size="sm" onClick={refetch}>
+      <div
+        role="alert"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-destructive-subtle px-4 py-3 text-sm font-semibold text-destructive"
+      >
+        Could not load this listing.
+        <button type="button" className="gd-btn gd-sm gd-o" data-tone="danger" onClick={refetch}>
           Try again
-        </Button>
-      </Alert>
+        </button>
+      </div>
     );
   }
 
   if (!preview) {
     return (
-      <div className="flex flex-col items-center gap-3 py-12">
-        <Spinner size="lg" />
-        <p className="text-sm text-muted-foreground">Loading details…</p>
+      <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading details…">
+        <div className="gd-skel h-[240px] rounded-[18px]" />
+        <div className="gd-skel h-8 w-40" />
+        <div className="gd-facts">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="gd-skel h-14" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <Photos photos={preview.photos} title={title} />
+    <>
+      <Photos photos={preview.photos} title={row.name} kind={row.kind} />
 
-      <p className="text-2xl font-semibold tabular-nums">{preview.price}</p>
+      <p className="gd-h text-[30px]">{preview.price}</p>
 
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <dl className="gd-facts">
         {preview.facts.map(([label, value]) => (
-          <div key={label} className="rounded-md border border-border p-3">
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {label}
-            </dt>
-            <dd className="mt-0.5 text-sm font-semibold">{value}</dd>
+          <div key={label}>
+            <dt className="gd-eyebrow">{label}</dt>
+            <dd className="text-[15px] font-semibold">{value}</dd>
           </div>
         ))}
       </dl>
 
       {preview.description && (
         <Section title="Description">
-          <p className="whitespace-pre-line text-sm text-muted-foreground">{preview.description}</p>
+          <p className="whitespace-pre-line text-[15px] leading-relaxed">{preview.description}</p>
         </Section>
       )}
 
@@ -160,9 +177,9 @@ function PreviewContent({
         <Section title={preview.tagsLabel}>
           <div className="flex flex-wrap gap-1.5">
             {preview.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="font-medium">
+              <span key={tag} className="gd-type px-2.5 py-1 text-[12.5px] tracking-normal">
                 {tag}
-              </Badge>
+              </span>
             ))}
           </div>
         </Section>
@@ -170,7 +187,7 @@ function PreviewContent({
 
       {preview.location.length > 0 && (
         <Section title="Location">
-          <FactRows facts={preview.location} />
+          <FactRows facts={preview.location} mono={["Coordinates"]} />
         </Section>
       )}
 
@@ -179,7 +196,7 @@ function PreviewContent({
           <FactRows facts={preview.contact} />
         </Section>
       )}
-    </div>
+    </>
   );
 }
 
@@ -227,14 +244,7 @@ function LandPreview({ row, showViews }: { row: ListingRow; showViews: boolean }
     contact: present([["Phone", d.phone ?? ""]]),
   };
 
-  return (
-    <PreviewContent
-      title={row.name}
-      preview={preview}
-      isError={isError}
-      refetch={() => refetch()}
-    />
-  );
+  return <PreviewContent row={row} preview={preview} isError={isError} refetch={() => refetch()} />;
 }
 
 function RentalPreview({ row, showViews }: { row: ListingRow; showViews: boolean }) {
@@ -276,18 +286,12 @@ function RentalPreview({ row, showViews }: { row: ListingRow; showViews: boolean
     ]),
   };
 
-  return (
-    <PreviewContent
-      title={row.name}
-      preview={preview}
-      isError={isError}
-      refetch={() => refetch()}
-    />
-  );
+  return <PreviewContent row={row} preview={preview} isError={isError} refetch={() => refetch()} />;
 }
 
 export function ListingPreviewDialog({
   row,
+  name,
   badges,
   showViews,
   closeLabel,
@@ -297,6 +301,7 @@ export function ListingPreviewDialog({
   onDelete,
 }: {
   row: ListingRow | null;
+  name: ReactNode;
   badges: ReactNode;
   showViews: boolean;
   closeLabel: string;
@@ -308,48 +313,50 @@ export function ListingPreviewDialog({
   return (
     <Dialog open={row !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-h-[90dvh] overflow-y-auto focus:outline-none sm:max-w-2xl"
+        className="gd-dialog focus:outline-none [&>button:last-child]:hidden"
+        style={{ maxWidth: 720, padding: 0, gap: 0 }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {row && (
           <>
-            <DialogHeader className="pr-6 text-left">
-              <DialogTitle className="leading-snug">{row.name}</DialogTitle>
-              <DialogDescription>{row.sub}</DialogDescription>
-              <div className="flex items-center gap-2 pt-1">{badges}</div>
-            </DialogHeader>
-
-            {row.kind === "land" ? (
-              <LandPreview row={row} showViews={showViews} />
-            ) : (
-              <RentalPreview row={row} showViews={showViews} />
-            )}
-
-            <DialogFooter className="gap-2 sm:space-x-0">
-              <Button
-                variant="ghost"
-                onClick={onDelete}
-                className="text-destructive hover:text-destructive sm:mr-auto"
-              >
-                <Trash2 /> Delete
-              </Button>
-              <DialogClose asChild>
-                <Button variant="outline">Close</Button>
+            <div className="sticky top-0 z-[2] flex justify-between gap-3 border-b border-border-subtle bg-background px-6 pb-3.5 pt-[22px]">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <DialogTitle className="leading-snug">{name}</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  {row.sub}
+                </DialogDescription>
+                <div className="flex items-center gap-2">{badges}</div>
+              </div>
+              <DialogClose className="gd-ib" aria-label="Close">
+                <X size={18} aria-hidden="true" />
               </DialogClose>
+            </div>
+
+            <div className="flex flex-col gap-[18px] px-6 py-[18px]">
+              {row.kind === "land" ? (
+                <LandPreview row={row} showViews={showViews} />
+              ) : (
+                <RentalPreview row={row} showViews={showViews} />
+              )}
+            </div>
+
+            <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-border-subtle bg-background px-6 pb-[22px] pt-3.5">
+              <button type="button" className="gd-btn gd-o" data-tone="danger" onClick={onDelete}>
+                <Trash2 size={16} aria-hidden="true" /> Delete
+              </button>
+              <span className="flex-1" />
+              <DialogClose className="gd-btn gd-o">Close</DialogClose>
               {onEdit && (
-                <Button variant="outline" onClick={onEdit}>
-                  <Pencil /> Edit
-                </Button>
+                <button type="button" className="gd-btn gd-o" onClick={onEdit}>
+                  <Pencil size={16} aria-hidden="true" /> Edit
+                </button>
               )}
               {onMarkClosed && (
-                <Button
-                  onClick={onMarkClosed}
-                  className="bg-brand text-brand-foreground hover:bg-brand-hover"
-                >
-                  <Tag /> {closeLabel}
-                </Button>
+                <button type="button" className="gd-btn" onClick={onMarkClosed}>
+                  <Tag size={16} aria-hidden="true" /> {closeLabel}
+                </button>
               )}
-            </DialogFooter>
+            </div>
           </>
         )}
       </DialogContent>

@@ -1,38 +1,27 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
 import {
-  Plus,
   BarChart3,
+  CalendarClock,
+  Check,
+  ChevronRight,
+  Crown,
   Eye,
   Inbox,
   ListChecks,
-  Crown,
-  CheckCircle2,
-  CalendarClock,
+  Plus,
+  ShieldCheck,
 } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import { type DashTab } from "@/components/DashboardShell";
 import { type AppUser } from "@/lib/auth";
 import { usePlans } from "@/lib/plans";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Progress } from "@/components/ui/progress";
-import { StatusBadge } from "@/components/dashboard/ListingsTab";
+import { needsUserAction, useKycApplications } from "@/lib/kyc";
+import { Beacon, ListingStatus, ListingThumb } from "@/components/dashboard/parts";
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-brand">
-          {icon}
-        </div>
-        <span className="leading-tight">{label}</span>
-      </div>
-      <div className="mt-3 text-2xl font-bold tracking-[-0.02em] tabular-nums">{value}</div>
-    </Card>
-  );
-}
+// Plans with more slots than this show the first ones and a "+N" count.
+const MAX_SLOT_ICONS = 20;
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export function OverviewTab({
   user,
@@ -45,23 +34,15 @@ export function OverviewTab({
 }) {
   const navigate = useNavigate();
   const { data: plans = [] } = usePlans();
+  const { data: kyc = [] } = useKycApplications();
   const plan = plans.find((p) => p.id === user.plan);
   const used = user.listings.length;
-  const limitNum = user.maxListings;
-  const limitText = limitNum === Infinity ? "Unlimited" : String(limitNum);
-  const pct = limitNum === Infinity ? 12 : Math.min(100, Math.round((used / limitNum) * 100));
+  const limit = user.maxListings;
+  const unlimited = limit === Infinity;
   const activeCount = user.listings.filter((l) => l.status === "active").length;
   const pendingCount = user.listings.filter((l) => l.status === "pending").length;
-
-  // 14-day mini sparkline
-  const spark = useMemo(
-    () =>
-      Array.from({ length: 14 }, (_, i) => ({
-        d: i,
-        v: Math.max(2, Math.round(8 + Math.sin(i / 2) * 4 + i * 0.6 + Math.random() * 4)),
-      })),
-    [],
-  );
+  const attention = kyc.filter(needsUserAction);
+  const canUpgrade = user.plan !== "pro" && user.plan !== "enterprise";
 
   const checklist = [
     {
@@ -79,242 +60,268 @@ export function OverviewTab({
     },
     {
       key: "verify",
-      label: "Add a verification badge",
-      done: false,
-      action: () => onGoTab("billing"),
+      label: "Get a parcel verified",
+      done: kyc.some((a) => a.status === "approved"),
+      action: () => onGoTab("kyc"),
     },
     {
-      key: "pro",
+      key: "analytics",
       label: "Unlock advanced analytics",
-      done: user.plan === "pro",
+      done: user.analyticsAccess,
       action: onUpgrade,
     },
   ];
   const completed = checklist.filter((c) => c.done).length;
 
   const recent = user.listings.slice(0, 4);
-  const greetingHour = new Date().getHours();
-  const greeting =
-    greetingHour < 12 ? "Good morning" : greetingHour < 18 ? "Good afternoon" : "Good evening";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  const slotCount = unlimited ? used : Math.min(limit, MAX_SLOT_ICONS);
+  const slots = Array.from({ length: slotCount }, (_, i) => user.listings[i]);
+  const hiddenSlots = unlimited ? 0 : limit - slotCount;
+
+  const price = user.billingCycle === "yearly" ? plan?.priceYearly : plan?.price;
+  const billingLine =
+    user.plan === "free" || !plan || plan.price === 0
+      ? "You are on the Free plan. No payments due."
+      : !user.planEndsAt
+        ? `${plan.name} plan`
+        : user.planCancelledAt
+          ? `Your ${plan.name} plan ends on ${fmtDate(user.planEndsAt)}.`
+          : `Next billing: KES ${(price ?? 0).toLocaleString()} on ${fmtDate(user.planEndsAt)}`;
 
   const newListing = () =>
     navigate({ to: "/dashboard/upload", search: { edit: undefined, type: undefined } });
 
   return (
-    <div className="lv-fade-up flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+    <>
+      <div className="gd-r flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-[-0.02em] md:text-3xl">
+          <h1 className="gd-h1">
             {greeting}, {user.fullName.split(" ")[0]}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Here&apos;s a snapshot of your account activity.
-          </p>
+          <p className="gd-sub">Here&apos;s a snapshot of your account activity.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 sm:flex-none"
-            onClick={() => onGoTab("analytics")}
-          >
-            <BarChart3 /> View analytics
-          </Button>
-          <Button
-            size="sm"
-            className="flex-1 bg-brand text-brand-foreground hover:bg-brand-hover sm:flex-none"
-            onClick={newListing}
-          >
-            <Plus /> New listing
-          </Button>
+        <div className="flex flex-wrap gap-2.5">
+          <button type="button" className="gd-btn gd-o" onClick={() => onGoTab("analytics")}>
+            <BarChart3 size={17} aria-hidden="true" /> View analytics
+          </button>
+          <button type="button" className="gd-btn" onClick={newListing}>
+            <Plus size={17} strokeWidth={2.4} aria-hidden="true" /> New listing
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <Stat
-          icon={<ListChecks className="h-4 w-4" />}
-          label="Active listings"
-          value={String(activeCount)}
-        />
-        <Stat
-          icon={<Inbox className="h-4 w-4" />}
-          label="Pending review"
-          value={String(pendingCount)}
-        />
+      <div className="gd-r gd-stats">
+        <button
+          type="button"
+          className="gd-card gd-stat text-left"
+          onClick={() => onGoTab("listings")}
+        >
+          <span className="gd-sico">
+            <ListChecks size={19} aria-hidden="true" />
+          </span>
+          <span className="gd-eyebrow">Active listings</span>
+          <span className="gd-big">{activeCount}</span>
+          <span className="gd-hint m-0">On the public map now</span>
+        </button>
+        <button
+          type="button"
+          className="gd-card gd-stat text-left"
+          onClick={() => onGoTab("listings")}
+        >
+          <span className="gd-sico">
+            <Inbox size={19} aria-hidden="true" />
+          </span>
+          <span className="gd-eyebrow">Pending review</span>
+          <span className="gd-big">{pendingCount}</span>
+          <span className="gd-hint m-0">Usually approved within 24 hours</span>
+        </button>
+        <button
+          type="button"
+          className="gd-card gd-stat text-left"
+          data-attn={attention.length > 0}
+          onClick={() => onGoTab("kyc")}
+        >
+          <span className="gd-sico">
+            <ShieldCheck size={19} aria-hidden="true" />
+          </span>
+          <span className="gd-eyebrow">Needs your attention</span>
+          <span className="gd-big">{attention.length}</span>
+          <span className="gd-hint m-0">
+            {attention.length === 0
+              ? "Nothing needs you right now"
+              : attention[0].status === "location_correction_requested"
+                ? "KYC: a reviewer asked you to fix a parcel's location"
+                : "KYC: a reviewer asked for more information"}
+          </span>
+        </button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-2">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                <Crown aria-hidden className="h-3.5 w-3.5 text-brand" /> Current plan
-              </div>
-              <div className="mt-1 text-xl font-bold">{plan?.name ?? user.plan}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {used} of {limitText} listings used
-              </div>
+      <div className="gd-r gd-row2">
+        <div className="gd-card flex flex-col gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="gd-eyebrow flex items-center gap-1.5">
+                <Crown size={14} aria-hidden="true" /> Current plan
+              </span>
+              <span className="gd-h text-[30px]">{plan?.name ?? user.plan}</span>
+              <span className="text-[14.5px] text-muted-foreground">
+                {unlimited ? `${used} listings · unlimited` : `${used} of ${limit} listings used`}
+              </span>
             </div>
-            <div className="h-16 w-32" aria-hidden>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={spark} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="sparkG" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Area
-                    type="monotone"
-                    dataKey="v"
-                    stroke="var(--brand)"
-                    strokeWidth={2}
-                    fill="url(#sparkG)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <button type="button" className="gd-link" onClick={() => onGoTab("billing")}>
+              Manage plan <ChevronRight size={15} aria-hidden="true" />
+            </button>
           </div>
-          <Progress
-            value={pct}
-            aria-label="Listing slots used"
-            className="mt-4 bg-muted [&>div]:bg-brand"
-          />
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {limitNum === Infinity
-                ? "Unlimited slots"
-                : `${Math.max(0, limitNum - used)} slots remaining`}
-            </span>
-            {user.plan !== "pro" && (
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-brand"
-                onClick={onUpgrade}
-              >
-                Upgrade to Pro →
-              </Button>
+          <div
+            className="flex flex-wrap items-end gap-2"
+            role="img"
+            aria-label={
+              unlimited
+                ? `${used} listing slots used, unlimited`
+                : `${used} of ${limit} listing slots used`
+            }
+          >
+            {slots.map((l, i) => (
+              <span key={l?.id ?? `free-${i}`} title={l?.parcelNumber}>
+                <Beacon used={Boolean(l)} />
+              </span>
+            ))}
+            {unlimited && <span className="gd-h pl-1 text-[26px] text-muted-foreground">+ ∞</span>}
+            {hiddenSlots > 0 && (
+              <span className="gd-mono pl-1 text-sm text-muted-foreground">+{hiddenSlots}</span>
             )}
           </div>
-        </Card>
+          <div className="gd-facts3">
+            <div>
+              <span className="gd-eyebrow">Photos / listing</span>
+              <span className="text-[15px] font-semibold">{plan?.photos ?? "—"}</span>
+            </div>
+            <div>
+              <span className="gd-eyebrow">Documents</span>
+              <span className="text-[15px] font-semibold">{plan?.documents ?? "—"}</span>
+            </div>
+            <div>
+              <span className="gd-eyebrow">Analytics</span>
+              <span className="text-[15px] font-semibold">
+                {user.analyticsAccess ? "Included" : "Pro only"}
+              </span>
+            </div>
+          </div>
+          <div className="mt-auto flex flex-wrap justify-between gap-3 border-t border-dashed border-border pt-3.5 text-sm">
+            <span className="text-muted-foreground">
+              {unlimited ? "Unlimited slots" : `${Math.max(0, limit - used)} slots remaining`}
+            </span>
+            {canUpgrade && (
+              <button type="button" className="gd-link" onClick={onUpgrade}>
+                Upgrade to Pro <ChevronRight size={15} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        </div>
 
-        <Card className="p-5">
+        <div className="gd-card flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold">Getting started</h2>
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <h2 className="gd-h2">Getting started</h2>
+            <span className="gd-mono text-[13px] text-muted-foreground">
               {completed}/{checklist.length}
             </span>
           </div>
-          <Progress
-            value={(completed / checklist.length) * 100}
+          <div
+            className="gd-bar h-1.5"
+            role="progressbar"
             aria-label="Getting started progress"
-            className="mt-3 h-1.5 bg-muted [&>div]:bg-success"
-          />
-          <ul className="mt-4 flex flex-col gap-1">
+            aria-valuenow={completed}
+            aria-valuemin={0}
+            aria-valuemax={checklist.length}
+          >
+            <span style={{ width: `${(completed / checklist.length) * 100}%` }} />
+          </div>
+          <ul className="flex flex-col gap-0.5">
             {checklist.map((c) => (
               <li key={c.key}>
                 <button
                   type="button"
+                  className="gd-mi gd-todo"
+                  data-done={c.done}
                   onClick={c.action}
-                  className="flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-left text-sm transition-colors hover:bg-muted hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {c.done ? (
-                    <CheckCircle2 aria-hidden className="h-4 w-4 text-success" />
-                  ) : (
-                    <span aria-hidden className="h-4 w-4 rounded-full border-2 border-border" />
-                  )}
-                  <span className={c.done ? "text-muted-foreground line-through" : ""}>
-                    {c.label}
+                  <span className="gd-tick">
+                    <Check size={13} strokeWidth={3} aria-hidden="true" />
                   </span>
+                  <span className="flex-1">{c.label}</span>
                   {c.done && <span className="sr-only">(done)</span>}
+                  <ChevronRight size={15} aria-hidden="true" />
                 </button>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       </div>
 
-      <Card>
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 className="text-sm font-bold">Recent listings</h2>
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-brand"
-            onClick={() => onGoTab("listings")}
-          >
-            View all →
-          </Button>
+      <div className="gd-r gd-card px-2 pb-3 pt-2">
+        <div className="flex items-center justify-between px-3.5 pb-2 pt-3">
+          <h2 className="gd-h2">Recent listings</h2>
+          <button type="button" className="gd-link" onClick={() => onGoTab("listings")}>
+            View all <ChevronRight size={15} aria-hidden="true" />
+          </button>
         </div>
         {recent.length === 0 ? (
-          <EmptyState
-            className="rounded-none border-0 p-10"
-            title="No listings yet"
-            description="Upload your first parcel or property to see it here."
-            action={
-              <Button
-                size="sm"
-                onClick={newListing}
-                className="bg-brand text-brand-foreground hover:bg-brand-hover"
-              >
-                <Plus /> Upload your first listing
-              </Button>
-            }
-          />
+          <div className="gd-empty mx-3.5 mb-1 mt-1.5">
+            <Beacon width={26} height={36} />
+            <span className="gd-h2">No listings yet</span>
+            <span className="text-[14.5px] text-muted-foreground">
+              Upload your first parcel or property to see it here.
+            </span>
+            <button type="button" className="gd-btn mt-1.5" onClick={newListing}>
+              Upload your first listing
+            </button>
+          </div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul>
             {recent.map((l) => (
-              <li key={l.id} className="flex items-center gap-3 px-5 py-3">
-                {l.coverPhotoUrl ? (
-                  <img
-                    src={l.coverPhotoUrl}
-                    alt=""
-                    className="h-10 w-12 shrink-0 rounded-md object-cover"
-                  />
-                ) : (
-                  <div className="h-10 w-12 shrink-0 rounded-md bg-muted" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{l.parcelNumber}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {l.county} · KES {l.price.toLocaleString()}
-                  </div>
-                </div>
-                <StatusBadge status={l.status} />
-                {user.analyticsAccess && (
-                  <div className="hidden items-center gap-1 text-xs text-muted-foreground tabular-nums sm:flex">
-                    <Eye aria-hidden className="h-3 w-3" /> {l.views}
-                  </div>
-                )}
+              <li key={l.id}>
+                <button
+                  type="button"
+                  className="gd-mi"
+                  style={{ minHeight: 64, gap: 14, padding: "8px 14px" }}
+                  onClick={() => onGoTab("listings")}
+                >
+                  <ListingThumb kind="land" coverPhotoUrl={l.coverPhotoUrl} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="gd-mono truncate text-[14.5px] font-semibold">
+                      {l.parcelNumber}
+                    </span>
+                    <span className="text-[13.5px] text-muted-foreground">
+                      {l.county} · KES {l.price.toLocaleString()}
+                    </span>
+                  </span>
+                  {user.analyticsAccess && (
+                    <span className="gd-deskonly flex w-[90px] items-center justify-end gap-1.5 text-[13.5px] text-muted-foreground">
+                      <Eye size={16} aria-hidden="true" />
+                      {l.views}
+                    </span>
+                  )}
+                  <span className="gd-stw">
+                    <ListingStatus status={l.status} />
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
         )}
-      </Card>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/40 p-4">
-        <div className="flex items-center gap-2 text-sm">
-          <CalendarClock aria-hidden className="h-4 w-4 text-muted-foreground" />
-          Next billing:{" "}
-          <span className="font-medium">
-            {(plan?.price ?? 0) === 0
-              ? "—"
-              : new Date(Date.now() + 30 * 86400000).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                })}
-          </span>
-        </div>
-        <Button
-          variant="link"
-          size="sm"
-          className="h-auto p-0 text-brand"
-          onClick={() => onGoTab("billing")}
-        >
-          Manage billing →
-        </Button>
       </div>
-    </div>
+
+      <div className="gd-r gd-dash flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <span className="flex items-center gap-2.5 text-[14.5px]">
+          <CalendarClock size={18} aria-hidden="true" /> {billingLine}
+        </span>
+        <button type="button" className="gd-link" onClick={() => onGoTab("billing")}>
+          Manage billing <ChevronRight size={15} aria-hidden="true" />
+        </button>
+      </div>
+    </>
   );
 }

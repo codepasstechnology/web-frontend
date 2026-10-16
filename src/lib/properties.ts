@@ -65,7 +65,9 @@ export interface MyPropertyDetail extends MyProperty {
   agent: { name: string; phone: string; agency: string };
   position: [number, number];
   postingFeeAmount: number;
+  /** Cover first. */
   photos: string[];
+  photoItems: { id: string; url: string }[];
 }
 
 interface ApiProperty {
@@ -232,6 +234,9 @@ function mapApiMyPropertyDetail(p: ApiMyPropertyDetail): MyPropertyDetail {
     photos: [...(p.photos ?? [])]
       .sort((a, b) => Number(b.is_cover) - Number(a.is_cover))
       .map((photo) => photo.url),
+    photoItems: [...(p.photos ?? [])]
+      .sort((a, b) => Number(b.is_cover) - Number(a.is_cover))
+      .map((photo) => ({ id: photo.id, url: photo.url })),
   };
 }
 
@@ -323,6 +328,7 @@ export interface PropertyDraft {
   latitude: number;
   longitude: number;
   photos?: File[];
+  removePhotoIds?: string[];
 }
 
 function toFormData(draft: PropertyDraft): FormData {
@@ -347,6 +353,7 @@ function toFormData(draft: PropertyDraft): FormData {
   if (draft.agentAgency) body.append("agent_agency", draft.agentAgency);
   (draft.amenities ?? []).forEach((a) => body.append("amenities[]", a));
   (draft.photos ?? []).forEach((f) => body.append("photos[]", f));
+  (draft.removePhotoIds ?? []).forEach((id) => body.append("remove_photo_ids[]", id));
 
   return body;
 }

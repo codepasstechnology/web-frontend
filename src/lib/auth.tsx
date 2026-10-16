@@ -48,9 +48,11 @@ export interface AppUser {
     smsAlerts: boolean;
     weeklyDigest: boolean;
     marketing: boolean;
+    listingKycUpdates: boolean;
   };
   twoFactor?: boolean;
   language?: "en" | "sw";
+  defaultMapView?: "map" | "satellite";
   isAdmin?: boolean;
   emailVerified: boolean;
   /** Platform-wide setting — admins can turn the requirement off entirely. */
@@ -71,6 +73,7 @@ interface ApiUser {
   bio: string | null;
   company: string | null;
   language: string | null;
+  default_map_view?: "map" | "satellite";
   two_factor_enabled: boolean;
   email_verified_at: string | null;
   email_verification_required?: boolean;
@@ -79,6 +82,7 @@ interface ApiUser {
     sms_alerts: boolean;
     weekly_digest: boolean;
     marketing: boolean;
+    listing_kyc_updates?: boolean;
   } | null;
 }
 
@@ -198,6 +202,7 @@ function mapApiUser(
     company: u.company ?? undefined,
     avatarColor: u.avatar_color ?? undefined,
     language: (u.language as "en" | "sw") ?? undefined,
+    defaultMapView: u.default_map_view ?? "map",
     twoFactor: u.two_factor_enabled ?? false,
     notifications: u.notifications
       ? {
@@ -205,6 +210,7 @@ function mapApiUser(
           smsAlerts: u.notifications.sms_alerts,
           weeklyDigest: u.notifications.weekly_digest,
           marketing: u.notifications.marketing,
+          listingKycUpdates: u.notifications.listing_kyc_updates ?? true,
         }
       : undefined,
     listings: listings.map((l) => ({
@@ -342,6 +348,9 @@ interface AuthCtx {
   getInvoiceStatus: (invoiceId: string) => Promise<string>;
   cancelInvoice: (invoiceId: string) => Promise<void>;
   cancelSubscription: () => Promise<void>;
+  resumeSubscription: () => Promise<void>;
+  requestEmailChange: (email: string, password: string) => Promise<void>;
+  confirmEmailChange: (code: string) => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
   resendVerificationCode: () => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
@@ -540,6 +549,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cancelSubscription = useCallback(async () => {
     await api.post("/user/subscription/cancel");
+    await reloadUser();
+  }, [reloadUser]);
+
+  const resumeSubscription = useCallback(async () => {
+    await api.post("/user/subscription/resume");
     await reloadUser();
   }, [reloadUser]);
 
@@ -757,12 +771,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (patch.company !== undefined) body.company = patch.company;
     if (patch.avatarColor !== undefined) body.avatar_color = patch.avatarColor;
     if (patch.language !== undefined) body.language = patch.language;
+    if (patch.defaultMapView !== undefined) body.default_map_view = patch.defaultMapView;
+    if (patch.role !== undefined) body.role = patch.role;
     if (patch.twoFactor !== undefined) body.two_factor_enabled = patch.twoFactor;
     if (patch.notifications) {
       body.notif_email_inquiries = patch.notifications.emailInquiries;
       body.notif_sms_alerts = patch.notifications.smsAlerts;
       body.notif_weekly_digest = patch.notifications.weeklyDigest;
       body.notif_marketing = patch.notifications.marketing;
+      body.notif_listing_kyc_updates = patch.notifications.listingKycUpdates;
     }
 
     if (Object.keys(body).length > 0) {
@@ -786,6 +803,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resendVerificationCode = useCallback(async () => {
     await api.post("/auth/email/resend");
+  }, []);
+
+  const requestEmailChange = useCallback(async (email: string, password: string) => {
+    await api.post("/user/email/change", { email, password });
+  }, []);
+
+  const confirmEmailChange = useCallback(async (code: string) => {
+    const { email } = await api.post<ApiUser>("/user/email/confirm", { code });
+    setUser((prev) => (prev ? { ...prev, email, emailVerified: true } : prev));
   }, []);
 
   const enableTwoFactor = useCallback(async () => {
@@ -842,6 +868,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getInvoiceStatus,
         cancelInvoice,
         cancelSubscription,
+        resumeSubscription,
+        requestEmailChange,
+        confirmEmailChange,
         verifyEmail,
         resendVerificationCode,
         changePassword,

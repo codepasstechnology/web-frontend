@@ -15,7 +15,8 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("@/components/VerifyAccountModal", () => ({ VerifyAccountModal: () => null }));
-vi.mock("@/components/Navbar", () => ({ Navbar: () => null }));
+vi.mock("@/components/dashboard/DashboardTopBar", () => ({ DashboardTopBar: () => null }));
+vi.mock("@/lib/plans", () => ({ usePlans: () => ({ data: [] }) }));
 
 const { DashboardShell } = await import("@/components/DashboardShell");
 
@@ -82,5 +83,13 @@ describe("DashboardShell — bottom nav", () => {
     expect(expanded()).toHaveLength(1);
     expect(bar().getByRole("button", { name: "More sections" })).toHaveTextContent("Billing");
     expect(bar().getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("highlights Upload in the sidebar on the upload pages", () => {
+    show("upload");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("button", { name: "Upload" })).toHaveAttribute("aria-current", "page");
+    expect(sidebar.getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
   });
 });

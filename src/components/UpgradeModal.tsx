@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { usePlans } from "@/lib/plans";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PlanCard } from "./PlanCard";
 
 interface Props {
@@ -12,20 +13,25 @@ interface Props {
 
 export function UpgradeModal({ open, currentPlan, onClose, onSelect, reason }: Props) {
   const { data: plans = [] } = usePlans();
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[2000] flex justify-center overflow-y-auto overscroll-contain bg-black/60 p-4">
-      <div className="relative my-auto w-full max-w-5xl rounded-lg border border-border bg-background p-4 shadow-lg sm:p-6">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <h2 className="pr-10 text-xl font-semibold text-foreground">Upgrade your plan</h2>
-        {reason && <p className="mt-1 text-sm text-muted-foreground">{reason}</p>}
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="gd-dialog gd-xwide [&>button:last-child]:hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <DialogTitle className="gd-h1 text-[28px]">Upgrade your plan</DialogTitle>
+            {reason ? (
+              <DialogDescription className="gd-sub">{reason}</DialogDescription>
+            ) : (
+              <DialogDescription className="sr-only">
+                Compare plans and choose the one that fits.
+              </DialogDescription>
+            )}
+          </div>
+          <button type="button" className="gd-ib" onClick={onClose} aria-label="Close">
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="grid gap-3.5 pt-2.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
           {plans.map((p) => (
             <PlanCard
               key={p.id}
@@ -38,7 +44,7 @@ export function UpgradeModal({ open, currentPlan, onClose, onSelect, reason }: P
             />
           ))}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

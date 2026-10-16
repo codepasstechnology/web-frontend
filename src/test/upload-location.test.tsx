@@ -91,7 +91,7 @@ describe("upload wizard, location step", () => {
     render(<UploadPage />);
 
     expect(screen.getByRole("heading", { name: "Where is your land?" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /Photos & documents/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByRole("heading", { name: "Where is your land?" })).toBeInTheDocument();
     expect(screen.getByTestId("plot-map")).toHaveAttribute("data-attention", "1");
@@ -101,7 +101,7 @@ describe("upload wizard, location step", () => {
     startOnLocationStep(square);
     render(<UploadPage />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Photos & documents/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.queryByRole("heading", { name: "Where is your land?" })).not.toBeInTheDocument();
   });

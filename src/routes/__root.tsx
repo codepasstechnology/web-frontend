@@ -204,7 +204,7 @@ function RootComponent() {
         {showNavbar && <Navbar scrollAware />}
         <Outlet />
         {showFooter && <SiteFooter />}
-        <Toaster position="top-right" richColors />
+        <Toaster position="bottom-center" />
       </AuthProvider>
     </QueryClientProvider>
   );

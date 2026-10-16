@@ -1,5 +1,4 @@
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { Plan } from "@/lib/plans";
 
 interface Props {
@@ -15,57 +14,36 @@ function listingsLine(plan: Plan) {
 }
 
 export function PlanCard({ plan, current, onSelect, yearly }: Props) {
-  const highlighted = Boolean(plan.badge);
+  const highlighted = Boolean(plan.badge) && !current;
   const displayPrice = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
-  const period = yearly && plan.priceYearly !== null ? "/yr" : "/mo";
+  const period = yearly && plan.priceYearly !== null ? "/ yr" : "/ mo";
   return (
-    <article
-      className={`relative flex flex-col gap-5 rounded-xl bg-card px-7 py-8 text-card-foreground ${
-        highlighted
-          ? "border-2 border-brand shadow-[0_10px_30px_-12px_rgb(15_23_42/0.18)]"
-          : "border border-border"
-      }`}
-    >
-      {plan.badge && (
-        <span className="absolute -top-3 left-7 rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-brand-foreground">
-          {plan.badge.label}
+    <article className="gd-plan" data-pop={highlighted} data-cur={Boolean(current)}>
+      {highlighted && plan.badge && <span className="gd-ribbon">{plan.badge.label}</span>}
+      <h3 className="gd-eyebrow">{plan.name}</h3>
+      <span className="flex items-baseline gap-1">
+        <span className="gd-h text-[28px]">
+          {displayPrice === 0 ? "Free" : `KES ${displayPrice.toLocaleString("en-US")}`}
         </span>
-      )}
-      <div className="flex flex-col gap-1.5">
-        <h3 className="text-lg font-bold">{plan.name}</h3>
-        <p className="text-sm text-muted-foreground">{listingsLine(plan)}</p>
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-sm font-semibold text-muted-foreground">KES</span>
-        <span
-          key={period}
-          className="animate-in fade-in slide-in-from-top-1 text-4xl font-extrabold tracking-[-0.02em] tabular-nums duration-300"
-        >
-          {displayPrice.toLocaleString("en-US")}
-        </span>
-        <span className="text-sm text-muted-foreground">{period}</span>
-      </div>
-      <ul className="flex flex-col gap-2.5 text-[0.9375rem] leading-snug">
+        {displayPrice > 0 && <span className="text-sm text-muted-foreground">{period}</span>}
+      </span>
+      <span className="text-sm font-semibold">{listingsLine(plan)}</span>
+      <ul className="flex flex-1 flex-col gap-[7px]">
         {plan.features.map((f) => (
-          <li key={f} className="flex gap-2.5">
-            <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand" strokeWidth={2.5} />
-            <span>{f}</span>
+          <li key={f} className="gd-feat">
+            <Check size={15} strokeWidth={2.6} aria-hidden="true" />
+            {f}
           </li>
         ))}
       </ul>
-      <div className="mt-auto flex flex-col pt-2">
-        <Button
-          size="lg"
-          onClick={onSelect}
-          disabled={current}
-          variant={highlighted && !current ? "default" : "outline"}
-          className={`h-11 px-6 text-base ${
-            highlighted && !current ? "bg-brand text-brand-foreground hover:bg-brand-hover" : ""
-          }`}
-        >
-          {current ? "Current plan" : displayPrice === 0 ? "Start free" : plan.cta}
-        </Button>
-      </div>
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={current}
+        className={`gd-btn ${highlighted ? "" : "gd-o"}`}
+      >
+        {current ? "Current plan" : displayPrice === 0 ? "Start free" : plan.cta}
+      </button>
     </article>
   );
 }

@@ -72,3 +72,6 @@ ds-bundle/
 # Playwright
 /test-results/
 /playwright-report/
+
+# Design references (briefs, mockups, previews)
+/design/
