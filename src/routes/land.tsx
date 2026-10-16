@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { List } from "lucide-react";
 import { LandMap } from "@/components/map/LazyMaps";
-import { MapSidebar, SegFilter, SelectFilter } from "@/components/MapSidebar";
+import { MapFilterMenu } from "@/components/map/MapFilterMenu";
+import { MapSidebar, PriceRangeFilter, SegFilter, SelectFilter } from "@/components/MapSidebar";
 import { ParcelPanel } from "@/components/PropertyPanel";
 import { ListingCard } from "@/components/map/ListingCard";
 import { CompareModal, CompareTray } from "@/components/map/Compare";
@@ -25,6 +26,7 @@ import { shareHead, shareQuery } from "@/lib/shareMeta";
 import { COMPARE_MAX } from "@/lib/compare";
 import type { Bbox } from "@/lib/mapGeo";
 import { kenyaCounties } from "@/lib/plans";
+import { LAND_PRICE_KIND } from "@/lib/priceRanges";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -63,9 +65,6 @@ function classifyReferrer(ref: string): "direct" | "search" | "social" | "referr
     return "direct";
   }
 }
-
-const PRICE_STEPS = [0, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000];
-const priceLabel = (n: number) => (n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}K`);
 
 function LandPage() {
   return (
@@ -156,93 +155,6 @@ function LandContent() {
         empty={!parcelsQuery.isLoading && filtered.length === 0}
         drawerOpen={drawer}
         onCloseDrawer={() => setDrawer(false)}
-        filters={
-          <>
-            <div className="gm-field">
-              <label htmlFor="f-pn" className="gm-flab">
-                Parcel number
-              </label>
-              <input
-                id="f-pn"
-                type="search"
-                className="gm-input"
-                placeholder="e.g. KAJ/KTG/4521"
-                value={filters.query}
-                onChange={(e) => set("query", e.target.value)}
-              />
-            </div>
-            <div className="gm-field">
-              <SelectFilter
-                id="f-county"
-                label="County"
-                value={filters.county}
-                onChange={(v) => set("county", v)}
-                options={[
-                  { value: "All", label: "All 47 counties" },
-                  ...kenyaCounties.map((c) => ({ value: c, label: c })),
-                ]}
-              />
-            </div>
-            <SegFilter
-              label="Status"
-              value={filters.status}
-              onChange={(v) => set("status", v)}
-              options={[
-                { value: "all", label: "All" },
-                { value: "verified", label: "Verified" },
-                { value: "available", label: "Available" },
-              ]}
-            />
-            <SegFilter
-              label="Sale or lease"
-              value={filters.listingType}
-              onChange={(v) => set("listingType", v)}
-              options={[
-                { value: "all", label: "All" },
-                { value: "sale", label: "Sale", color: DEAL_COLOR.sale },
-                { value: "lease", label: "Lease", color: DEAL_COLOR.lease },
-              ]}
-            />
-            <SegFilter
-              label="Posted by"
-              value={filters.postedBy}
-              onChange={(v) => set("postedBy", v)}
-              options={[
-                { value: "all", label: "Anyone" },
-                { value: "owner", label: "Owner" },
-                { value: "broker", label: "Broker" },
-              ]}
-            />
-            <div className="gm-field">
-              <span className="gm-flab">Price (KES)</span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <SelectFilter
-                  id="f-min"
-                  label="Minimum price"
-                  hideLabel
-                  value={String(filters.minPrice)}
-                  onChange={(v) => set("minPrice", Number(v))}
-                  options={PRICE_STEPS.map((n) => ({
-                    value: String(n),
-                    label: n ? priceLabel(n) : "No min",
-                  }))}
-                />
-                <span style={{ color: "var(--muted)" }}>to</span>
-                <SelectFilter
-                  id="f-max"
-                  label="Maximum price"
-                  hideLabel
-                  value={String(filters.maxPrice)}
-                  onChange={(v) => set("maxPrice", Number(v))}
-                  options={PRICE_STEPS.map((n) => ({
-                    value: String(n),
-                    label: n ? priceLabel(n) : "No max",
-                  }))}
-                />
-              </div>
-            </div>
-          </>
-        }
       >
         <ul
           aria-label="Listings"
@@ -294,8 +206,82 @@ function LandContent() {
           retrying={parcelsQuery.isError && parcelsQuery.isFetching}
           onRetry={() => parcelsQuery.refetch()}
         />
+        <MapFilterMenu
+          active={filtersActive}
+          count={filtered.length}
+          onReset={() => setFilters(DEFAULT_FILTERS)}
+        >
+          <>
+            <div className="gm-field">
+              <label htmlFor="f-pn" className="gm-flab">
+                Parcel number
+              </label>
+              <input
+                id="f-pn"
+                type="search"
+                className="gm-input"
+                placeholder="e.g. KAJ/KTG/4521"
+                value={filters.query}
+                onChange={(e) => set("query", e.target.value)}
+              />
+            </div>
+            <div className="gm-field">
+              <SelectFilter
+                id="f-county"
+                label="County"
+                value={filters.county}
+                onChange={(v) => set("county", v)}
+                options={[
+                  { value: "All", label: "All 47 counties" },
+                  ...kenyaCounties.map((c) => ({ value: c, label: c })),
+                ]}
+              />
+            </div>
+            <SegFilter
+              label="Status"
+              value={filters.status}
+              onChange={(v) => set("status", v)}
+              options={[
+                { value: "all", label: "All" },
+                { value: "verified", label: "Verified" },
+                { value: "available", label: "Available" },
+              ]}
+            />
+            <SegFilter
+              label="Sale or lease"
+              value={filters.listingType}
+              // Sale prices and yearly lease rents are on different scales.
+              onChange={(v) =>
+                setFilters((f) => ({ ...f, listingType: v, minPrice: 0, maxPrice: 0 }))
+              }
+              options={[
+                { value: "all", label: "All" },
+                { value: "sale", label: "Sale", color: DEAL_COLOR.sale },
+                { value: "lease", label: "Lease", color: DEAL_COLOR.lease },
+              ]}
+            />
+            <SegFilter
+              label="Posted by"
+              value={filters.postedBy}
+              onChange={(v) => set("postedBy", v)}
+              options={[
+                { value: "all", label: "Anyone" },
+                { value: "owner", label: "Owner" },
+                { value: "broker", label: "Broker" },
+              ]}
+            />
+            <PriceRangeFilter
+              kind={filters.listingType === "all" ? null : LAND_PRICE_KIND[filters.listingType]}
+              value={{ min: filters.minPrice, max: filters.maxPrice }}
+              onChange={({ min, max }) =>
+                setFilters((f) => ({ ...f, minPrice: min, maxPrice: max }))
+              }
+              pickFirst="sale or lease"
+            />
+          </>
+        </MapFilterMenu>
         <button type="button" className="gm-btn gm-fab" onClick={() => setDrawer(true)}>
-          <SlidersHorizontal width={18} height={18} aria-hidden /> Filters ({filtered.length})
+          <List width={18} height={18} aria-hidden /> Listings ({filtered.length})
         </button>
         {compared.length > 0 && !compareOpen && (
           <CompareTray

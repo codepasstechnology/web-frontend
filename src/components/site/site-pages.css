@@ -30,9 +30,10 @@
   --deep-ink: #fff6ea;
   --err: #b3261e;
   --ring: rgba(63, 90, 42, 0.16);
-  /* Map: listing colours (land by deal, properties by intent) and basemap. */
-  --s-lsale: #3f5a2a;
-  --s-lease: #23756c;
+  /* Map: listing colours (land by deal, properties by intent) and basemap.
+     Land uses warm earth tones that sit with the olive and cream but stand out from vegetation on satellite. */
+  --s-lsale: #c2502a;
+  --s-lease: #8a3f78;
   --s-rent: #2d5c9c;
   --s-bsale: #1e2418;
   --s-bnb: #a8600c;
@@ -73,8 +74,8 @@ html.dark .gs-root {
   --deep-ink: #f4eee2;
   --err: #f2877e;
   --ring: rgba(169, 201, 122, 0.22);
-  --s-lsale: #a9c97a;
-  --s-lease: #6cc3b6;
+  --s-lsale: #ef8a5f;
+  --s-lease: #d79bc9;
   --s-rent: #93b6ec;
   --s-bsale: #f4eee2;
   --s-bnb: #edb660;

@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { List } from "lucide-react";
 import { LandMap } from "@/components/map/LazyMaps";
 import type { FlyTarget } from "@/components/LandMap";
-import { MapSidebar, SegFilter } from "@/components/MapSidebar";
+import { MapFilterMenu } from "@/components/map/MapFilterMenu";
+import { MapSidebar, PriceRangeFilter, SegFilter } from "@/components/MapSidebar";
 import { ParcelPanel, RentalPanel } from "@/components/PropertyPanel";
 import { ListingCard } from "@/components/map/ListingCard";
 import { CompareModal, CompareTray } from "@/components/map/Compare";
@@ -16,9 +17,10 @@ import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { COMPARE_MAX } from "@/lib/compare";
-import type { LandParcel } from "@/lib/landData";
+import type { LandParcel, ListingType } from "@/lib/landData";
 import type { Bbox } from "@/lib/mapGeo";
 import { parcelPrice } from "@/lib/parcelFilters";
+import { ANY_PRICE, HOME_PRICE_KIND, inRange, LAND_PRICE_KIND } from "@/lib/priceRanges";
 import { useMapParcels, useSavedParcels } from "@/lib/parcels";
 import {
   formatPrice,
@@ -26,6 +28,7 @@ import {
   usePublicProperties,
   useProperty,
   type Property,
+  type PropertyIntent,
 } from "@/lib/properties";
 import { shareHead, shareQuery } from "@/lib/shareMeta";
 
@@ -76,6 +79,11 @@ function ExploreContent() {
   const [drawer, setDrawer] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [landType, setLandType] = useState<ListingType | "all">("all");
+  const [homeIntent, setHomeIntent] = useState<PropertyIntent | "all">("all");
+  // Each price is on the scale of the chosen type, so changing type clears it.
+  const [landPrice, setLandPrice] = useState(ANY_PRICE);
+  const [homePrice, setHomePrice] = useState(ANY_PRICE);
   const recent = useRecentlyViewed();
   const { savedIds, toggleSaved } = useSavedParcels(!!user);
 
@@ -86,8 +94,39 @@ function ExploreContent() {
   const knownParcels = useKnownListings(parcels);
   const knownProperties = useKnownListings(properties);
   const loading = parcelsQuery.isLoading || propertiesQuery.isLoading;
-  const shownParcels = search.show === "rentals" ? [] : parcels;
-  const shownProperties = search.show === "land" ? [] : properties;
+  const shownParcels = useMemo(
+    () =>
+      search.show === "rentals"
+        ? []
+        : parcels.filter(
+            (p) =>
+              landType === "all" || (p.listingType === landType && inRange(p.price, landPrice)),
+          ),
+    [parcels, search.show, landType, landPrice],
+  );
+  const shownProperties = useMemo(
+    () =>
+      search.show === "land"
+        ? []
+        : properties.filter(
+            (p) => homeIntent === "all" || (p.intent === homeIntent && inRange(p.price, homePrice)),
+          ),
+    [properties, search.show, homeIntent, homePrice],
+  );
+  const filtersActive = !!search.show || landType !== "all" || homeIntent !== "all";
+  const chooseLand = (t: ListingType | "all") => {
+    setLandType(t);
+    setLandPrice(ANY_PRICE);
+  };
+  const chooseHome = (i: PropertyIntent | "all") => {
+    setHomeIntent(i);
+    setHomePrice(ANY_PRICE);
+  };
+  const resetFilters = () => {
+    setSearch({ show: undefined });
+    chooseLand("all");
+    chooseHome("all");
+  };
 
   const selectedParcel = search.parcel ? knownParcels.get(search.parcel) : undefined;
   // The rentals feed is paginated, so a shared link can name a listing that is not loaded.
@@ -183,22 +222,11 @@ function ExploreContent() {
         count={count}
         recent={recentChips}
         onClearRecent={recent.clear}
-        filtersActive={!!search.show}
-        onReset={() => setSearch({ show: undefined })}
+        filtersActive={filtersActive}
+        onReset={resetFilters}
         empty={!loading && count === 0}
         drawerOpen={drawer}
         onCloseDrawer={() => setDrawer(false)}
-        filters={
-          <SegFilter<"all" | Show>
-            value={search.show ?? "all"}
-            onChange={(v) => setSearch({ show: v === "all" ? undefined : v })}
-            options={[
-              { value: "all", label: `All ${parcels.length + properties.length}` },
-              { value: "land", label: `Land ${parcels.length}` },
-              { value: "rentals", label: `Rentals ${properties.length}` },
-            ]}
-          />
-        }
       >
         <ul
           aria-label="Listings"
@@ -272,6 +300,58 @@ function ExploreContent() {
           retrying={loadError && (parcelsQuery.isFetching || propertiesQuery.isFetching)}
           onRetry={retry}
         />
+        <MapFilterMenu active={filtersActive} count={count} onReset={resetFilters}>
+          <SegFilter<"all" | Show>
+            value={search.show ?? "all"}
+            onChange={(v) => setSearch({ show: v === "all" ? undefined : v })}
+            options={[
+              { value: "all", label: `All ${parcels.length + properties.length}` },
+              { value: "land", label: `Land ${parcels.length}` },
+              { value: "rentals", label: `Rentals ${properties.length}` },
+            ]}
+          />
+          {search.show !== "rentals" && (
+            <>
+              <SegFilter
+                label="Land"
+                value={landType}
+                onChange={chooseLand}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "sale", label: "For sale", color: DEAL_COLOR.sale },
+                  { value: "lease", label: "For lease", color: DEAL_COLOR.lease },
+                ]}
+              />
+              <PriceRangeFilter
+                kind={landType === "all" ? null : LAND_PRICE_KIND[landType]}
+                value={landPrice}
+                onChange={setLandPrice}
+                pickFirst="for sale or for lease"
+              />
+            </>
+          )}
+          {search.show !== "land" && (
+            <>
+              <SegFilter
+                label="Homes"
+                value={homeIntent}
+                onChange={chooseHome}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "rent", label: "Rent", color: INTENT_COLOR.rent },
+                  { value: "sale", label: "Sale", color: INTENT_COLOR.sale },
+                  { value: "bnb", label: "BnB", color: INTENT_COLOR.bnb },
+                ]}
+              />
+              <PriceRangeFilter
+                kind={homeIntent === "all" ? null : HOME_PRICE_KIND[homeIntent]}
+                value={homePrice}
+                onChange={setHomePrice}
+                pickFirst="rent, sale or BnB"
+              />
+            </>
+          )}
+        </MapFilterMenu>
         <button type="button" className="gm-btn gm-fab" onClick={() => setDrawer(true)}>
           <List width={18} height={18} aria-hidden /> Listings ({count})
         </button>

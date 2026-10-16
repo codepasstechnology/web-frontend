@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Clock, PanelLeftClose, X } from "lucide-react";
+import * as SliderPrimitive from "@radix-ui/react-slider";
+import { PRICE_SCALES, type PriceKind, type PriceRange } from "@/lib/priceRanges";
 
 export interface RecentChip {
   id: string;
@@ -23,7 +25,6 @@ export function MapSidebar({
   count,
   recent,
   onClearRecent,
-  filters,
   filtersActive,
   onReset,
   empty,
@@ -36,7 +37,6 @@ export function MapSidebar({
   count: number;
   recent: RecentChip[];
   onClearRecent: () => void;
-  filters?: ReactNode;
   filtersActive: boolean;
   onReset: () => void;
   empty: boolean;
@@ -171,7 +171,6 @@ export function MapSidebar({
                 </div>
               </div>
             )}
-            {filters}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span className="gm-flab">Results</span>
               {filtersActive && (
@@ -235,6 +234,84 @@ export function SegFilter<T extends string>({
     <div className="gm-field">
       <span className="gm-flab">{label}</span>
       {group}
+    </div>
+  );
+}
+
+const kes = (n: number) =>
+  n >= 1_000_000 ? `${n / 1_000_000}M` : n >= 1_000 ? `${n / 1_000}K` : String(n);
+
+/**
+ * A two-handle price slider on the scale for one kind of listing. The left end
+ * is "no minimum" and the right end "no maximum". With no kind picked yet there
+ * is no single scale, so it asks for one instead.
+ */
+export function PriceRangeFilter({
+  kind,
+  value,
+  onChange,
+  pickFirst,
+}: {
+  kind: PriceKind | null;
+  value: PriceRange;
+  onChange: (r: PriceRange) => void;
+  /** What to choose before a price can be set, e.g. "sale or lease". */
+  pickFirst: string;
+}) {
+  if (!kind) {
+    return (
+      <div className="gm-field">
+        <span className="gm-flab">Price (KES)</span>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>
+          Choose {pickFirst} to set a price range.
+        </span>
+      </div>
+    );
+  }
+
+  const { stops, unit } = PRICE_SCALES[kind];
+  const last = stops.length - 1;
+  const at = (n: number) => stops.reduce((i, s, j) => (s <= n ? j : i), 0);
+  const lo = value.min ? at(value.min) : 0;
+  const hi = value.max ? at(value.max) : last;
+  const summary =
+    lo === 0 && hi === last
+      ? "Any price"
+      : hi === last
+        ? `KES ${kes(stops[lo])}+${unit}`
+        : lo === 0
+          ? `Up to KES ${kes(stops[hi])}${unit}`
+          : `KES ${kes(stops[lo])} – ${kes(stops[hi])}${unit}`;
+
+  return (
+    <div className="gm-field">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <span className="gm-flab">Price (KES)</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{summary}</span>
+      </div>
+      <SliderPrimitive.Root
+        className="gm-range"
+        min={0}
+        max={last}
+        step={1}
+        minStepsBetweenThumbs={1}
+        value={[lo, hi]}
+        onValueChange={([a, b]) => onChange({ min: stops[a], max: b === last ? 0 : stops[b] })}
+      >
+        <SliderPrimitive.Track className="gm-range-track">
+          <SliderPrimitive.Range className="gm-range-fill" />
+        </SliderPrimitive.Track>
+        <SliderPrimitive.Thumb
+          className="gm-range-thumb"
+          aria-label="Minimum price"
+          aria-valuetext={lo === 0 ? "No minimum" : `KES ${kes(stops[lo])}${unit}`}
+        />
+        <SliderPrimitive.Thumb
+          className="gm-range-thumb"
+          aria-label="Maximum price"
+          aria-valuetext={hi === last ? "No maximum" : `KES ${kes(stops[hi])}${unit}`}
+        />
+      </SliderPrimitive.Root>
     </div>
   );
 }

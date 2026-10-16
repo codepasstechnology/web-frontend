@@ -530,6 +530,10 @@
   position: absolute;
   inset: 0;
 }
+/* A light halo keeps plot edges readable over dark forest. */
+.gm-mapfill[data-satellite] .leaflet-overlay-pane path {
+  filter: drop-shadow(0 0 1.5px rgba(255, 250, 242, 0.95));
+}
 
 .gm-map.leaflet-container {
   background: var(--mbg);
@@ -649,15 +653,15 @@
   transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  min-height: 24px;
+  gap: 4px;
+  padding: 2px 7px;
+  min-height: 20px;
   border-radius: 999px;
   border: 1.3px solid var(--pc);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -719,8 +723,8 @@
 .gm-pin {
   position: relative;
   display: block;
-  width: 44px;
-  height: 48px;
+  width: 30px;
+  height: 33px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -747,10 +751,10 @@
 .gm-ground {
   position: absolute;
   left: 50%;
-  bottom: -3px;
-  width: 28px;
-  height: 9px;
-  margin-left: -14px;
+  bottom: -2px;
+  width: 20px;
+  height: 6px;
+  margin-left: -10px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.16);
   filter: blur(2px);
@@ -762,10 +766,10 @@
 .gm-ring {
   position: absolute;
   left: 50%;
-  bottom: -8px;
-  width: 48px;
-  height: 18px;
-  margin-left: -24px;
+  bottom: -6px;
+  width: 34px;
+  height: 13px;
+  margin-left: -17px;
   border-radius: 50%;
   border: 2px solid var(--pc);
   opacity: 0;
@@ -774,7 +778,7 @@
 
 .gm-pin:hover .gm-mk,
 .gm-pin[data-on="true"] .gm-mk {
-  transform: translateY(-7px) scale(1.18);
+  transform: translateY(-4px) scale(1.15);
   filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.25));
 }
 
@@ -797,8 +801,8 @@
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 5px;
-  font-size: 12px;
+  margin-top: 3px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--ink);
   white-space: nowrap;
@@ -872,8 +876,8 @@
   width: var(--cs);
   height: var(--cs);
   border-radius: 50%;
-  padding: 4px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  padding: 3px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
   transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -888,10 +892,12 @@
   justify-content: center;
   font-family: "Bricolage Grotesque", sans-serif;
   font-weight: 800;
-  font-size: 17px;
+  font-size: 13px;
 }
 
+/* The place name would cover its neighbours, so it only appears on hover or selection. */
 .gm-clab {
+  display: none;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -905,6 +911,12 @@
 .gm-clu:hover .gm-cring,
 .gm-clu[data-on="true"] .gm-cring {
   transform: scale(1.14);
+}
+
+.gm-clu:hover .gm-clab,
+.gm-clu[data-on="true"] .gm-clab,
+.gm-clu:focus-visible .gm-clab {
+  display: block;
 }
 
 /* You are here */
@@ -994,6 +1006,135 @@
   align-items: center;
   gap: 8px;
   pointer-events: none;
+}
+
+/* Filters over the map, top right; it moves aside for the listing panel. */
+.gm-ctl-filter {
+  right: 16px;
+  top: 16px;
+}
+
+.gm-mapwrap[data-panel="true"] .gm-ctl-filter {
+  right: 400px;
+}
+
+.gm-filterbtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.gm-filterbtn[data-active="true"] {
+  border-color: var(--accent);
+}
+
+.gm-filterbtn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.gm-fdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.gm-fpanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(560px, calc(100vh - 220px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+  animation: gmIn 0.2s ease backwards;
+}
+
+.gm-fhead,
+.gm-ffoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.gm-fhead {
+  border-bottom: 1px solid var(--line2);
+}
+
+.gm-ffoot {
+  border-top: 1px solid var(--line2);
+}
+
+.gm-ffoot .gm-btn {
+  margin-left: auto;
+}
+
+/* Two-handle price slider */
+.gm-range {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  touch-action: none;
+  user-select: none;
+}
+
+.gm-range-track {
+  position: relative;
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.gm-range-fill {
+  position: absolute;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.gm-range-thumb {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+}
+
+.gm-range-thumb:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.gm-fbody {
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .gm-search {
@@ -2274,6 +2415,17 @@ html.dark .gm-pline[data-tone="warn"] {
 
   .gm-ctl-tl {
     top: 74px;
+  }
+
+  .gm-ctl-filter,
+  .gm-mapwrap[data-panel="true"] .gm-ctl-filter {
+    top: 74px;
+    right: 16px;
+  }
+
+  .gm-filterbtn {
+    min-height: 42px;
+    padding: 0 14px;
   }
 
   .gm-ctl-chips {
