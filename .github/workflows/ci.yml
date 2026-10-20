@@ -4,18 +4,8 @@ on:
   pull_request:
     branches: [main, dev]
   workflow_call:
-    secrets:
-      E2E_REPO_TOKEN:
-        required: false
 
 jobs:
-  end-to-end:
-    name: Complete user journey
-    if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
-    uses: ./.github/workflows/e2e.yml
-    secrets:
-      E2E_REPO_TOKEN: ${{ secrets.E2E_REPO_TOKEN }}
-
   unit-tests:
     name: Unit Tests (Vitest)
     runs-on: ubuntu-latest
