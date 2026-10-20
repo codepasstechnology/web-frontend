@@ -122,13 +122,9 @@ describe("listing panel", () => {
     expect(screen.getByText("No Street View here")).toBeInTheDocument();
   });
 
-  it("offers verification on an available plot and vouches for a verified one", () => {
+  it("vouches only for a verified plot", () => {
     const { unmount } = panel(makeParcel("a"));
-    expect(screen.getByText("Documents not yet reviewed")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /request a document review/i })).toHaveAttribute(
-      "href",
-      "/login",
-    );
+    expect(screen.queryByText(/documents not yet reviewed/i)).not.toBeInTheDocument();
     unmount();
 
     panel(makeParcel("a", { status: "verified" }));
@@ -208,15 +204,11 @@ describe("compare", () => {
 describe("land filters", () => {
   beforeEach(() => mockSearch.mockReturnValue({}));
 
-  it("offers verified and available, never sold", async () => {
+  it("offers available, never documents reviewed or sold", async () => {
     render(<LandPage />);
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     const status = within(screen.getByRole("group", { name: "Status" }));
-    expect(status.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "All",
-      "Documents reviewed",
-      "Available",
-    ]);
+    expect(status.getAllByRole("button").map((b) => b.textContent)).toEqual(["All", "Available"]);
     expect(screen.queryByText("Sold")).not.toBeInTheDocument();
   });
 });

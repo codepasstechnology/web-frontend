@@ -243,7 +243,6 @@ function LandContent() {
               onChange={(v) => set("status", v)}
               options={[
                 { value: "all", label: "All" },
-                { value: "verified", label: "Documents reviewed" },
                 { value: "available", label: "Available" },
               ]}
             />

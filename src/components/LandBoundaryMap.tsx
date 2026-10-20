@@ -51,7 +51,7 @@ const TUTORIAL_STEPS: { title: string; body: string; path: string; dots: boolean
   [
     {
       title: "Find your land",
-      body: 'Search for a place or tap "Near me", then zoom in until you can see fences, roads and roofs on the satellite view.',
+      body: 'Search for a place, paste coordinates from Google Maps, or tap "Near me", then zoom in until you can see fences, roads and roofs on the satellite view.',
       path: "",
       dots: false,
       pin: false,
@@ -628,6 +628,11 @@ export function LandBoundaryMap({
             if (tracing || (boundary && !pinOnly)) return;
             onPinChange([lat, lng]);
             say("Pin dropped at your location");
+          }}
+          onCoordinates={(lat, lng) => {
+            if (tracing || (boundary && !pinOnly)) return;
+            onPinChange([lat, lng]);
+            say("Pin dropped at your coordinates");
           }}
         />
         <div
