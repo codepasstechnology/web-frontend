@@ -11,6 +11,7 @@ import {
   Plus,
   Search,
   SearchX,
+  Share2,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/properties";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { listingUrl } from "@/lib/mapLinks";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -66,6 +68,9 @@ const ACTION_ICONS: Record<StatusAction["to"], typeof Tag> = {
   occupied: BedDouble,
   closed: DoorClosed,
 };
+
+/** Only listings buyers can open on the map have a link worth sharing. */
+const SHAREABLE = new Set(["active", "available", "occupied"]);
 
 const PERMANENT_CLOSE =
   "It will be removed from the marketplace and buyers can no longer see it. This can't be undone.";
@@ -284,6 +289,27 @@ export function ListingsTab() {
       ? navigate({ to: "/dashboard/upload", search: { edit: r.id, type: undefined } })
       : navigate({ to: "/dashboard/properties", search: { edit: r.id } });
 
+  const shareListing = async (r: ListingRow) => {
+    const url =
+      r.kind === "land"
+        ? listingUrl("land", "parcel", r.id)
+        : listingUrl("rentals", "property", r.id);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: r.name, url });
+      } catch {
+        /* the user closed the share sheet */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied.");
+    } catch {
+      toast.error("Couldn't copy the link.");
+    }
+  };
+
   const rowActions = (r: ListingRow) => (
     <span
       role="cell"
@@ -306,6 +332,17 @@ export function ListingsTab() {
           </button>
         );
       })}
+      {SHAREABLE.has(r.status) && (
+        <button
+          type="button"
+          className="gd-ib"
+          data-tip="Share"
+          aria-label={`Share ${r.name}`}
+          onClick={() => shareListing(r)}
+        >
+          <Share2 size={18} aria-hidden="true" />
+        </button>
+      )}
       <button
         type="button"
         className="gd-ib"
@@ -328,7 +365,7 @@ export function ListingsTab() {
   );
 
   const previewAction = previewTarget ? statusActions(previewTarget)[0] : undefined;
-  const cols = `minmax(0, 2.6fr) 90px 150px ${showViews ? "80px " : ""}110px 170px`;
+  const cols = `minmax(0, 2.6fr) 90px 150px ${showViews ? "80px " : ""}110px 210px`;
 
   return (
     <>
@@ -564,6 +601,11 @@ export function ListingsTab() {
         closeLabel={previewAction?.label ?? ""}
         onClose={() => setPreviewTarget(null)}
         onEdit={previewTarget ? () => editListing(previewTarget) : undefined}
+        onShare={
+          previewTarget && SHAREABLE.has(previewTarget.status)
+            ? () => shareListing(previewTarget)
+            : undefined
+        }
         onMarkClosed={
           previewTarget && previewAction
             ? () => {

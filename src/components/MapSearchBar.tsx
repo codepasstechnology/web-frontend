@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
-import { LocateFixed, MapPin, Search } from "lucide-react";
+import { Crosshair, LocateFixed, MapPin, Search } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { formatCoords, parseCoordinates } from "@/lib/mapGeo";
 
 export function MapSatelliteToggle({
   satellite,
@@ -42,9 +43,12 @@ export function FlyToLocation({ lat, lng }: { lat: number | null; lng: number | 
 export function MapSearchBar({
   onFly,
   onNearMe,
+  onCoordinates,
 }: {
   onFly: (lat: number, lng: number) => void;
   onNearMe?: (lat: number, lng: number) => void;
+  /** Called when the user picks coordinates they pasted into the search box. */
+  onCoordinates?: (lat: number, lng: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -52,10 +56,11 @@ export function MapSearchBar({
   const [open, setOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState("");
+  const coords = parseCoordinates(query);
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
+    if (q.length < 2 || parseCoordinates(q)) {
       setResults(null);
       return;
     }
@@ -115,7 +120,9 @@ export function MapSearchBar({
           type="search"
           autoComplete="off"
           className="gm-input"
-          placeholder="Search a place in Kenya"
+          placeholder={
+            onCoordinates ? "Search a place or paste coordinates" : "Search a place in Kenya"
+          }
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -123,7 +130,29 @@ export function MapSearchBar({
           }}
           onFocus={() => setOpen(true)}
         />
-        {open && results && (
+        {open && coords && (
+          <div className="gm-sres" role="listbox" aria-label="Coordinates">
+            <button
+              type="button"
+              role="option"
+              aria-selected={false}
+              onClick={() => {
+                onFly(coords[0], coords[1]);
+                onCoordinates?.(coords[0], coords[1]);
+                setOpen(false);
+              }}
+            >
+              <Crosshair width={18} height={18} aria-hidden style={{ color: "var(--accent)" }} />
+              <span>
+                <span style={{ fontWeight: 600 }}>{formatCoords(coords[0], coords[1])}</span>
+                <small>
+                  {onCoordinates ? "Drop a pin at these coordinates" : "Go to these coordinates"}
+                </small>
+              </span>
+            </button>
+          </div>
+        )}
+        {open && !coords && results && (
           <div className="gm-sres" role="listbox" aria-label="Places">
             {results.map((r, i) => {
               const [name, ...rest] = r.display_name.split(",");

@@ -5,6 +5,7 @@ import {
   formatCoords,
   hasSelfIntersection,
   parseAcres,
+  parseCoordinates,
   TOUCH_PX,
   zoomStepsToSeparate,
   type ScreenPoint,
@@ -87,6 +88,25 @@ describe("plot geometry", () => {
 
   it("formats coordinates with hemispheres", () => {
     expect(formatCoords(-1.49175, 36.98848)).toBe("1.49175° S, 36.98848° E");
+  });
+});
+
+describe("parseCoordinates", () => {
+  it("reads decimal pairs, Google Maps links and degrees-minutes-seconds", () => {
+    expect(parseCoordinates("-1.29210, 36.82190")).toEqual([-1.2921, 36.8219]);
+    expect(parseCoordinates("-1.2921 36.8219")).toEqual([-1.2921, 36.8219]);
+    expect(parseCoordinates("https://www.google.com/maps/@-1.2921,36.8219,15z?entry=ttu")).toEqual([
+      -1.2921, 36.8219,
+    ]);
+    const [lat, lng] = parseCoordinates(`1°17'31.6"S 36°49'18.8"E`)!;
+    expect(lat).toBeCloseTo(-1.29211, 4);
+    expect(lng).toBeCloseTo(36.82189, 4);
+  });
+
+  it("ignores place names and out-of-range numbers", () => {
+    expect(parseCoordinates("Ruiru")).toBeNull();
+    expect(parseCoordinates("Kiambu road 2")).toBeNull();
+    expect(parseCoordinates("95.1, 36.8")).toBeNull();
   });
 });
 

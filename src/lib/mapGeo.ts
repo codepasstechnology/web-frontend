@@ -81,6 +81,33 @@ export function formatCoords(lat: number, lng: number): string {
   return `${Math.abs(lat).toFixed(5)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lng).toFixed(5)}° ${lng < 0 ? "W" : "E"}`;
 }
 
+const DMS = /(\d{1,3})°\s*(?:(\d{1,2})['′]\s*)?(?:(\d{1,2}(?:\.\d+)?)["″]\s*)?([NSEW])/gi;
+
+/**
+ * Coordinates pasted from Google Maps or a GPS app: "-1.29210, 36.82190",
+ * `1°17'31.6"S 36°49'18.8"E`, or a maps link containing "@-1.2921,36.8219".
+ * Null when the text holds no valid latitude/longitude pair.
+ */
+export function parseCoordinates(text: string): [number, number] | null {
+  const dms = [...text.matchAll(DMS)];
+  let lat: number;
+  let lng: number;
+  if (dms.length === 2) {
+    const [a, b] = dms.map((m) => {
+      const v = Number(m[1]) + Number(m[2] ?? 0) / 60 + Number(m[3] ?? 0) / 3600;
+      return { v: /[SW]/i.test(m[4]) ? -v : v, isLat: /[NS]/i.test(m[4]) };
+    });
+    if (a.isLat === b.isLat) return null;
+    [lat, lng] = a.isLat ? [a.v, b.v] : [b.v, a.v];
+  } else {
+    const dec = text.match(/(?<![\d.])(-?\d{1,2}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)/);
+    if (!dec) return null;
+    lat = Number(dec[1]);
+    lng = Number(dec[2]);
+  }
+  return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null;
+}
+
 export interface ScreenPoint {
   id: string;
   x: number;
