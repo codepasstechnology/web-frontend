@@ -444,7 +444,9 @@ function KycCard({
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-sm font-semibold">{docLabel(doc.type)}</span>
                     <span className="gd-mono truncate text-[12.5px] text-muted-foreground">
-                      {doc.original_name}
+                      {doc.file_deleted_at
+                        ? "Deleted under the 60-day retention policy"
+                        : doc.original_name}
                     </span>
                   </span>
                   {doc.verification_status === "accepted" && (
@@ -457,9 +459,9 @@ function KycCard({
                     type="button"
                     className="gd-link text-[13.5px]"
                     onClick={() => viewDoc(doc.id)}
-                    disabled={viewingDoc === doc.id}
+                    disabled={!!doc.file_deleted_at || viewingDoc === doc.id}
                   >
-                    {viewingDoc === doc.id ? "Opening…" : "View"}
+                    {doc.file_deleted_at ? "Deleted" : viewingDoc === doc.id ? "Opening…" : "View"}
                   </button>
                 </div>
               ))}
