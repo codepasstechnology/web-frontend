@@ -1,3 +1,4 @@
+import { preloadMap } from "@/lib/mapPreload";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -287,6 +288,9 @@ function UploadPage() {
   const editId = search.edit;
   const draft = useRef(editId ? null : loadDraft()).current;
   const [step, setStep] = useState(draft?.step ?? 0);
+  useEffect(() => {
+    if (step === 0) preloadMap("plotting");
+  }, [step]);
   const [maxStep, setMaxStep] = useState(draft?.step ?? 0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);

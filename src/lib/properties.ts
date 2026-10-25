@@ -254,12 +254,17 @@ function toQuery(filters: PropertyFilters, bbox: Bbox | null = null): string {
   return q ? `?${q}` : "";
 }
 
-export function usePublicProperties(filters: PropertyFilters = {}, bbox: Bbox | null = null) {
+export function usePublicProperties(
+  filters: PropertyFilters = {},
+  bbox: Bbox | null = null,
+  mapOnly = false,
+) {
   return useQuery({
-    queryKey: ["properties", filters, bbox],
+    queryKey: ["properties", filters, bbox, mapOnly],
+    enabled: !mapOnly || bbox !== null,
     queryFn: async ({ signal }) => {
       const page = await api.get<{ data: ApiProperty[] }>(
-        `/properties${toQuery(filters, bbox)}`,
+        `/properties${toQuery(filters, bbox)}${mapOnly ? "&map=1" : ""}`,
         signal,
       );
       return page.data.map(mapApiProperty);
@@ -277,7 +282,8 @@ export function usePublicProperties(filters: PropertyFilters = {}, bbox: Bbox | 
 export function useProperty(id: string | undefined) {
   return useQuery({
     queryKey: ["property", id],
-    queryFn: async () => mapApiProperty(await api.get<ApiProperty>(`/properties/${id}`)),
+    queryFn: async ({ signal }) =>
+      mapApiProperty(await api.get<ApiProperty>(`/properties/${id}`, signal)),
     enabled: !!id,
     staleTime: 60_000,
   });

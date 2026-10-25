@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQueries,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { api } from "./api";
 import type { LandParcel, LandStatus } from "./landData";
 import { bboxParam, type Bbox } from "./mapGeo";
@@ -120,17 +126,18 @@ export function mapApiParcel(p: ApiParcel): LandParcel {
 }
 
 /**
- * Full parcels, with boundaries and seller details, for the map pages. With a
+ * Lightweight summaries with boundaries for map pages. Detail panels fetch by id. With a
  * bbox only the visible area is loaded; the previous result stays on screen
  * until the new one arrives, and a superseded request is cancelled.
  */
 export function useMapParcels(bbox: Bbox | null = null, refetchInterval?: number) {
   return useQuery({
-    queryKey: ["parcels", "map", bbox],
+    queryKey: ["parcels", "map-summary", bbox],
+    enabled: bbox !== null,
     queryFn: async ({ signal }) =>
-      (
-        await api.get<ApiParcel[]>(bbox ? `/parcels?bbox=${bboxParam(bbox)}` : "/parcels", signal)
-      ).map(mapApiParcel),
+      (await api.get<ApiParcel[]>(`/parcels?map=1&bbox=${bboxParam(bbox!)}`, signal)).map(
+        mapApiParcel,
+      ),
     staleTime: 60_000,
     placeholderData: keepPreviousData,
     refetchInterval,
@@ -156,4 +163,21 @@ export function useSavedParcels(signedIn: boolean) {
     savedIds: signedIn ? data : [],
     toggleSaved: (id: string) => toggle.mutate(id),
   };
+}
+
+const parcelDetailOptions = (id: string | undefined) => ({
+  queryKey: ["parcel", id],
+  queryFn: async ({ signal }: { signal: AbortSignal }) =>
+    mapApiParcel(await api.get<ApiParcel>(`/parcels/${id}`, signal)),
+  enabled: !!id,
+  staleTime: 60_000,
+});
+
+export function useParcel(id: string | undefined) {
+  return useQuery(parcelDetailOptions(id));
+}
+
+/** Fetch full amenities only for plots explicitly opened in the comparison. */
+export function useParcelDetails(ids: string[]) {
+  return useQueries({ queries: ids.map(parcelDetailOptions) });
 }

@@ -1,3 +1,4 @@
+import { preloadMap } from "@/lib/mapPreload";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -189,6 +190,20 @@ const NO_NAVBAR_PREFIXES = [
 ];
 
 function RootComponent() {
+  useEffect(() => {
+    const prepare = (event: Event) => {
+      if (!(event.target instanceof Element)) return;
+      const link = event.target.closest("a");
+      if (!link || link.origin !== window.location.origin) return;
+      if (["/land", "/explore", "/rentals"].includes(link.pathname)) preloadMap();
+    };
+    document.addEventListener("pointerover", prepare);
+    document.addEventListener("focusin", prepare);
+    return () => {
+      document.removeEventListener("pointerover", prepare);
+      document.removeEventListener("focusin", prepare);
+    };
+  }, []);
   const { queryClient } = Route.useRouteContext();
   const { pathname } = useLocation();
   const showNavbar =
