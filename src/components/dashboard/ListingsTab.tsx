@@ -7,7 +7,9 @@ import {
   ChevronRight,
   DoorClosed,
   Download,
+  Pause,
   Pencil,
+  Play,
   Plus,
   Search,
   SearchX,
@@ -21,6 +23,7 @@ import {
   useDeleteProperty,
   useMarkPropertyTaken,
   useSetPropertyAvailability,
+  useSetPropertyPaused,
   formatPrice,
   INTENT_LABELS,
   TYPE_LABELS,
@@ -52,6 +55,8 @@ export type ListingRow = {
   views: number;
   createdAt: string;
   coverPhotoUrl: string | null;
+  /** Hidden from the site and not using a live listing slot. */
+  paused: boolean;
 };
 
 type StatusAction = { label: string; to: "sold" | "taken" | BnbAvailability };
@@ -72,6 +77,11 @@ const ACTION_ICONS: Record<StatusAction["to"], typeof Tag> = {
 
 /** Only listings buyers can open on the map have a link worth sharing. */
 const SHAREABLE = new Set(["active", "available", "occupied"]);
+const shareable = (r: ListingRow) => !r.paused && SHAREABLE.has(r.status);
+const shownStatus = (r: ListingRow) => (r.paused ? "paused" : r.status);
+
+const formatDate = (s: string) =>
+  new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 const PERMANENT_CLOSE =
   "It will be removed from the marketplace and buyers can no longer see it. This can't be undone.";
@@ -173,11 +183,12 @@ function ConfirmDialog({
 
 export function ListingsTab() {
   const navigate = useNavigate();
-  const { user, removeListing, markListingSold } = useAuth();
+  const { user, removeListing, markListingSold, setListingPaused, reloadUser } = useAuth();
   const { data: properties = [], isLoading, isError, refetch } = useMyProperties();
   const removeProperty = useDeleteProperty();
   const markTaken = useMarkPropertyTaken();
   const setAvailability = useSetPropertyAvailability();
+  const setPropertyPaused = useSetPropertyPaused();
 
   const [filter, setFilter] = useState<"all" | "land" | "property">("all");
   const [query, setQuery] = useState("");
@@ -205,6 +216,7 @@ export function ListingsTab() {
       views: l.views,
       createdAt: l.createdAt,
       coverPhotoUrl: l.coverPhotoUrl,
+      paused: l.paused ?? false,
     }));
     const rentals: ListingRow[] = properties.map((p) => ({
       kind: "property",
@@ -217,6 +229,7 @@ export function ListingsTab() {
       views: p.views,
       createdAt: p.createdAt,
       coverPhotoUrl: p.coverPhotoUrl,
+      paused: p.paused ?? false,
     }));
     // Both APIs emit created_at as a YYYY-MM-DD date string, so this sorts
     // without parsing.
@@ -232,6 +245,9 @@ export function ListingsTab() {
     land: rows.filter((r) => r.kind === "land").length,
     property: rows.filter((r) => r.kind === "property").length,
   };
+  const pausedCount = rows.filter((r) => r.paused).length;
+  const limited = user ? user.maxListings !== Infinity : false;
+  const seePlans = () => navigate({ to: "/dashboard", search: { tab: "billing" } });
 
   const exportListings = async () => {
     setExporting(true);
@@ -280,6 +296,21 @@ export function ListingsTab() {
       toast.error(`Couldn't mark this listing as ${action.to}. Try again.`);
     } finally {
       setTaking(false);
+    }
+  };
+
+  const togglePaused = async (r: ListingRow) => {
+    const paused = !r.paused;
+    try {
+      if (r.kind === "land") await setListingPaused(r.id, paused);
+      else await setPropertyPaused.mutateAsync({ id: r.id, paused });
+      // Pausing can bring the user back within their plan, which clears the warning.
+      if (user?.listingsPauseOn) await reloadUser();
+      toast.success(
+        paused ? `${r.name} paused and hidden from the site.` : `${r.name} is live again.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update this listing. Try again.");
     }
   };
 
@@ -339,7 +370,16 @@ export function ListingsTab() {
           </button>
         );
       })}
-      {SHAREABLE.has(r.status) && (
+      <button
+        type="button"
+        className="gd-ib"
+        data-tip={r.paused ? "Make live" : "Pause"}
+        aria-label={`${r.paused ? "Make live" : "Pause"}: ${r.name}`}
+        onClick={() => togglePaused(r)}
+      >
+        {r.paused ? <Play size={18} aria-hidden="true" /> : <Pause size={18} aria-hidden="true" />}
+      </button>
+      {shareable(r) && (
         <button
           type="button"
           className="gd-ib"
@@ -372,7 +412,7 @@ export function ListingsTab() {
   );
 
   const previewAction = previewTarget ? statusActions(previewTarget)[0] : undefined;
-  const cols = `minmax(0, 2.6fr) 90px 150px ${showViews ? "80px " : ""}110px 210px`;
+  const cols = `minmax(0, 2.6fr) 90px 150px ${showViews ? "80px " : ""}110px 250px`;
 
   return (
     <>
@@ -452,6 +492,42 @@ export function ListingsTab() {
             Try again
           </button>
         </div>
+      )}
+
+      {user?.listingsPauseOn ? (
+        <div
+          role="status"
+          className="gd-r flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warning-subtle px-4 py-3 text-[14.5px] font-semibold text-warning"
+        >
+          <span className="flex items-center gap-2.5">
+            <AlertTriangle size={18} aria-hidden="true" /> You have more live listings than your
+            plan allows. On {formatDate(user.listingsPauseOn)} the oldest ones will be paused:
+            hidden from the site, not deleted. Upgrade, or pause or delete listings to choose which
+            stay live.
+          </span>
+          <button type="button" className="gd-btn gd-sm gd-o border-current" onClick={seePlans}>
+            See plans
+          </button>
+        </div>
+      ) : (
+        pausedCount > 0 && (
+          <div
+            role="status"
+            className="gd-r flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-subtle px-4 py-3 text-[14.5px] font-semibold text-brand-subtle-foreground"
+          >
+            <span className="flex items-center gap-2.5">
+              <Pause size={18} aria-hidden="true" /> {pausedCount} paused{" "}
+              {pausedCount === 1 ? "listing is" : "listings are"} hidden from the site. Make one
+              live when you have a free slot
+              {limited ? ", or upgrade to bring them all back" : ""}.
+            </span>
+            {limited && (
+              <button type="button" className="gd-btn gd-sm gd-o border-current" onClick={seePlans}>
+                See plans
+              </button>
+            )}
+          </div>
+        )
       )}
 
       {isLoading && rows.length === 0 ? (
@@ -542,7 +618,7 @@ export function ListingsTab() {
                     <KindChip kind={r.kind} />
                   </span>
                   <span role="cell">
-                    <ListingStatus status={r.status} />
+                    <ListingStatus status={shownStatus(r)} />
                   </span>
                   {showViews && (
                     <span role="cell" className="gd-mono text-right text-sm">
@@ -580,7 +656,7 @@ export function ListingsTab() {
                   </span>
                   <span className="flex w-full flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
                     <KindChip kind={r.kind} />
-                    <ListingStatus status={r.status} />
+                    <ListingStatus status={shownStatus(r)} />
                     <span className="flex-1" />
                     {showViews && <span>{r.views.toLocaleString()} views ·</span>}
                     <span className="gd-mono">{r.createdAt}</span>
@@ -600,7 +676,7 @@ export function ListingsTab() {
           previewTarget && (
             <>
               <KindChip kind={previewTarget.kind} />
-              <ListingStatus status={previewTarget.status} />
+              <ListingStatus status={shownStatus(previewTarget)} />
             </>
           )
         }
@@ -609,9 +685,7 @@ export function ListingsTab() {
         onClose={() => setPreviewTarget(null)}
         onEdit={previewTarget ? () => editListing(previewTarget) : undefined}
         onShare={
-          previewTarget && SHAREABLE.has(previewTarget.status)
-            ? () => shareListing(previewTarget)
-            : undefined
+          previewTarget && shareable(previewTarget) ? () => shareListing(previewTarget) : undefined
         }
         onMarkClosed={
           previewTarget && previewAction

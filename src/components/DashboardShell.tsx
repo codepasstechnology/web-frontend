@@ -13,6 +13,7 @@ import {
 import { forwardRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { usePlans } from "@/lib/plans";
+import { useUsedListings } from "@/lib/properties";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
 import { HomeNavbar } from "@/components/home/HomeNavbar";
 import {
@@ -113,7 +114,7 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
   };
 
   const planName = plans.find((p) => p.id === user?.plan)?.name ?? user?.plan;
-  const used = user?.listings.length ?? 0;
+  const used = useUsedListings();
   const unlimited = user?.maxListings === Infinity;
   const usedPct = !user ? 0 : unlimited ? 12 : Math.min(100, (used / user.maxListings) * 100);
   const canUpgrade = !!user && user.plan !== "pro" && user.plan !== "enterprise";

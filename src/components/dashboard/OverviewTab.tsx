@@ -14,6 +14,7 @@ import {
 import { type DashTab } from "@/components/DashboardShell";
 import { type AppUser } from "@/lib/auth";
 import { usePlans } from "@/lib/plans";
+import { useUsedListings } from "@/lib/properties";
 import { needsUserAction, useKycApplications } from "@/lib/kyc";
 import { Beacon, ListingStatus, ListingThumb } from "@/components/dashboard/parts";
 
@@ -36,7 +37,7 @@ export function OverviewTab({
   const { data: plans = [] } = usePlans();
   const { data: kyc = [] } = useKycApplications();
   const plan = plans.find((p) => p.id === user.plan);
-  const used = user.listings.length;
+  const used = useUsedListings();
   const limit = user.maxListings;
   const unlimited = limit === Infinity;
   const activeCount = user.listings.filter((l) => l.status === "active").length;
