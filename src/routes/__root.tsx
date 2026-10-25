@@ -15,11 +15,13 @@ import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
+import { CookieBanner } from "@/components/CookieBanner";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { isUnderMaintenance } from "@/lib/maintenance";
 import { ALWAYS_OPEN_PATHS } from "@/lib/maintenanceRedirect";
+import { trackPageView } from "@/lib/traffic";
 
 const AUTH_BG_URLS = [
   "https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop",
@@ -213,6 +215,10 @@ function RootComponent() {
   const showFooter = showNavbar;
 
   useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
+
+  useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {
       new Image().src = url;
     });
@@ -225,6 +231,7 @@ function RootComponent() {
         <Outlet />
         {showFooter && <SiteFooter />}
         <Toaster position="bottom-center" />
+        <CookieBanner />
       </AuthProvider>
     </QueryClientProvider>
   );

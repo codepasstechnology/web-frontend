@@ -540,7 +540,8 @@ export function ParcelPanel({
           meta={`${parcel.size} · ${DEAL_TAG[parcel.listingType]} · ${place}${verified ? " · Documents reviewed" : ""}`}
           price={price + (parcel.listingType === "lease" ? " / yr" : "")}
           url={url}
-          waText={`${parcel.size} plot, ${parcel.area || parcel.county} (${parcel.parcelNumber}) ${price} ${url}`}
+          listing={{ type: "parcel", id: parcel.id }}
+          waText={`${parcel.size} plot, ${parcel.area || parcel.county} (${parcel.parcelNumber}) ${price}`}
           shape={
             (parcel.polygon
               ? { kind: "polygon", points: parcel.polygon, verified }
@@ -657,7 +658,8 @@ export function RentalPanel({
           meta={`${INTENT_LABELS[property.intent]} · ${place}`}
           price={price + per}
           url={url}
-          waText={`${property.title}, ${property.area || property.county} ${price}${per} ${url}`}
+          listing={{ type: "property", id: property.id }}
+          waText={`${property.title}, ${property.area || property.county} ${price}${per}`}
           shape={{ kind: "home" }}
           color={color}
           onClose={() => setSharing(false)}

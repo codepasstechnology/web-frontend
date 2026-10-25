@@ -30,6 +30,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { listingUrl } from "@/lib/mapLinks";
+import { newShareCode, recordShare, withShareCode } from "@/lib/traffic";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -290,13 +291,18 @@ export function ListingsTab() {
       : navigate({ to: "/dashboard/properties", search: { edit: r.id } });
 
   const shareListing = async (r: ListingRow) => {
-    const url =
+    const listing = { type: r.kind === "land" ? "parcel" : "property", id: r.id } as const;
+    const code = newShareCode();
+    const url = withShareCode(
       r.kind === "land"
         ? listingUrl("land", "parcel", r.id)
-        : listingUrl("rentals", "property", r.id);
+        : listingUrl("rentals", "property", r.id),
+      code,
+    );
     if (navigator.share) {
       try {
         await navigator.share({ title: r.name, url });
+        recordShare(code, listing, "native");
       } catch {
         /* the user closed the share sheet */
       }
@@ -304,6 +310,7 @@ export function ListingsTab() {
     }
     try {
       await navigator.clipboard.writeText(url);
+      recordShare(code, listing, "copy");
       toast.success("Link copied.");
     } catch {
       toast.error("Couldn't copy the link.");

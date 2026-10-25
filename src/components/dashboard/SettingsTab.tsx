@@ -5,6 +5,7 @@ import {
   Bell,
   Building2,
   Camera,
+  Cookie,
   Copy,
   Eye,
   EyeOff,
@@ -22,6 +23,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { openCookieSettings } from "@/lib/consent";
 import type { AppUser, UserRole } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 import {
@@ -1036,115 +1038,132 @@ export function SettingsTab({
         )}
 
         {section === "preferences" && (
-          <div className="gd-card flex flex-col gap-[18px]">
-            <h2 className="gd-h2">Display &amp; language</h2>
-            <div className="gd-form2">
-              <div>
-                <Label>Language</Label>
-                <div className="gd-seg grid grid-cols-2" role="group" aria-label="Language">
-                  {(
-                    [
-                      ["en", "English"],
-                      ["sw", "Kiswahili"],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      className="justify-center"
-                      aria-pressed={language === id}
-                      onClick={() => setLanguage(id)}
-                    >
-                      {label}
-                    </button>
-                  ))}
+          <>
+            <div className="gd-card flex flex-col gap-[18px]">
+              <h2 className="gd-h2">Display &amp; language</h2>
+              <div className="gd-form2">
+                <div>
+                  <Label>Language</Label>
+                  <div className="gd-seg grid grid-cols-2" role="group" aria-label="Language">
+                    {(
+                      [
+                        ["en", "English"],
+                        ["sw", "Kiswahili"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="justify-center"
+                        aria-pressed={language === id}
+                        onClick={() => setLanguage(id)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="gd-hint">
+                    Swahili translation of the site is on the way; emails switch first.
+                  </div>
                 </div>
-                <div className="gd-hint">
-                  Swahili translation of the site is on the way; emails switch first.
+                <div>
+                  <Label>Default map view</Label>
+                  <div
+                    className="gd-seg grid grid-cols-2"
+                    role="group"
+                    aria-label="Default map view"
+                  >
+                    {(
+                      [
+                        ["map", "Map"],
+                        ["satellite", "Satellite"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="justify-center"
+                        aria-pressed={mapView === id}
+                        onClick={() => setMapView(id)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="gd-hint">Used when you open Explore, Land and Rentals.</div>
+                </div>
+                <div>
+                  <Label>Theme</Label>
+                  <div className="gd-seg grid grid-cols-2" role="group" aria-label="Theme">
+                    {(
+                      [
+                        ["light", "Light"],
+                        ["dark", "Dark"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="justify-center"
+                        aria-pressed={theme === id}
+                        onClick={(e) =>
+                          theme !== id && toggleTheme({ clientX: e.clientX, clientY: e.clientY })
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div>
-                <Label>Default map view</Label>
-                <div className="gd-seg grid grid-cols-2" role="group" aria-label="Default map view">
-                  {(
-                    [
-                      ["map", "Map"],
-                      ["satellite", "Satellite"],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      className="justify-center"
-                      aria-pressed={mapView === id}
-                      onClick={() => setMapView(id)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="gd-hint">Used when you open Explore, Land and Rentals.</div>
+              <div className="flex flex-col gap-1 border-t border-dashed border-border pt-4">
+                <span className="gd-h2 text-[17px]">Connected accounts</span>
+                {(
+                  [
+                    ["G", "Google", "Sign in with your Google account."],
+                    ["W", "WhatsApp Business", "Reply to inquiries from WhatsApp."],
+                  ] as const
+                ).map(([i, name, desc]) => (
+                  <div
+                    key={name}
+                    className="flex items-center gap-3.5 border-t border-border-subtle py-3"
+                  >
+                    <span className="gd-h flex h-10 w-10 items-center justify-center rounded-xl bg-track">
+                      {i}
+                    </span>
+                    <span className="flex flex-1 flex-col gap-0.5">
+                      <span className="font-semibold">{name}</span>
+                      <span className="text-[13px] text-muted-foreground">{desc}</span>
+                    </span>
+                    <StatusChip kind="muted" label="Coming soon" />
+                  </div>
+                ))}
               </div>
-              <div>
-                <Label>Theme</Label>
-                <div className="gd-seg grid grid-cols-2" role="group" aria-label="Theme">
-                  {(
-                    [
-                      ["light", "Light"],
-                      ["dark", "Dark"],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      className="justify-center"
-                      aria-pressed={theme === id}
-                      onClick={(e) =>
-                        theme !== id && toggleTheme({ clientX: e.clientX, clientY: e.clientY })
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1 border-t border-dashed border-border pt-4">
-              <span className="gd-h2 text-[17px]">Connected accounts</span>
-              {(
-                [
-                  ["G", "Google", "Sign in with your Google account."],
-                  ["W", "WhatsApp Business", "Reply to inquiries from WhatsApp."],
-                ] as const
-              ).map(([i, name, desc]) => (
-                <div
-                  key={name}
-                  className="flex items-center gap-3.5 border-t border-border-subtle py-3"
+              {saveError === "prefs" && <NoteBox note={{ type: "err", text: SAVE_ERROR }} />}
+              <div className="flex justify-end border-t border-border-subtle pt-4">
+                <button
+                  type="button"
+                  className="gd-btn"
+                  onClick={() => save("prefs", { language, defaultMapView: mapView })}
+                  disabled={!prefsDirty || saving === "prefs"}
                 >
-                  <span className="gd-h flex h-10 w-10 items-center justify-center rounded-xl bg-track">
-                    {i}
-                  </span>
-                  <span className="flex flex-1 flex-col gap-0.5">
-                    <span className="font-semibold">{name}</span>
-                    <span className="text-[13px] text-muted-foreground">{desc}</span>
-                  </span>
-                  <StatusChip kind="muted" label="Coming soon" />
-                </div>
-              ))}
+                  <Save size={16} aria-hidden="true" />
+                  {saving === "prefs" ? "Saving…" : "Save preferences"}
+                </button>
+              </div>
             </div>
-            {saveError === "prefs" && <NoteBox note={{ type: "err", text: SAVE_ERROR }} />}
-            <div className="flex justify-end border-t border-border-subtle pt-4">
-              <button
-                type="button"
-                className="gd-btn"
-                onClick={() => save("prefs", { language, defaultMapView: mapView })}
-                disabled={!prefsDirty || saving === "prefs"}
-              >
-                <Save size={16} aria-hidden="true" />
-                {saving === "prefs" ? "Saving…" : "Save preferences"}
+            <div className="gd-card flex flex-wrap items-center justify-between gap-3.5">
+              <div>
+                <h2 className="gd-h2">Cookies</h2>
+                <p className="gd-sub mt-1 text-sm">
+                  Choose whether we may count your visits to improve Geo Pin.
+                </p>
+              </div>
+              <button type="button" className="gd-btn gd-o" onClick={openCookieSettings}>
+                <Cookie size={16} aria-hidden="true" /> Cookie settings
               </button>
             </div>
-          </div>
+          </>
         )}
 
         {section === "danger" && (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDown,
+  Cookie,
   CreditCard,
   House,
   LandPlot,
@@ -13,6 +14,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { openCookieSettings } from "@/lib/consent";
 import { useTheme } from "@/hooks/useTheme";
 import { NotificationBell } from "@/components/NotificationBell";
 import "@/components/dashboard/dashboard.css";
@@ -203,6 +205,9 @@ export function HomeNavbar() {
                     )}
                     {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                   </DropdownMenuItem>
+                  <DropdownMenuItem className="gd-mi" onSelect={openCookieSettings}>
+                    <Cookie size={17} aria-hidden="true" /> Cookie settings
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="gd-mi"
                     data-danger
@@ -336,6 +341,16 @@ export function HomeNavbar() {
               </Link>
             </>
           )}
+          <button
+            type="button"
+            className="gp-mobile-cookie"
+            onClick={() => {
+              close();
+              openCookieSettings();
+            }}
+          >
+            Cookie settings
+          </button>
           <span className="gp-mobile-tag">find. connect. own.</span>
         </div>
       )}
