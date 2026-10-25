@@ -8,15 +8,15 @@ const MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 /** "all" allows visit tracking; "essential" keeps only what the site needs to work. */
 export type Consent = "all" | "essential";
 
-type Source = "banner" | "gpc" | "account";
+type Source = "banner" | "settings" | "gpc" | "account";
 type SavedChoice = { choice: Consent; at: number; version: string; id: string };
-type ConsentState = { ready: boolean; consent: Consent | null; settingsOpen: boolean };
+type ConsentState = { ready: boolean; consent: Consent | null; savedAt: number | null };
 type ConsentResponse = {
   policy_version: string;
   saved: { choice: Consent; policy_version: string; at: string } | null;
 };
 
-const SERVER_STATE: ConsentState = { ready: false, consent: null, settingsOpen: false };
+const SERVER_STATE: ConsentState = { ready: false, consent: null, savedAt: null };
 const listeners = new Set<() => void>();
 let state: ConsentState | null = null;
 let policyVersion: string | null = null;
@@ -44,8 +44,15 @@ export function getConsent(): Consent | null {
   return isCurrent(saved) ? saved.choice : null;
 }
 
+function current(): Pick<ConsentState, "consent" | "savedAt"> {
+  const saved = readSaved();
+  return isCurrent(saved)
+    ? { consent: saved.choice, savedAt: saved.at }
+    : { consent: null, savedAt: null };
+}
+
 function snapshot(): ConsentState {
-  state ??= { ready: false, consent: getConsent(), settingsOpen: false };
+  state ??= { ready: false, ...current() };
   return state;
 }
 
@@ -80,13 +87,9 @@ function save(choice: Consent, at = Date.now()): SavedChoice {
   return saved;
 }
 
-export function setConsent(choice: Consent): void {
-  record(save(choice), "banner");
-  update({ consent: choice, settingsOpen: false });
-}
-
-export function openCookieSettings(): void {
-  update({ settingsOpen: true });
+export function setConsent(choice: Consent, source: "banner" | "settings" = "banner"): void {
+  record(save(choice), source);
+  update(current());
 }
 
 /**
@@ -116,7 +119,7 @@ export async function syncConsent(signedIn: boolean): Promise<void> {
     record(save("essential"), "gpc");
   }
 
-  update({ ready: true, consent: getConsent() });
+  update({ ready: true, ...current() });
 }
 
 export function useCookieConsent(): ConsentState {

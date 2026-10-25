@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 type ConsentResponse = {
@@ -15,9 +15,11 @@ const mockGet = vi.fn<(path: string) => Promise<ConsentResponse>>();
 vi.mock("@/lib/api", () => ({ api: { post: mockPost, get: mockGet } }));
 
 let mockUser: { id: string } | null = null;
+let mockPath = "/";
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: mockUser }) }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useLocation: () => ({ pathname: mockPath }),
   Link: ({
     to,
     children,
@@ -62,6 +64,7 @@ beforeEach(() => {
   mockGet.mockReset();
   mockGet.mockResolvedValue({ policy_version: "1.0", saved: null });
   mockUser = null;
+  mockPath = "/";
 });
 
 afterEach(() => {
@@ -78,7 +81,12 @@ describe("CookieBanner", () => {
       "/cookie-policy",
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Accept analytics" }));
+    expect(screen.getByRole("link", { name: "Cookie settings" })).toHaveAttribute(
+      "href",
+      "/cookie-settings",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Accept all" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(storedChoice()).toMatchObject({ choice: "all", version: "1.0" });
@@ -99,25 +107,28 @@ describe("CookieBanner", () => {
     );
   });
 
-  it("forgets the analytics ids when only essential cookies are allowed", async () => {
+  it("forgets the analytics ids when optional cookies are rejected", async () => {
     localStorage.setItem("gp_visitor", "11111111-1111-4111-8111-111111111111");
     await loadBanner();
 
-    await userEvent.click(await screen.findByRole("button", { name: "Essential only" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Reject all" }));
 
     expect(storedChoice()).toMatchObject({ choice: "essential" });
     expect(localStorage.getItem("gp_visitor")).toBeNull();
     expect(mockPost).not.toHaveBeenCalledWith("/traffic/visit", expect.anything());
   });
 
-  it("stays hidden after a choice until cookie settings are reopened", async () => {
+  it("stays hidden once a choice is made, and on the Cookie settings page", async () => {
     saveChoice("essential");
-    const { openCookieSettings } = await loadBanner();
-
+    await loadBanner();
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    act(() => openCookieSettings());
-    expect(await screen.findByText("Your current choice: essential only.")).toBeInTheDocument();
+    localStorage.clear();
+    mockPath = "/cookie-settings";
+    await loadBanner();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("asks again when the cookie policy changes", async () => {

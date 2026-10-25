@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { openCookieSettings } from "@/lib/consent";
 
 export function HomeFooter() {
   return (
@@ -21,9 +20,7 @@ export function HomeFooter() {
             <Link to="/about">About</Link>
             <Link to="/help">Help centre</Link>
             <Link to="/contact">Contact</Link>
-            <button type="button" onClick={openCookieSettings}>
-              Cookie settings
-            </button>
+            <Link to="/cookie-settings">Cookie settings</Link>
           </nav>
         </div>
       </div>

@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { LogoMark } from "@/components/ui/logo";
-import { openCookieSettings } from "@/lib/consent";
 
 const upload = { to: "/dashboard/upload", search: { edit: undefined, type: undefined } } as const;
 
@@ -53,13 +52,9 @@ export function SiteFooter() {
             <Link to="/terms" className="opacity-80 hover:opacity-100">
               Terms &amp; privacy
             </Link>
-            <button
-              type="button"
-              onClick={openCookieSettings}
-              className="text-left opacity-80 hover:opacity-100"
-            >
+            <Link to="/cookie-settings" className="opacity-80 hover:opacity-100">
               Cookie settings
-            </button>
+            </Link>
           </nav>
         </div>
         <div className="border-t border-white/15 pt-6 text-[0.8125rem] opacity-80">

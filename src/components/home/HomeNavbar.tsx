@@ -14,7 +14,6 @@ import {
   Sun,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { openCookieSettings } from "@/lib/consent";
 import { useTheme } from "@/hooks/useTheme";
 import { NotificationBell } from "@/components/NotificationBell";
 import "@/components/dashboard/dashboard.css";
@@ -205,8 +204,10 @@ export function HomeNavbar() {
                     )}
                     {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gd-mi" onSelect={openCookieSettings}>
-                    <Cookie size={17} aria-hidden="true" /> Cookie settings
+                  <DropdownMenuItem className="gd-mi" asChild>
+                    <Link to="/cookie-settings">
+                      <Cookie size={17} aria-hidden="true" /> Cookie settings
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="gd-mi"
@@ -341,16 +342,9 @@ export function HomeNavbar() {
               </Link>
             </>
           )}
-          <button
-            type="button"
-            className="gp-mobile-cookie"
-            onClick={() => {
-              close();
-              openCookieSettings();
-            }}
-          >
+          <Link to="/cookie-settings" className="gp-mobile-cookie" onClick={close}>
             Cookie settings
-          </button>
+          </Link>
           <span className="gp-mobile-tag">find. connect. own.</span>
         </div>
       )}

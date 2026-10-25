@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
+import { Route as CookieSettingsRouteImport } from './routes/cookie-settings'
 import { Route as DataUsageRouteImport } from './routes/data-usage'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -57,6 +58,11 @@ const ContactRoute = ContactRouteImport.update({
 const CookiePolicyRoute = CookiePolicyRouteImport.update({
   id: '/cookie-policy',
   path: '/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookieSettingsRoute = CookieSettingsRouteImport.update({
+  id: '/cookie-settings',
+  path: '/cookie-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DataUsageRoute = DataUsageRouteImport.update({
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
+  '/cookie-settings': typeof CookieSettingsRoute
   '/data-usage': typeof DataUsageRoute
   '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
+  '/cookie-settings': typeof CookieSettingsRoute
   '/data-usage': typeof DataUsageRoute
   '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
+  '/cookie-settings': typeof CookieSettingsRoute
   '/data-usage': typeof DataUsageRoute
   '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/contact'
     | '/cookie-policy'
+    | '/cookie-settings'
     | '/data-usage'
     | '/explore'
     | '/forgot-password'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/contact'
     | '/cookie-policy'
+    | '/cookie-settings'
     | '/data-usage'
     | '/explore'
     | '/forgot-password'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/contact'
     | '/cookie-policy'
+    | '/cookie-settings'
     | '/data-usage'
     | '/explore'
     | '/forgot-password'
@@ -321,6 +333,7 @@ export interface RootRouteChildren {
   BlogRoute: typeof BlogRoute
   ContactRoute: typeof ContactRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
+  CookieSettingsRoute: typeof CookieSettingsRoute
   DataUsageRoute: typeof DataUsageRoute
   ExploreRoute: typeof ExploreRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/cookie-policy'
       fullPath: '/cookie-policy'
       preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookie-settings': {
+      id: '/cookie-settings'
+      path: '/cookie-settings'
+      fullPath: '/cookie-settings'
+      preLoaderRoute: typeof CookieSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/data-usage': {
@@ -521,6 +541,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRoute: BlogRoute,
   ContactRoute: ContactRoute,
   CookiePolicyRoute: CookiePolicyRoute,
+  CookieSettingsRoute: CookieSettingsRoute,
   DataUsageRoute: DataUsageRoute,
   ExploreRoute: ExploreRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
