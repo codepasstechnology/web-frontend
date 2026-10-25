@@ -2,7 +2,9 @@ import React from "react";
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { mapApiParcel, type ApiParcel } from "@/lib/parcels";
-import { mapApiProperty, type ApiProperty } from "@/lib/properties";
+import { mapApiProperty } from "@/lib/properties";
+
+type ApiProperty = Parameters<typeof mapApiProperty>[0];
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
