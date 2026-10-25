@@ -84,21 +84,23 @@ export interface ApiParcel {
   } | null;
 }
 
+// Fields are re-checked here because a partial or malformed response would
+// otherwise crash the panels (e.g. price.toLocaleString on undefined).
 export function mapApiParcel(p: ApiParcel): LandParcel {
   return {
     id: p.id,
-    title: p.parcel_number,
-    parcelNumber: p.parcel_number,
+    title: p.parcel_number ?? "",
+    parcelNumber: p.parcel_number ?? "",
     size: p.size || "—",
-    price: p.price,
+    price: Number(p.price) || 0,
     status: (p.status === "verified" ? "verified" : "available") as LandStatus,
-    listingType: p.listing_type,
-    postedBy: p.posted_by,
-    county: p.county,
+    listingType: p.listing_type === "lease" ? "lease" : "sale",
+    postedBy: p.posted_by === "broker" ? "broker" : "owner",
+    county: p.county ?? "",
     description: p.description || "",
-    verified: p.verified,
-    featured: p.featured,
-    photos: p.photos ?? [],
+    verified: p.verified === true,
+    featured: p.featured === true,
+    photos: Array.isArray(p.photos) ? p.photos : [],
     seller: {
       name: p.seller_name || "—",
       phone: p.seller_phone || "—",
@@ -110,11 +112,11 @@ export function mapApiParcel(p: ApiParcel): LandParcel {
       shopping: p.amenities?.shopping ?? "—",
       mainRoad: p.amenities?.main_road ?? "—",
       distanceToTarmac: p.amenities?.distance_to_tarmac ?? "—",
-      utilities: p.amenities?.utilities ?? [],
+      utilities: Array.isArray(p.amenities?.utilities) ? p.amenities.utilities : [],
       developmentScore: p.amenities?.development_score ?? 0,
     },
     polygon:
-      p.boundary && p.boundary.length >= 3
+      Array.isArray(p.boundary) && p.boundary.length >= 3
         ? p.boundary.map((v): [number, number] => [Number(v.lat), Number(v.lng)])
         : undefined,
     latitude: p.latitude != null ? Number(p.latitude) : undefined,

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isValidEmail, kenyanMobileDigits, passwordScore } from "@/components/auth/validation";
+import {
+  isValidEmail,
+  kenyanMobileDigits,
+  passwordScore,
+  plainTextError,
+} from "@/components/auth/validation";
 
 describe("isValidEmail", () => {
   it("accepts an address with a domain and rejects everything else", () => {
@@ -37,5 +42,35 @@ describe("passwordScore", () => {
     expect(passwordScore("Abcdefg1")).toBe(3);
     expect(passwordScore("Abcdefg1!")).toBe(4);
     expect(passwordScore("abcdefghijkl")).toBe(2);
+  });
+});
+
+describe("plainTextError", () => {
+  it("refuses HTML and script tags", () => {
+    for (const value of [
+      "<script>alert(1)</script>",
+      "<img src=x onerror=alert(1)>",
+      "a</b>",
+      "<!-- x -->",
+    ]) {
+      expect(plainTextError(value)).toBe("Remove HTML or script tags.");
+    }
+  });
+
+  it("refuses emoji", () => {
+    for (const value of ["Plot near Ruiru 😀", "Nice ⭐ plot", "🇰🇪", "Acme 🚀"]) {
+      expect(plainTextError(value)).toBe("Remove emoji.");
+    }
+  });
+
+  it("accepts ordinary text, accents and comparison signs", () => {
+    for (const value of [
+      "Wanjirũ O'Neil-Kamau",
+      "Plots < 5 km from Thika Rd",
+      "2 > 1",
+      "Price 1,000 & up (©2026)",
+    ]) {
+      expect(plainTextError(value)).toBe("");
+    }
   });
 });
