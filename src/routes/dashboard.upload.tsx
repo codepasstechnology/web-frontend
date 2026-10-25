@@ -63,7 +63,9 @@ const steps = ["Basic details", "Location on map", "Photos & documents", "Review
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_DEED_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_MAX = 5000;
-const TITLE_NUMBER = /^[A-Z0-9]+(\/[A-Z0-9]+)+$/;
+// Deeds come in many shapes (KAJ/KTG/4521, NAIVASHA/MARAIGUSHU BLOCK 7/2312,
+// L.R. NO. 209/1234, IR 12345), so only the characters and a number are checked.
+const TITLE_NUMBER = /^(?=.*\d)[A-Z0-9 ./(),'-]{3,100}$/;
 
 const LAND_TYPES: Record<NonNullable<NewListingInput["landType"]>, string> = {
   residential: "Residential",
@@ -516,8 +518,9 @@ function UploadPage() {
 
   const basicsErrors: Partial<Record<BasicsField, string>> = {};
   if (!form.parcelNumber) basicsErrors.parcelNumber = "Enter the title number from the title deed.";
-  else if (!TITLE_NUMBER.test(form.parcelNumber))
-    basicsErrors.parcelNumber = "Use the format on the deed, like KAJ/KTG/4521.";
+  else if (!TITLE_NUMBER.test(form.parcelNumber.trim()))
+    basicsErrors.parcelNumber =
+      "Use letters, numbers, spaces and / . - ( ) , as on the deed, including the plot number.";
   if (!form.county) basicsErrors.county = "Choose the county the land is in.";
   if (sizeAcres == null) basicsErrors.size = "Enter a size greater than 0.";
   if (!(Number(form.price) > 0)) basicsErrors.price = "Enter the asking price in KES.";
@@ -580,8 +583,8 @@ function UploadPage() {
     setSubmitErr("");
     setUploadProgress(form.documents.length || form.photos.length ? 0 : null);
     const payload: NewListingInput = {
-      title: form.parcelNumber,
-      parcelNumber: form.parcelNumber,
+      title: form.parcelNumber.trim(),
+      parcelNumber: form.parcelNumber.trim(),
       phone: form.phone || undefined,
       county: form.county,
       area: form.area || undefined,
@@ -834,7 +837,7 @@ function UploadPage() {
                   <input
                     id="u-parcelNumber"
                     className="gd-input gd-mono"
-                    placeholder="e.g. KAJ/KTG/4521"
+                    placeholder="e.g. KAJ/KTG/4521 or NAIVASHA/MARAIGUSHU BLOCK 7/2312"
                     autoCapitalize="characters"
                     value={form.parcelNumber}
                     onChange={(e) => set("parcelNumber", e.target.value.toUpperCase())}
