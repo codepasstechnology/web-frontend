@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, getToken, setToken, clearToken } from "./api";
+import { compressImage } from "@/lib/compressImage";
 
 export type UserRole = "individual" | "agent" | "developer" | "account_manager";
 
@@ -602,9 +603,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
       l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
+      const docFiles = await Promise.all((l.documents ?? []).map((d) => compressImage(d.file)));
       l.documents?.forEach((d, i) => {
         fd.append(`documents[${i}][type]`, d.type);
-        fd.append(`documents[${i}][file]`, d.file);
+        fd.append(`documents[${i}][file]`, docFiles[i]);
       });
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
@@ -699,9 +701,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
       l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
+      const docFiles = await Promise.all((l.documents ?? []).map((d) => compressImage(d.file)));
       l.documents?.forEach((d, i) => {
         fd.append(`documents[${i}][type]`, d.type);
-        fd.append(`documents[${i}][file]`, d.file);
+        fd.append(`documents[${i}][file]`, docFiles[i]);
       });
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       l.removePhotoIds?.forEach((pid) => fd.append("remove_photo_ids[]", pid));

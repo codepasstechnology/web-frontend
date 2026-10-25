@@ -25,6 +25,35 @@ export function clearToken(): void {
   sessionStorage.removeItem(TOKEN_KEY);
 }
 
+export const OFFLINE_MESSAGE =
+  "We couldn't reach Geo Pin. Check your internet connection and try again.";
+
+// Uploads are retried this many times when the connection drops. The API
+// recognises the repeat by its Idempotency-Key, so a retry never saves twice.
+const UPLOAD_RETRY_DELAYS_MS = [2_000, 5_000, 10_000];
+const OFFLINE_WAIT_MS = 60_000;
+
+function networkError(): Error {
+  return Object.assign(new Error(OFFLINE_MESSAGE), { network: true });
+}
+
+/** Waits before retrying an upload, or until the device is back online. */
+function waitToRetry(attempt: number): Promise<void> {
+  return new Promise((resolve) => {
+    if (navigator.onLine) {
+      setTimeout(resolve, UPLOAD_RETRY_DELAYS_MS[attempt]);
+      return;
+    }
+    const done = () => {
+      window.removeEventListener("online", done);
+      clearTimeout(timer);
+      resolve();
+    };
+    window.addEventListener("online", done);
+    const timer = setTimeout(done, OFFLINE_WAIT_MS);
+  });
+}
+
 async function request<T>(
   path: string,
   opts: { method?: string; body?: unknown; signal?: AbortSignal } = {},
@@ -32,20 +61,34 @@ async function request<T>(
   const isFormData = opts.body instanceof FormData;
   const headers: Record<string, string> = { Accept: "application/json" };
   if (!isFormData) headers["Content-Type"] = "application/json";
+  else headers["Idempotency-Key"] = crypto.randomUUID();
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
-    method: opts.method ?? "GET",
-    headers,
-    signal: opts.signal,
-    body:
-      opts.body !== undefined
-        ? isFormData
-          ? (opts.body as FormData)
-          : JSON.stringify(opts.body)
-        : undefined,
-  });
+  const send = () =>
+    fetch(`${BASE}${path}`, {
+      method: opts.method ?? "GET",
+      headers,
+      signal: opts.signal,
+      body:
+        opts.body !== undefined
+          ? isFormData
+            ? (opts.body as FormData)
+            : JSON.stringify(opts.body)
+          : undefined,
+    });
+
+  const res = await (async () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await send();
+      } catch (err) {
+        if (opts.signal?.aborted) throw err;
+        if (!isFormData || attempt >= UPLOAD_RETRY_DELAYS_MS.length) throw networkError();
+        await waitToRetry(attempt);
+      }
+    }
+  })();
 
   if (res.status === 401) {
     clearToken();
@@ -81,52 +124,77 @@ function uploadWithProgress<T>(
   onProgress?: (pct: number) => void,
   abortRef?: { current: (() => void) | null },
 ): Promise<T> {
+  const idempotencyKey = crypto.randomUUID();
+  let attempt = 0;
+
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${BASE}${path}`);
-    xhr.setRequestHeader("Accept", "application/json");
-    const token = getToken();
-    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    const send = () => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BASE}${path}`);
+      xhr.setRequestHeader("Accept", "application/json");
+      xhr.setRequestHeader("Idempotency-Key", idempotencyKey);
+      const token = getToken();
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
-    if (abortRef) abortRef.current = () => xhr.abort();
+      if (abortRef) abortRef.current = () => xhr.abort();
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+
+      xhr.onabort = () => reject(Object.assign(new Error("Upload cancelled."), { aborted: true }));
+
+      xhr.onload = () => {
+        if (xhr.status === 401) {
+          clearToken();
+          if (typeof window !== "undefined") window.location.href = "/login";
+          reject(new Error("Unauthenticated"));
+          return;
+        }
+
+        if (xhr.status === 503) goToMaintenance();
+
+        let payload: { message?: string; errors?: Record<string, string[]> };
+        try {
+          payload = JSON.parse(xhr.responseText);
+        } catch {
+          payload = { message: fallbackErrorMessage(xhr.status) };
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(payload as T);
+        } else {
+          reject(
+            Object.assign(new Error(payload.message ?? fallbackErrorMessage(xhr.status)), {
+              status: xhr.status,
+              errors: payload.errors ?? {},
+            }),
+          );
+        }
+      };
+
+      // The connection dropped mid-upload: start again from the beginning once
+      // it's back, a few times, before telling the user.
+      xhr.onerror = () => {
+        if (attempt >= UPLOAD_RETRY_DELAYS_MS.length) {
+          reject(networkError());
+          return;
+        }
+        onProgress?.(0);
+        let cancelled = false;
+        if (abortRef) {
+          abortRef.current = () => {
+            cancelled = true;
+            reject(Object.assign(new Error("Upload cancelled."), { aborted: true }));
+          };
+        }
+        void waitToRetry(attempt++).then(() => {
+          if (!cancelled) send();
+        });
+      };
+      xhr.send(body);
     };
-
-    xhr.onabort = () => reject(Object.assign(new Error("Upload cancelled."), { aborted: true }));
-
-    xhr.onload = () => {
-      if (xhr.status === 401) {
-        clearToken();
-        if (typeof window !== "undefined") window.location.href = "/login";
-        reject(new Error("Unauthenticated"));
-        return;
-      }
-
-      if (xhr.status === 503) goToMaintenance();
-
-      let payload: { message?: string; errors?: Record<string, string[]> };
-      try {
-        payload = JSON.parse(xhr.responseText);
-      } catch {
-        payload = { message: fallbackErrorMessage(xhr.status) };
-      }
-
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(payload as T);
-      } else {
-        reject(
-          Object.assign(new Error(payload.message ?? fallbackErrorMessage(xhr.status)), {
-            status: xhr.status,
-            errors: payload.errors ?? {},
-          }),
-        );
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("Network error. Check your connection and try again."));
-    xhr.send(body);
+    send();
   });
 }
 
@@ -135,7 +203,9 @@ async function requestBlob(path: string): Promise<Blob> {
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { headers });
+  const res = await fetch(`${BASE}${path}`, { headers }).catch(() => {
+    throw networkError();
+  });
 
   if (res.status === 401) {
     clearToken();

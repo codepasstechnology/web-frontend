@@ -44,6 +44,7 @@ import {
 } from "@/components/dashboard/wizard";
 import "@/components/site/site-pages.css";
 import "@/components/map/map.css";
+import { compressImage } from "@/lib/compressImage";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({
@@ -60,7 +61,7 @@ export const Route = createFileRoute("/dashboard/upload")({
 
 const steps = ["Basic details", "Location on map", "Photos & documents", "Review & submit"];
 
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MAX_DEED_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_MAX = 5000;
 // Deeds come in many shapes (KAJ/KTG/4521, NAIVASHA/MARAIGUSHU BLOCK 7/2312,
@@ -480,23 +481,28 @@ function UploadPage() {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const handlePhotos = (files: FileList | null) => {
+  const handlePhotos = async (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files);
     const wrongType = arr.filter((f) => f.type && !f.type.startsWith("image/"));
-    const oversized = arr.filter((f) => !wrongType.includes(f) && f.size > MAX_PHOTO_BYTES);
-    const valid = arr.filter((f) => !wrongType.includes(f) && f.size <= MAX_PHOTO_BYTES);
+    // Shrunk before the size check, so a large phone photo still fits once compressed.
+    const images = await Promise.all(arr.filter((f) => !wrongType.includes(f)).map(compressImage));
+    const oversized = images.filter((f) => f.size > MAX_PHOTO_BYTES);
+    const valid = images.filter((f) => f.size <= MAX_PHOTO_BYTES);
     const errors = [
       wrongType.length &&
         `${wrongType.map((f) => f.name).join(", ")} ${wrongType.length === 1 ? "isn't an image file" : "aren't image files"}.`,
       oversized.length &&
-        `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 5MB limit per photo.`,
+        `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 10MB limit per photo.`,
     ].filter(Boolean);
     setFileError(errors.join(" "));
-    const allowed = photoLimit - existingPhotos.length - form.photos.length;
-    const slice = valid.slice(0, Math.max(0, allowed));
-    const mapped = slice.map((f) => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
-    set("photos", [...form.photos, ...mapped]);
+    setForm((f) => {
+      const allowed = photoLimit - existingPhotos.length - f.photos.length;
+      const mapped = valid
+        .slice(0, Math.max(0, allowed))
+        .map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
+      return { ...f, photos: [...f.photos, ...mapped] };
+    });
   };
 
   const sizeAcres = sizeToAcres(
