@@ -13,6 +13,8 @@ export interface UserListing {
   views: number;
   createdAt: string;
   coverPhotoUrl: string | null;
+  /** Hidden from the site and not using one of the plan's live listing slots. */
+  paused?: boolean;
 }
 
 export interface AppUser {
@@ -27,6 +29,8 @@ export interface AppUser {
   planEndsAt: string | null;
   planCancelledAt: string | null;
   maxListings: number; // Infinity = unlimited
+  /** Set while the user has more live listings than their plan allows: the day the extras get paused. */
+  listingsPauseOn?: string | null;
   analyticsAccess: boolean;
   customReports: boolean;
   manager: { name: string; email: string } | null;
@@ -102,6 +106,7 @@ interface ApiListing {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+  paused?: boolean;
   /** The new listing's land overlaps another listing; it is flagged for review. */
   location_overlaps?: boolean;
 }
@@ -137,6 +142,7 @@ interface ApiSubscription {
   ends_at?: string | null;
   cancelled_at?: string | null;
   max_listings?: number;
+  listings_pause_on?: string | null;
   analytics_access?: boolean;
   custom_reports?: boolean;
   dedicated_manager?: { name: string; email: string } | null;
@@ -189,6 +195,7 @@ function mapApiUser(
     planCancelledAt: sub.cancelled_at ?? null,
     maxListings:
       sub.max_listings === -1 || sub.max_listings === undefined ? Infinity : sub.max_listings,
+    listingsPauseOn: sub.listings_pause_on ?? null,
     analyticsAccess: sub.analytics_access ?? false,
     customReports: sub.custom_reports ?? false,
     manager: sub.dedicated_manager ?? null,
@@ -223,6 +230,7 @@ function mapApiUser(
       views: l.views,
       createdAt: l.created_at,
       coverPhotoUrl: l.cover_photo_url,
+      paused: l.paused ?? false,
     })),
     payments: payments.map((p) => ({
       number: p.number,
@@ -318,6 +326,7 @@ interface AuthCtx {
   ) => Promise<ListingSaved>;
   removeListing: (id: string) => Promise<void>;
   markListingSold: (id: string) => Promise<void>;
+  setListingPaused: (id: string, paused: boolean) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshListings: () => Promise<void>;
@@ -573,6 +582,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           views: l.views,
           createdAt: l.created_at,
           coverPhotoUrl: l.cover_photo_url,
+          paused: l.paused ?? false,
         })),
       };
     });
@@ -746,6 +756,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const setListingPaused = useCallback(async (id: string, paused: boolean) => {
+    await api.patch<unknown>(`/user/listings/${id}/${paused ? "pause" : "resume"}`, {});
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            listings: prev.listings.map((x) => (x.id === id ? { ...x, paused } : x)),
+          }
+        : prev,
+    );
+  }, []);
+
   const markListingSold = useCallback(async (id: string) => {
     const { status } = await api.patch<{ status: UserListing["status"] }>(
       `/user/listings/${id}/sold`,
@@ -855,6 +877,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateListing,
         removeListing,
         markListingSold,
+        setListingPaused,
         updateUser,
         deleteAccount,
         refreshListings,

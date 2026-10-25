@@ -13,6 +13,12 @@ const mockSetAvailability = vi.fn<(args: { id: string; status: string }) => Prom
 );
 const mockRemoveListing = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
 const mockMarkSold = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
+const mockSetListingPaused = vi.fn<(id: string, paused: boolean) => Promise<void>>(() =>
+  Promise.resolve(),
+);
+const mockSetPropertyPaused = vi.fn<(args: { id: string; paused: boolean }) => Promise<unknown>>(
+  () => Promise.resolve({}),
+);
 const mockFetchListing = vi.fn<(id: string) => Promise<ListingDetail>>();
 const mockApiGet = vi.fn<(path: string) => Promise<unknown>>();
 const mockNavigate = vi.fn();
@@ -37,6 +43,7 @@ vi.mock("@/lib/properties", async (importOriginal) => {
     useDeleteProperty: () => ({ mutateAsync: mockDeleteProperty, isPending: false }),
     useMarkPropertyTaken: () => ({ mutateAsync: mockMarkTaken, isPending: false }),
     useSetPropertyAvailability: () => ({ mutateAsync: mockSetAvailability, isPending: false }),
+    useSetPropertyPaused: () => ({ mutateAsync: mockSetPropertyPaused, isPending: false }),
   };
 });
 
@@ -46,6 +53,8 @@ vi.mock("@/lib/auth", () => ({
     ready: true,
     removeListing: mockRemoveListing,
     markListingSold: mockMarkSold,
+    setListingPaused: mockSetListingPaused,
+    reloadUser: vi.fn(),
     fetchListing: mockFetchListing,
   }),
 }));
@@ -483,5 +492,62 @@ describe("ListingsTab — preview", () => {
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Mark as sold" }),
     );
     expect(mockMarkSold).toHaveBeenCalledWith(land.id);
+  });
+});
+
+describe("ListingsTab — paused listings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUser.mockReturnValue(user);
+    mockProperties.mockReturnValue({
+      data: [{ ...property, paused: true }],
+      isLoading: false,
+      isError: false,
+    });
+  });
+
+  it("marks a paused listing and lets the user make it live again", async () => {
+    render(<ListingsTab />);
+
+    expect(within(rows()[0]).getByText("Paused")).toBeInTheDocument();
+    expect(screen.getByText(/1 paused listing is hidden from the site/)).toBeInTheDocument();
+    expect(within(rows()[0]).queryByRole("button", { name: /^Share / })).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(rows()[0]).getByRole("button", { name: "Make live: Kilimani 2BR Apartment" }),
+    );
+
+    expect(mockSetPropertyPaused).toHaveBeenCalledWith({ id: "p-1", paused: false });
+    expect(mockToastSuccess).toHaveBeenCalledWith("Kilimani 2BR Apartment is live again.");
+  });
+
+  it("pauses a live land listing", async () => {
+    render(<ListingsTab />);
+
+    await userEvent.click(within(rows()[1]).getByRole("button", { name: "Pause: NRB/BLK12/456" }));
+
+    expect(mockSetListingPaused).toHaveBeenCalledWith("l-1", true);
+  });
+
+  it("shows why a listing can't go live when every slot is taken", async () => {
+    mockSetPropertyPaused.mockRejectedValueOnce(
+      new Error("All the live listing slots on your plan are in use."),
+    );
+    render(<ListingsTab />);
+
+    await userEvent.click(
+      within(rows()[0]).getByRole("button", { name: "Make live: Kilimani 2BR Apartment" }),
+    );
+
+    expect(mockToastError).toHaveBeenCalledWith(
+      "All the live listing slots on your plan are in use.",
+    );
+  });
+
+  it("warns before the grace period ends", () => {
+    mockUser.mockReturnValue({ ...user, listingsPauseOn: "2026-11-02" } as AppUser);
+    render(<ListingsTab />);
+
+    expect(screen.getByText(/On 2 Nov 2026 the oldest ones will be paused/)).toBeInTheDocument();
   });
 });

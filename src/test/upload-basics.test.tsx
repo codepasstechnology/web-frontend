@@ -19,6 +19,10 @@ vi.mock("@/lib/draftPhotoStore", () => ({
   loadDraftPhotos: () => Promise.resolve([]),
   clearDraftPhotos: vi.fn(),
 }));
+vi.mock("@/lib/properties", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/properties")>()),
+  useUsedListings: () => 0,
+}));
 vi.mock("@/lib/plans", () => ({ kenyaCounties: ["Kajiado"], usePlans: () => ({ data: [] }) }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({

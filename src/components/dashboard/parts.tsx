@@ -20,6 +20,7 @@ const LISTING_STATUS: Record<string, [ChipKind, string]> = {
   taken: ["muted", "Taken"],
   closed: ["muted", "Closed"],
   suspended: ["err", "Suspended"],
+  paused: ["muted", "Paused"],
 };
 
 export function ListingStatus({ status }: { status: string }) {

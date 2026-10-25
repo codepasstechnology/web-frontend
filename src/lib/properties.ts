@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { useAuth } from "./auth";
 import { bboxParam, type Bbox } from "./mapGeo";
 
 export type PropertyIntent = "rent" | "bnb" | "sale";
@@ -51,6 +52,8 @@ export interface MyProperty {
   views: number;
   createdAt: string;
   coverPhotoUrl: string | null;
+  /** Hidden from the site and not using one of the plan's live listing slots. */
+  paused?: boolean;
 }
 
 export interface MyPropertyDetail extends MyProperty {
@@ -114,6 +117,7 @@ interface ApiMyProperty {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+  paused?: boolean;
 }
 
 interface ApiMyPropertyDetail extends ApiMyProperty {
@@ -216,6 +220,7 @@ function mapApiMyProperty(p: ApiMyProperty): MyProperty {
     views: p.views ?? 0,
     createdAt: p.created_at,
     coverPhotoUrl: p.cover_photo_url,
+    paused: p.paused ?? false,
   };
 }
 
@@ -296,6 +301,13 @@ export function useMyProperties() {
     queryKey: ["my-properties"],
     queryFn: async () => (await api.get<ApiMyProperty[]>("/user/properties")).map(mapApiMyProperty),
   });
+}
+
+/** Live land listings and properties share the plan's listing limit; paused ones don't count. */
+export function useUsedListings(): number {
+  const { user } = useAuth();
+  const { data: properties = [] } = useMyProperties();
+  return [...(user?.listings ?? []), ...properties].filter((l) => !l.paused).length;
 }
 
 /**
@@ -405,6 +417,16 @@ export function useDeleteProperty() {
 
   return useMutation({
     mutationFn: (id: string) => api.delete<unknown>(`/user/properties/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
+  });
+}
+
+export function useSetPropertyPaused() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, paused }: { id: string; paused: boolean }) =>
+      api.patch<unknown>(`/user/properties/${id}/${paused ? "pause" : "resume"}`, {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
   });
 }

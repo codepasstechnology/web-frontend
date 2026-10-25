@@ -3,6 +3,10 @@ import { render, screen } from "@testing-library/react";
 import type { AppUser, UserListing } from "@/lib/auth";
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@/lib/properties", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/properties")>()),
+  useUsedListings: () => 0,
+}));
 vi.mock("@/lib/plans", () => ({
   usePlans: () => ({
     data: [

@@ -22,6 +22,7 @@ import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { useAuth, type NewListingInput } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { kenyaCounties, usePlans, type Plan } from "@/lib/plans";
+import { useUsedListings } from "@/lib/properties";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
@@ -284,6 +285,7 @@ type BasicsField = "parcelNumber" | "county" | "size" | "price";
 function UploadPage() {
   const { user, ready, addListing, fetchListing, updateListing } = useAuth();
   const { data: plans = [] } = usePlans();
+  const used = useUsedListings();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const search = Route.useSearch();
@@ -466,7 +468,6 @@ function UploadPage() {
     );
   }
 
-  const used = user.listings.length;
   const remaining = user.maxListings === Infinity ? Infinity : user.maxListings - used;
   const limitReached = !editId && remaining <= 0;
   const planName = plan?.name ?? user.plan;

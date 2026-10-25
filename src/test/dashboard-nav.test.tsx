@@ -16,6 +16,10 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("@/components/VerifyAccountModal", () => ({ VerifyAccountModal: () => null }));
 vi.mock("@/components/home/HomeNavbar", () => ({ HomeNavbar: () => null }));
+vi.mock("@/lib/properties", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/properties")>()),
+  useUsedListings: () => 0,
+}));
 vi.mock("@/lib/plans", () => ({ usePlans: () => ({ data: [] }) }));
 
 const { DashboardShell } = await import("@/components/DashboardShell");
