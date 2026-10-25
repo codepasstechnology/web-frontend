@@ -166,17 +166,19 @@ export function formatPrice(price: number, period: PricePeriod): string {
   return period === "total" ? amount : `${amount} / ${period}`;
 }
 
+// Fields are re-checked here because a partial or malformed response would
+// otherwise crash the panels (e.g. price.toLocaleString on undefined).
 export function mapApiProperty(p: ApiProperty): Property {
   return {
     id: p.id,
-    reference: p.reference_number,
-    title: p.title,
+    reference: p.reference_number ?? "",
+    title: p.title ?? "",
     description: p.description ?? "",
     county: p.county ?? "",
     area: p.area ?? "",
     intent: p.intent,
     type: p.type,
-    price: p.price,
+    price: Number(p.price) || 0,
     pricePeriod: p.price_period,
     status: p.status,
     minNights: p.min_nights,
@@ -184,7 +186,7 @@ export function mapApiProperty(p: ApiProperty): Property {
     bedrooms: p.bedrooms ?? 0,
     bathrooms: p.bathrooms ?? 0,
     furnished: p.furnished ?? false,
-    amenities: p.amenities ?? [],
+    amenities: Array.isArray(p.amenities) ? p.amenities : [],
     postedBy: p.posted_by,
     agent: {
       name: p.agent_name || "—",
@@ -192,7 +194,7 @@ export function mapApiProperty(p: ApiProperty): Property {
       agency: p.agent_agency || "",
     },
     position: [Number(p.latitude), Number(p.longitude)],
-    photos: p.photos ?? [],
+    photos: Array.isArray(p.photos) ? p.photos : [],
     featured: p.featured ?? false,
     svAvailable: p.sv_available ?? null,
   };

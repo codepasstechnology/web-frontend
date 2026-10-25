@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { plainTextError } from "@/components/auth/validation";
 import { DashboardShell } from "@/components/DashboardShell";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import { LandBoundaryMap } from "@/components/map/LazyMaps";
@@ -285,6 +286,7 @@ function PostPropertyPage() {
 
   const detailErrors: Partial<Record<DetailsField, string>> = {};
   if (!form.title.trim()) detailErrors.title = "Give the listing a title.";
+  else if (plainTextError(form.title)) detailErrors.title = plainTextError(form.title);
   if (!(Number(form.price) > 0)) detailErrors.price = "Enter the price in KES.";
   if (!form.county) detailErrors.county = "Choose the county the property is in.";
   const shownErrors = showErrors ? detailErrors : {};

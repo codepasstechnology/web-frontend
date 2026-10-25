@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Clock, Mail, MessageSquare, Phone } from "lucide-react";
+import { plainTextError } from "@/components/auth/validation";
 import { KenyaMeshMap } from "@/components/site/KenyaMeshMap";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import { MarketingShell } from "@/components/site/MarketingShell";
@@ -25,11 +26,14 @@ type Field = "name" | "email" | "msg";
 
 function checks(values: Record<Field, string>): Record<Field, string> {
   return {
-    name: values.name.trim().length < 2 ? "Enter your name." : "",
+    name: values.name.trim().length < 2 ? "Enter your name." : plainTextError(values.name),
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())
       ? ""
       : "Enter a valid email address.",
-    msg: values.msg.trim().length < 10 ? "Tell us a little more (at least 10 characters)." : "",
+    msg:
+      values.msg.trim().length < 10
+        ? "Tell us a little more (at least 10 characters)."
+        : plainTextError(values.msg),
   };
 }
 

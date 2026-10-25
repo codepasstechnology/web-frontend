@@ -12,7 +12,12 @@ import {
   type BusyState,
   type Shake,
 } from "@/components/auth/AuthFields";
-import { isValidEmail, kenyanMobileDigits, passwordScore } from "@/components/auth/validation";
+import {
+  isValidEmail,
+  kenyanMobileDigits,
+  passwordScore,
+  plainTextError,
+} from "@/components/auth/validation";
 import { useSignupsOpen } from "@/lib/settings";
 
 export const Route = createFileRoute("/register")({
@@ -128,7 +133,7 @@ const FIELDS_BY_STEP: Partial<Record<Step, Field[]>> = {
 function errorFor(form: Form, field: Field): string {
   switch (field) {
     case "name":
-      return form.name.trim().length < 2 ? "Enter your full name." : "";
+      return form.name.trim().length < 2 ? "Enter your full name." : plainTextError(form.name);
     case "email":
       return isValidEmail(form.email) ? "" : "Enter a valid email address.";
     case "phone":
@@ -140,7 +145,7 @@ function errorFor(form: Form, field: Field): string {
     case "howMany":
       return form.howMany ? "" : "Pick one.";
     case "agency":
-      return form.agency.trim() ? "" : "Enter your agency name.";
+      return form.agency.trim() ? plainTextError(form.agency) : "Enter your agency name.";
     case "earb":
       return form.earb.trim() ? "" : "Enter your EARB registration number.";
     case "areas":
