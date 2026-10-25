@@ -173,16 +173,6 @@ html.dark .ga-knob {
   color: #f4eee2;
 }
 
-.ga-brand-tile {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #1a752a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .ga-brand-text {
   font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
   font-weight: 700;
@@ -1560,11 +1550,6 @@ html.dark .ga-page .ga-newcard-desc {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.ga-load-logo .ga-brand-tile {
-  width: 34px;
-  height: 34px;
 }
 
 .ga-load-logo .ga-brand-text {
