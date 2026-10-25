@@ -42,6 +42,8 @@ src/
     api.ts        # Fetch wrapper — Bearer token, auto-detects FormData
     auth.tsx      # AuthProvider, useAuth(), NewListingInput type
     plans.ts      # Plan definitions and PlanId type
+    consent.ts    # Cookie banner choice: 12-month expiry, policy version, account sync, Global Privacy Control
+    traffic.ts    # Page-view tracker and tagged share links for the admin Traffic page; runs only after analytics consent
   components/
     DashboardShell.tsx   # Authenticated layout wrapper — fills viewport width on large screens
     LandMap.tsx          # Leaflet map with parcel markers (marketplace map)

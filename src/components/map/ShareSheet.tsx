@@ -1,8 +1,9 @@
-import { useEffect, useRef, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Image as ImageIcon, Link2, MessageCircle, MoreHorizontal, X } from "lucide-react";
 import { previewOutline } from "@/lib/mapGeo";
 import { whatsappShareUrl } from "@/lib/mapLinks";
+import { newShareCode, recordShare, withShareCode } from "@/lib/traffic";
 import { useMapToast } from "@/components/map/mapToastContext";
 
 export type ShareShape =
@@ -21,6 +22,7 @@ export function ShareSheet({
   meta,
   price,
   url,
+  listing,
   waText,
   shape,
   color,
@@ -35,6 +37,8 @@ export function ShareSheet({
   meta: string;
   price: string;
   url: string;
+  listing: { type: "parcel" | "property"; id: string };
+  /** The WhatsApp message; the link is added to the end. */
   waText: string;
   shape: ShareShape;
   color: string;
@@ -43,6 +47,8 @@ export function ShareSheet({
 }) {
   const toast = useMapToast();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [code] = useState(newShareCode);
+  const link = withShareCode(url, code);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -53,7 +59,8 @@ export function ShareSheet({
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(link);
+      recordShare(code, listing, "copy");
       toast("Link copied");
     } catch {
       toast("Couldn't copy the link");
@@ -84,7 +91,8 @@ export function ShareSheet({
   const moreApps = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share({ title, url: link });
+        recordShare(code, listing, "native");
       } catch {
         /* the viewer closed the share sheet */
       }
@@ -171,7 +179,8 @@ export function ShareSheet({
         </p>
         <div className="gm-sgrid">
           <a
-            href={whatsappShareUrl(waText)}
+            href={whatsappShareUrl(`${waText} ${link}`)}
+            onClick={() => recordShare(code, listing, "whatsapp")}
             target="_blank"
             rel="noopener noreferrer"
             className="gm-btn gm-wa"
