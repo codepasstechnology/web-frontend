@@ -287,16 +287,6 @@ html.dark .gp-header {
   min-height: 44px;
 }
 
-.gp-logo-tile {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: var(--gp-brand);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .gp-logo-text {
   font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
   font-weight: 700;
