@@ -1,8 +1,9 @@
+import { ListingLoadStatus } from "@/components/map/ListingLoadStatus";
+import { preloadMap } from "@/lib/mapPreload";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { List } from "lucide-react";
 import { LandMap } from "@/components/map/LazyMaps";
-import type { FlyTarget } from "@/components/LandMap";
 import { MapFilterMenu } from "@/components/map/MapFilterMenu";
 import { MapSidebar, PriceRangeFilter, SegFilter } from "@/components/MapSidebar";
 import { ParcelPanel, RentalPanel } from "@/components/PropertyPanel";
@@ -21,7 +22,7 @@ import type { LandParcel, ListingType } from "@/lib/landData";
 import type { Bbox } from "@/lib/mapGeo";
 import { parcelPrice } from "@/lib/parcelFilters";
 import { ANY_PRICE, HOME_PRICE_KIND, inRange, LAND_PRICE_KIND } from "@/lib/priceRanges";
-import { useMapParcels, useSavedParcels } from "@/lib/parcels";
+import { useMapParcels, useSavedParcels, useParcel, useParcelDetails } from "@/lib/parcels";
 import {
   formatPrice,
   INTENT_LABELS,
@@ -50,7 +51,10 @@ export const Route = createFileRoute("/explore")({
     property: typeof s.property === "string" ? s.property : undefined,
   }),
   loaderDeps: ({ search }) => ({ parcel: search.parcel, property: search.property }),
-  loader: ({ deps }) => shareQuery(deps.parcel, deps.property),
+  loader: ({ deps }) => {
+    preloadMap();
+    return shareQuery(deps.parcel, deps.property);
+  },
   head: ({ loaderData }) => ({
     ...shareHead(loaderData, {
       title: "Explore Map — Geo Pin Properties Kenya",
@@ -74,7 +78,6 @@ function ExploreContent() {
   const { user } = useAuth();
   const toast = useMapToast();
   const [bbox, setBbox] = useState<Bbox | null>(null);
-  const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const [hotIds, setHotIds] = useState<string[]>([]);
   const [drawer, setDrawer] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -88,7 +91,7 @@ function ExploreContent() {
   const { savedIds, toggleSaved } = useSavedParcels(!!user);
 
   const parcelsQuery = useMapParcels(bbox);
-  const propertiesQuery = usePublicProperties({}, bbox);
+  const propertiesQuery = usePublicProperties({}, bbox, true);
   const parcels = useMemo(() => parcelsQuery.data ?? [], [parcelsQuery.data]);
   const properties = useMemo(() => propertiesQuery.data ?? [], [propertiesQuery.data]);
   const knownParcels = useKnownListings(parcels);
@@ -128,28 +131,20 @@ function ExploreContent() {
     chooseHome("all");
   };
 
-  const selectedParcel = search.parcel ? knownParcels.get(search.parcel) : undefined;
+  const parcelDetail = useParcel(search.parcel);
+  const selectedParcel = parcelDetail.data;
+  const comparison = useParcelDetails(compareOpen ? compareIds : []);
+  const comparisonReady = comparison.length > 0 && comparison.every((q) => q.isSuccess);
   // The rentals feed is paginated, so a shared link can name a listing that is not loaded.
-  const listedProperty = search.property ? knownProperties.get(search.property) : undefined;
-  const { data: fetchedProperty } = useProperty(listedProperty ? undefined : search.property);
-  const selectedProperty =
-    listedProperty ?? (fetchedProperty?.id === search.property ? fetchedProperty : undefined);
-  const selectedId = selectedParcel?.id ?? selectedProperty?.id ?? null;
+  const propertyDetail = useProperty(search.property);
+  const fetchedProperty = propertyDetail.data;
+  const selectedProperty = fetchedProperty;
+  const selectedId = search.parcel ?? search.property ?? null;
 
   const setSearch = (next: Partial<ExploreSearch>) =>
     navigate({ to: "/explore", search: (prev) => ({ ...prev, ...next }), replace: true });
 
-  // A listing fetched by id is not on the map, so centre on it once; the map
-  // centres on loaded listings by itself.
-  const centredFromLink = useRef(false);
-  useEffect(() => {
-    if (centredFromLink.current || !fetchedProperty || listedProperty) return;
-    centredFromLink.current = true;
-    setFlyTarget({ lat: fetchedProperty.position[0], lng: fetchedProperty.position[1], zoom: 16 });
-  }, [fetchedProperty, listedProperty]);
-
   const opened = (id: string) => {
-    centredFromLink.current = true;
     setDrawer(false);
     setCompareOpen(false);
     recent.push(id);
@@ -290,7 +285,8 @@ function ExploreContent() {
           onSelectParcel={selectParcel}
           onSelectProperty={selectProperty}
           selectedId={selectedId}
-          flyTarget={flyTarget}
+          focusedParcel={selectedParcel}
+          focusedProperty={selectedProperty}
           hotIds={hotIds}
           onHover={setHotIds}
           seenIds={recent.ids}
@@ -363,9 +359,9 @@ function ExploreContent() {
             onClear={() => setCompareIds([])}
           />
         )}
-        {compareOpen && compared.length > 0 && (
+        {compareOpen && comparisonReady && (
           <CompareModal
-            parcels={compared}
+            parcels={comparison.map((q) => q.data!)}
             onRemove={toggleCompare}
             onView={selectParcel}
             onClose={() => setCompareOpen(false)}
@@ -391,6 +387,20 @@ function ExploreContent() {
             page="explore"
           />
         )}
+        {search.parcel && (
+          <ListingLoadStatus query={parcelDetail} onClose={() => selectParcel(null)} />
+        )}
+        {search.property && (
+          <ListingLoadStatus query={propertyDetail} onClose={() => selectProperty(null)} />
+        )}
+        {compareOpen &&
+          comparison.map((q, i) => (
+            <ListingLoadStatus
+              key={compareIds[i]}
+              query={q}
+              onClose={() => setCompareOpen(false)}
+            />
+          ))}
         <MapToastOutlet />
       </div>
     </>

@@ -74,6 +74,20 @@ vi.mock("@/lib/parcels", () => ({
     isPlaceholderData: false,
     refetch: vi.fn(),
   }),
+  useParcel: (id: string | undefined) => ({
+    data: id ? listed.find((p) => p.id === id) : undefined,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useParcelDetails: (ids: string[]) =>
+    ids.map((id) => ({
+      data: listed.find((p) => p.id === id),
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    })),
   useSavedParcels: () => ({ savedIds: [], toggleSaved: vi.fn() }),
 }));
 

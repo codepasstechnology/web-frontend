@@ -207,7 +207,9 @@ describe("RentalsPage — shareable ?property= links", () => {
   beforeEach(() => {
     mockUsePublicProperties.mockReset();
     mockUseProperty.mockReset();
-    mockUseProperty.mockReturnValue({ data: undefined });
+    mockUseProperty.mockImplementation((id) => ({
+      data: id === property.id ? property : undefined,
+    }));
     mockSearch.mockReset();
     mockSearch.mockReturnValue({});
     mockNavigate.mockReset();
@@ -233,7 +235,7 @@ describe("RentalsPage — shareable ?property= links", () => {
     render(<RentalsPage />);
 
     expect(screen.getByTestId("rental-panel")).toBeInTheDocument();
-    expect(mockUseProperty).toHaveBeenCalledWith(undefined);
+    expect(mockUseProperty).toHaveBeenCalledWith("p-1");
   });
 
   /**

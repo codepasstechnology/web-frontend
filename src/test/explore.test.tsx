@@ -76,12 +76,31 @@ const query = <T,>(data: T[]) => ({
 
 vi.mock("@/lib/parcels", () => ({
   useMapParcels: () => query([parcel]),
+  useParcel: (id: string | undefined) => ({
+    data: id ? parcel : undefined,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useParcelDetails: (ids: string[]) =>
+    ids.map((id) => ({
+      data: parcel,
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    })),
   useSavedParcels: () => ({ savedIds: [], toggleSaved: mockToggleSaved }),
 }));
 vi.mock("@/lib/properties", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/properties")>()),
   usePublicProperties: () => query([property]),
-  useProperty: () => ({ data: undefined }),
+  useProperty: (id: string | undefined) => ({
+    data: id ? property : undefined,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 const { Route } = await import("@/routes/explore");
