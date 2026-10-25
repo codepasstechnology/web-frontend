@@ -28,6 +28,7 @@ import {
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { Beacon, StatusChip, type ChipKind } from "@/components/dashboard/parts";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { compressImage } from "@/lib/compressImage";
 
 const STATUS: Record<
   string,
@@ -144,7 +145,7 @@ function KycCard({
     try {
       const fd = new FormData();
       if (text) fd.append("reply", text);
-      if (replyFile) fd.append("document", replyFile);
+      if (replyFile) fd.append("document", await compressImage(replyFile));
       await api.post(`/user/kyc/${kyc.id}/reply`, fd);
       onReplied(text, replyFile);
       toast.success("Reply sent to the reviewer.");
@@ -538,9 +539,10 @@ function SubmitKycDialog({
     try {
       const fd = new FormData();
       fd.append("parcel_id", parcelId);
+      const files = await Promise.all(documents.map((d) => compressImage(d.file)));
       documents.forEach((d, i) => {
         fd.append(`documents[${i}][type]`, d.type);
-        fd.append(`documents[${i}][file]`, d.file);
+        fd.append(`documents[${i}][file]`, files[i]);
       });
       const res = await api.post<{ data: KycApplication }>("/user/kyc", fd);
       onSubmitted(res.data);
