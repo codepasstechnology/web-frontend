@@ -37,9 +37,113 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Shown until the app starts, so the first visit never opens on a blank page. */
+      .boot {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        background: #15140f;
+        color: #b9b2a1;
+        font:
+          17px "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+      .boot-logo {
+        position: absolute;
+        left: 28px;
+        top: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #f4eee2;
+        font-weight: 700;
+        font-size: 18px;
+      }
+      .boot svg.boot-map {
+        width: min(170px, 42vw);
+        height: auto;
+      }
+      .boot-trace {
+        stroke-dasharray: 1;
+        animation: bootTrace 1.5s cubic-bezier(0.6, 0.1, 0.3, 1) backwards;
+      }
+      .boot-dots {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 10px;
+      }
+      .boot-dots span {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #a9c97a;
+        animation: bootBlink 1.2s ease-in-out infinite;
+      }
+      .boot-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .boot-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes bootTrace {
+        from {
+          stroke-dashoffset: 1;
+        }
+      }
+      @keyframes bootBlink {
+        0%,
+        80%,
+        100% {
+          opacity: 0.25;
+        }
+        40% {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot * {
+          animation: none !important;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot" role="status" aria-label="Loading">
+        <div class="boot-logo" aria-hidden="true">
+          <img src="/favicon.svg" alt="" width="30" height="30" />Geo Pin
+        </div>
+        <svg class="boot-map" viewBox="0 0 840 1010" aria-hidden="true">
+          <path
+            class="boot-trace"
+            pathLength="1"
+            d="M25 630L35 510L90 410L130 330L120 230L70 160L30 110L160 30L220 70L310 90L440 170L580 190L710 130L820 130L730 250L730 620L790 700L730 730L650 810L590 890L550 1000L400 835Z"
+            fill="rgba(169,201,122,0.05)"
+            stroke="#C4D6A0"
+            stroke-width="3"
+            stroke-linejoin="round"
+          />
+          <path
+            transform="translate(286 595) scale(2.2)"
+            d="M12 29s-10-8.6-10-16a10 10 0 0 1 20 0c0 7.4-10 16-10 16z"
+            fill="#A9C97A"
+            stroke="#15140F"
+            stroke-width="1.2"
+          />
+        </svg>
+        <div>
+          Loading<span class="boot-dots" aria-hidden="true"
+            ><span></span><span></span><span></span
+          ></span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.cpanel.tsx"></script>
   </body>
 </html>

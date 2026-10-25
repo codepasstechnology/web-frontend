@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { PageLoading } from "@/components/PageLoading";
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
@@ -10,6 +11,11 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // While a page's code downloads, show the loader instead of a blank screen;
+    // short waits show nothing and a shown loader stays long enough not to flash.
+    defaultPendingComponent: PageLoading,
+    defaultPendingMs: 150,
+    defaultPendingMinMs: 400,
   });
 
   return router;

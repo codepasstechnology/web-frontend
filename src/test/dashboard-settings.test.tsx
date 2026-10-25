@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import type { AppUser } from "@/lib/auth";
 
 beforeAll(() => {
@@ -23,6 +24,13 @@ vi.mock("@/lib/api", () => ({
 const mockToastError = vi.fn();
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: mockToastError } }));
 vi.mock("@/lib/plans", () => ({ kenyaCounties: ["Kajiado"], usePlans: () => ({ data: [] }) }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, children, className }: { to: string; children: ReactNode; className?: string }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  ),
+}));
 
 const { SettingsTab } = await import("@/components/dashboard/SettingsTab");
 
@@ -194,6 +202,10 @@ describe("SettingsTab", () => {
     show({ onUpdate });
 
     await userEvent.click(screen.getByRole("tab", { name: /Preferences/ }));
+    expect(screen.getByRole("link", { name: /Cookie settings/ })).toHaveAttribute(
+      "href",
+      "/cookie-settings",
+    );
     const save = screen.getByRole("button", { name: /Save preferences/ });
     expect(save).toBeDisabled();
 

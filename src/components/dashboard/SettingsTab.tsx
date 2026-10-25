@@ -23,7 +23,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { openCookieSettings } from "@/lib/consent";
+import { Link } from "@tanstack/react-router";
 import type { AppUser, UserRole } from "@/lib/auth";
 import { kenyaCounties, usePlans } from "@/lib/plans";
 import {
@@ -1156,12 +1156,12 @@ export function SettingsTab({
               <div>
                 <h2 className="gd-h2">Cookies</h2>
                 <p className="gd-sub mt-1 text-sm">
-                  Choose whether we may count your visits to improve Geo Pin.
+                  See what Geo Pin stores and turn optional cookies on or off.
                 </p>
               </div>
-              <button type="button" className="gd-btn gd-o" onClick={openCookieSettings}>
+              <Link to="/cookie-settings" className="gd-btn gd-o">
                 <Cookie size={16} aria-hidden="true" /> Cookie settings
-              </button>
+              </Link>
             </div>
           </>
         )}

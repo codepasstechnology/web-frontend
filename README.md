@@ -66,6 +66,7 @@ src/
     register.tsx         # User registration
     forgot-password.tsx  # Password reset request
     terms.tsx            # Terms of Service (fetched from CMS)
+    cookie-settings.tsx  # Cookies & Browsing: every stored item by category, optional cookies on/off
     privacy.tsx          # Privacy Policy (fetched from CMS)
     rentals.tsx          # Rentals listing page
     dashboard.index.tsx  # Authenticated dashboard home

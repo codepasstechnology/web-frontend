@@ -179,6 +179,7 @@ const OWN_CHROME_PATHS = new Set([
   "/privacy",
   "/terms",
   "/cookie-policy",
+  "/cookie-settings",
   "/data-usage",
 ]);
 const NO_NAVBAR_PREFIXES = [

@@ -429,14 +429,10 @@ html.dark .gp-mobile-menu {
 .gp-mobile-cookie {
   align-self: flex-start;
   padding: 12px 4px 0;
-  border: 0;
-  background: none;
   color: var(--gp-muted-dark);
-  font: inherit;
   font-size: 14px;
   text-decoration: underline;
   text-underline-offset: 3px;
-  cursor: pointer;
 }
 
 .gp-mobile-link {
@@ -1524,23 +1520,12 @@ html.dark .gp-footer {
   font-weight: 600;
 }
 
-.gp-footer-col a,
-.gp-footer-col button {
+.gp-footer-col a {
   color: var(--gp-muted-dark);
   text-decoration: none;
 }
 
-.gp-footer-col button {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.gp-footer-col a:hover,
-.gp-footer-col button:hover {
+.gp-footer-col a:hover {
   color: var(--gp-cream-text);
 }
 
