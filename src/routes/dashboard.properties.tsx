@@ -396,6 +396,27 @@ function PostPropertyPage() {
       value: `${form.bedrooms || "—"} bed · ${form.bathrooms || "—"} bath${form.furnished ? " · furnished" : ""}`,
       step: 0,
     },
+    ...(form.intent === "bnb"
+      ? [
+          { label: "Minimum nights", value: form.minNights || "—", step: 0 },
+          {
+            label: "Cleaning fee",
+            value: form.cleaningFee ? formatPrice(Number(form.cleaningFee), "total") : "—",
+            step: 0,
+          },
+        ]
+      : []),
+    { label: "Amenities", value: form.amenities.join(", ") || "None", step: 0 },
+    { label: "Description", value: form.description || "—", step: 0 },
+    {
+      label: "Posted by",
+      value:
+        form.postedBy === "broker"
+          ? ["Broker / agent", form.agentName, form.agentAgency].filter(Boolean).join(" · ")
+          : "Owner",
+      step: 0,
+    },
+    { label: "Contact phone", value: form.agentPhone || "Not provided", step: 0 },
     {
       label: "Location",
       value: form.pin ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}` : "Not set",
@@ -750,6 +771,16 @@ function PostPropertyPage() {
             {step === 3 && (
               <div className="flex flex-col gap-4">
                 <ReviewRows rows={reviewRows} onEdit={setStep} />
+                {pickerPhotos.length > 0 && (
+                  <div className="gd-pgrid">
+                    {pickerPhotos.map((p) => (
+                      <div key={p.key} className="gd-ph">
+                        <img src={p.url} alt="" className="h-full w-full object-cover" />
+                        {p.key === coverKey && <span className="gd-cover">Cover</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {error && <ErrorBox>{error}</ErrorBox>}
               </div>
             )}
