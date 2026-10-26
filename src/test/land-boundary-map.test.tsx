@@ -15,6 +15,8 @@ const fakeMap = {
   fire: (ev: string, data: unknown) => (listeners[ev] ?? []).forEach((fn) => fn(data)),
   doubleClickZoom: { enable: vi.fn(), disable: vi.fn() },
   flyTo: vi.fn(),
+  getZoom: vi.fn(() => 18),
+  setView: vi.fn(),
 };
 let mapClick: ((e: { latlng: { lat: number; lng: number } }) => void) | undefined;
 
@@ -266,5 +268,13 @@ describe("LandBoundaryMap", () => {
     await renderReady(<Harness />);
     act(() => mapClick?.({ latlng: { lat: -1.3, lng: 36.8 } }));
     expect(onPin).toHaveBeenCalledWith([-1.3, 36.8]);
+  });
+
+  it("zooms in on the pin when tracing starts from too far out", async () => {
+    fakeMap.getZoom.mockReturnValueOnce(12);
+    await renderReady(<Harness initialPin={[-1.47, 36.95]} />);
+    await userEvent.click(screen.getByRole("button", { name: "Trace boundary" }));
+
+    expect(fakeMap.setView).toHaveBeenCalledWith([-1.47, 36.95], 17);
   });
 });

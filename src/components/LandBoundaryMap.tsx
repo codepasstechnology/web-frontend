@@ -79,11 +79,16 @@ const TUTORIAL_STEPS: { title: string; body: string; path: string; dots: boolean
     },
   ];
 
-const cornerIcon = (color: string, size: number) =>
+// Esri has imagery to zoom 18 almost everywhere in Kenya; past that the tiles
+// are scaled up, which is blurrier but lets sellers place corners precisely.
+const MAX_ZOOM = 20;
+
+/** `hit` is the tappable area; on touch it's larger than the dot so the dot can stay small. */
+const cornerIcon = (color: string, size: number, hit = size) =>
   L.divIcon({
     className: "gm-corner",
-    html: `<span style="--pc:${color}"></span>`,
-    iconSize: [size, size],
+    html: `<span style="--pc:${color};--inset:${(hit - size) / 2}px"></span>`,
+    iconSize: [hit, hit],
   });
 
 const centreIcon = (color: string) =>
@@ -121,6 +126,7 @@ function PolygonDrawTrigger({
   cancelTrigger,
   undoTrigger,
   finishTrigger,
+  focus,
   color,
   onCreated,
   onTracingChange,
@@ -131,6 +137,8 @@ function PolygonDrawTrigger({
   cancelTrigger: number;
   undoTrigger: number;
   finishTrigger: number;
+  /** Where to zoom in when tracing starts from too far out, usually the dropped pin. */
+  focus: [number, number] | null;
   color: string;
   onCreated: (boundary: LatLng[]) => void;
   onTracingChange: (tracing: boolean) => void;
@@ -158,6 +166,8 @@ function PolygonDrawTrigger({
 
   const onLoadErrorRef = useRef(onLoadError);
   onLoadErrorRef.current = onLoadError;
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
 
   // leaflet-draw touches `window` at import time, so it must never load during SSR.
   useEffect(() => {
@@ -193,6 +203,9 @@ function PolygonDrawTrigger({
   useEffect(() => {
     if (!ready) return;
     const onDrawStart = () => {
+      if (map.getZoom() < TRACE_ZOOM) {
+        map.setView(focusRef.current ?? map.getCenter(), TRACE_ZOOM);
+      }
       map.doubleClickZoom.disable();
       onPointsChangeRef.current([]);
       onTracingChangeRef.current(true);
@@ -238,7 +251,7 @@ function PolygonDrawTrigger({
       showArea: false,
       shapeOptions: { color, opacity: 0, fill: false },
       icon: cornerIcon(color, 16),
-      touchIcon: cornerIcon(color, 22),
+      touchIcon: cornerIcon(color, 14, 30),
     });
     handlerRef.current = handler;
     handler.enable();
@@ -253,6 +266,9 @@ function PolygonDrawTrigger({
 }
 
 const toTuple = (p: LatLng): [number, number] => [p.lat, p.lng];
+
+/** Tracing needs fences and roofs in view; below this the corners can't be placed accurately. */
+const TRACE_ZOOM = 17;
 
 interface LandBoundaryMapProps {
   pin: [number, number] | null;
@@ -515,6 +531,7 @@ export function LandBoundaryMap({
         <MapContainer
           center={startCenter}
           zoom={pin || boundary?.length ? 15 : 11}
+          maxZoom={MAX_ZOOM}
           zoomControl={false}
           className="gm-map"
         >
@@ -524,6 +541,8 @@ export function LandBoundaryMap({
             url={isSatellite ? SATELLITE_TILES : STREET_TILES}
             attribution={isSatellite ? SATELLITE_ATTRIBUTION : STREET_ATTRIBUTION}
             className={dark && !isSatellite ? DARK_TILES_CLASS : undefined}
+            maxZoom={MAX_ZOOM}
+            maxNativeZoom={isSatellite ? 18 : 19}
           />
           {!pinOnly && (
             <PolygonDrawTrigger
@@ -534,6 +553,7 @@ export function LandBoundaryMap({
               cancelTrigger={cancelTrigger}
               undoTrigger={undoTrigger}
               finishTrigger={finishTrigger}
+              focus={pin}
               color={traceColor}
               onCreated={handleBoundaryCreated}
               onTracingChange={(t) => {
