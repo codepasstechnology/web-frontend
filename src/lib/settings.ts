@@ -19,3 +19,22 @@ export function useSignupsOpen(): boolean {
 
   return data?.open_signups !== "false";
 }
+
+export type PaymentMethod = "mpesa" | "card";
+
+/** The checkout methods admins have left on; both stay offered until settings load. */
+export function usePaymentMethods(): PaymentMethod[] {
+  const { data } = usePublicSettings();
+
+  return (["mpesa", "card"] as const).filter((m) => data?.[`${m}_payments_enabled`] !== "false");
+}
+
+/**
+ * The method a checkout should use: the one the user picked while it stays
+ * enabled, otherwise the first one still on. `null` when admins turned off both.
+ */
+export function useCheckoutMethod(chosen: PaymentMethod): PaymentMethod | null {
+  const methods = usePaymentMethods();
+
+  return methods.includes(chosen) ? chosen : (methods[0] ?? null);
+}
