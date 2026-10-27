@@ -9,6 +9,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { useAuth } from "@/lib/auth";
 import { kenyaCounties, usePlans, type Plan } from "@/lib/plans";
+import { usePaymentMethods } from "@/lib/settings";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
 import {
@@ -197,6 +198,7 @@ function PostPropertyPage() {
   const [submitted, setSubmitted] = useState(false);
   const [feeDue, setFeeDue] = useState<{ id: string; amount: number } | null>(null);
   const [payingFee, setPayingFee] = useState<{ id: string; amount: number } | null>(null);
+  const mpesaOn = usePaymentMethods().includes("mpesa");
   const [showDraftNotice, setShowDraftNotice] = useState(!!draft);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
@@ -482,9 +484,19 @@ function PostPropertyPage() {
             {feeDue && (
               <div className="flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-warning-subtle px-[18px] py-3.5 text-warning">
                 <strong>Posting fee due: KES {feeDue.amount.toLocaleString()}</strong>
-                <button type="button" className="gd-btn gd-sm" onClick={() => setPayingFee(feeDue)}>
-                  Pay with M-Pesa
-                </button>
+                {mpesaOn ? (
+                  <button
+                    type="button"
+                    className="gd-btn gd-sm"
+                    onClick={() => setPayingFee(feeDue)}
+                  >
+                    Pay with M-Pesa
+                  </button>
+                ) : (
+                  <span className="text-sm">
+                    Payments are temporarily unavailable. Please try again later.
+                  </span>
+                )}
               </div>
             )}
             <div className="mt-1.5 flex flex-wrap justify-center gap-2.5">

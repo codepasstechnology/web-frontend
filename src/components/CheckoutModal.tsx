@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, CreditCard, Lock, Smartphone, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Plan } from "@/lib/plans";
+import { type PaymentMethod as Method, useCheckoutMethod, usePaymentMethods } from "@/lib/settings";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 interface Props {
@@ -11,7 +12,6 @@ interface Props {
 }
 
 type Stage = "form" | "waiting" | "success" | "failed" | "pending";
-type Method = "mpesa" | "card";
 
 const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT = 90_000;
@@ -19,7 +19,7 @@ const POLL_TIMEOUT = 90_000;
 export const MPESA_PHONE = /^(?:\+?254|0)(?:7|1)\d{8}$/;
 export const MPESA_PHONE_ERROR = "Enter a Kenyan mobile number, like 0712 345 678.";
 
-/** Shared by every checkout: M-Pesa and card as a segmented control. */
+/** Shared by every checkout: M-Pesa and card as a segmented control, hidden when only one is on. */
 export function MethodSwitch({
   method,
   onChange,
@@ -27,6 +27,8 @@ export function MethodSwitch({
   method: Method;
   onChange: (m: Method) => void;
 }) {
+  if (usePaymentMethods().length < 2) return null;
+
   return (
     <div className="gd-seg grid grid-cols-2" role="group" aria-label="Payment method">
       <button
@@ -45,6 +47,17 @@ export function MethodSwitch({
       >
         <CreditCard size={16} aria-hidden="true" /> Card
       </button>
+    </div>
+  );
+}
+
+export function PaymentsUnavailable() {
+  return (
+    <div
+      role="status"
+      className="rounded-[14px] bg-warning-subtle px-3.5 py-3 text-sm font-semibold text-warning"
+    >
+      Payments are temporarily unavailable. Please try again later.
     </div>
   );
 }
@@ -180,7 +193,9 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
     cancelInvoice,
   } = useAuth();
   const [cycle, setCycle] = useState<"monthly" | "yearly">(initialCycle ?? "monthly");
-  const [method, setMethod] = useState<Method>("mpesa");
+  const [chosenMethod, setMethod] = useState<Method>("mpesa");
+  const available = useCheckoutMethod(chosenMethod);
+  const method = available ?? chosenMethod;
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [stage, setStage] = useState<Stage>("form");
@@ -340,7 +355,9 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
               </div>
             )}
 
-            {method === "mpesa" ? (
+            {available === null ? (
+              <PaymentsUnavailable />
+            ) : method === "mpesa" ? (
               <MpesaPhoneField
                 id="mpesa-phone"
                 phone={phone}
@@ -363,7 +380,11 @@ export function CheckoutModal({ plan, initialCycle, onClose }: Props) {
               </div>
             )}
 
-            <button type="submit" className="gd-btn min-h-[52px] text-base">
+            <button
+              type="submit"
+              disabled={available === null}
+              className="gd-btn min-h-[52px] text-base"
+            >
               Pay KES {amount.toLocaleString()}
             </button>
             <span className="text-center text-[12.5px] text-muted-foreground">
