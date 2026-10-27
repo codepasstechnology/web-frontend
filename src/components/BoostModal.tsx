@@ -7,7 +7,9 @@ import {
   MethodSwitch,
   MPESA_PHONE,
   MpesaPhoneField,
+  PaymentsUnavailable,
 } from "@/components/CheckoutModal";
+import { type PaymentMethod as Method, useCheckoutMethod } from "@/lib/settings";
 
 interface AddOn {
   id: string;
@@ -22,7 +24,6 @@ interface Props {
 }
 
 type Stage = "form" | "waiting" | "success" | "failed" | "pending";
-type Method = "mpesa" | "card";
 
 const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT = 90_000;
@@ -32,7 +33,9 @@ export function BoostModal({ addOn, onClose }: Props) {
     useAuth();
   const listings = (user?.listings ?? []).filter((l) => l.status !== "sold");
   const [listingId, setListingId] = useState(listings[0]?.id ?? "");
-  const [method, setMethod] = useState<Method>("mpesa");
+  const [chosenMethod, setMethod] = useState<Method>("mpesa");
+  const available = useCheckoutMethod(chosenMethod);
+  const method = available ?? chosenMethod;
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [stage, setStage] = useState<Stage>("form");
@@ -162,7 +165,9 @@ export function BoostModal({ addOn, onClose }: Props) {
 
                 <MethodSwitch method={method} onChange={setMethod} />
 
-                {method === "mpesa" ? (
+                {available === null ? (
+                  <PaymentsUnavailable />
+                ) : method === "mpesa" ? (
                   <MpesaPhoneField
                     id="boost-phone"
                     phone={phone}
@@ -189,7 +194,7 @@ export function BoostModal({ addOn, onClose }: Props) {
 
             <button
               type="submit"
-              disabled={listings.length === 0}
+              disabled={listings.length === 0 || available === null}
               className="gd-btn min-h-[52px] text-base"
             >
               Pay KES {addOn.price.toLocaleString()}
