@@ -178,7 +178,7 @@ describe("notify me", () => {
 
     expect(await screen.findByText("You're on the list.")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "We'll email wanjiru@example.co.ke when Geo Pin is back.",
+      "We'll email wanjiru@example.co.ke when Geo Pin Properties is back.",
     );
     expect(JSON.parse(String(notify.mock.calls[0][1]?.body))).toEqual({
       email: "wanjiru@example.co.ke",

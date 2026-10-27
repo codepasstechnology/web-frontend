@@ -69,7 +69,7 @@ function BlogPage() {
   return (
     <MarketingShell>
       <PageHero
-        eyebrow="The Geo Pin blog"
+        eyebrow="The Geo Pin Properties blog"
         title="Field notes on"
         highlight="Kenyan land."
         lede="Practical guides on buying, verifying and renting property, written for people who want to know the ground before they sign."

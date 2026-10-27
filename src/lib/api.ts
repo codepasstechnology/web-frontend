@@ -26,7 +26,7 @@ export function clearToken(): void {
 }
 
 export const OFFLINE_MESSAGE =
-  "We couldn't reach Geo Pin. Check your internet connection and try again.";
+  "We couldn't reach Geo Pin Properties. Check your internet connection and try again.";
 
 // Uploads are retried this many times when the connection drops. The API
 // recognises the repeat by its Idempotency-Key, so a retry never saves twice.

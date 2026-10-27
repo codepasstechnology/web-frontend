@@ -310,6 +310,8 @@ interface AuthCtx {
     phone: string;
     password: string;
     role: UserRole;
+    /** The Terms checkbox; the server records the version accepted. */
+    acceptedTerms: boolean;
   }) => Promise<AppUser>;
   logout: () => Promise<void>;
   setPlan: (plan: string) => void;
@@ -448,6 +450,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone: string;
     password: string;
     role: UserRole;
+    acceptedTerms: boolean;
   }): Promise<AppUser> => {
     const res = await api.post<AuthResponse>("/auth/register", {
       name: data.fullName,
@@ -456,6 +459,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: data.password,
       password_confirmation: data.password,
       role: data.role,
+      accept_terms: data.acceptedTerms,
     });
     setToken(res.token);
     const u = await loadUser(res.user);

@@ -110,7 +110,7 @@ export function AuthLayout({
         <aside className="ga-side" onMouseMove={onMove} onMouseLeave={onLeave}>
           <Link to="/" className="ga-side-brand">
             <img src="/favicon.svg" alt="" width={36} height={36} />
-            <span className="ga-brand-text">Geo Pin</span>
+            <span className="ga-brand-text">Geo Pin Properties</span>
           </Link>
 
           <div className="ga-side-map" aria-hidden="true">
