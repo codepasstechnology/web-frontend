@@ -38,15 +38,16 @@ export function CookieBanner() {
       className="fixed inset-x-4 bottom-4 z-[1000] mx-auto max-w-xl rounded-xl border border-border bg-background p-4 text-foreground shadow-lg sm:p-5"
     >
       <h2 className="text-sm font-semibold">
-        Do you mind if we use optional cookies to analyse site traffic and improve Geo Pin?
+        Do you mind if we use optional cookies to analyse site traffic and improve Geo Pin
+        Properties?
       </h2>
       <p className="mt-1.5 text-sm text-muted-foreground">
         We don&apos;t use many cookies, and you can see and manage them at any time on our{" "}
         <Link to="/cookie-settings" className={linkClass}>
           Cookie settings
         </Link>{" "}
-        page. If you click &lsquo;Accept all&rsquo;, you agree to optional cookies on Geo Pin. Learn
-        more in our{" "}
+        page. If you click &lsquo;Accept all&rsquo;, you agree to optional cookies on Geo Pin
+        Properties. Learn more in our{" "}
         <Link to="/cookie-policy" className={linkClass}>
           Cookie policy
         </Link>

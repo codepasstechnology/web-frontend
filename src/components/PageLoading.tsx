@@ -13,7 +13,7 @@ export function PageLoading() {
     <div className="ga-load ga-load-page" role="status" aria-label="Loading">
       <div className="ga-load-logo" aria-hidden="true">
         <img src="/favicon.svg" alt="" width={30} height={30} />
-        <span className="ga-brand-text">Geo Pin</span>
+        <span className="ga-brand-text">Geo Pin Properties</span>
       </div>
       <div className="ga-load-map" aria-hidden="true">
         <svg className="ga-load-svg" viewBox="0 0 840 1010" preserveAspectRatio="none">

@@ -75,7 +75,7 @@ export function LoadingScreen({
     <div className={`ga-load${fading ? " is-out" : ""}`}>
       <div className="ga-load-logo" aria-hidden="true">
         <img src="/favicon.svg" alt="" width={34} height={34} />
-        <span className="ga-brand-text">Geo Pin</span>
+        <span className="ga-brand-text">Geo Pin Properties</span>
       </div>
 
       <div className="ga-load-map" aria-hidden="true">

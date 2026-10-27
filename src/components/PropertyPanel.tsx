@@ -358,10 +358,11 @@ function VerificationCard({ parcel }: { parcel: LandParcel }) {
     <div className="gm-vcard">
       <ShieldCheck width={22} height={22} aria-hidden style={{ flex: "none" }} />
       <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <strong>Documents reviewed by Geo Pin</strong>
+        <strong>Documents reviewed by Geo Pin Properties</strong>
         <p style={{ opacity: 0.85 }}>
-          We checked the seller&apos;s ownership documents against this listing. Geo Pin advertises
-          land and does not certify title, so carry out an official search before you pay.
+          We checked the seller&apos;s ownership documents against this listing. Geo Pin Properties
+          advertises land and does not certify title, so carry out an official search before you
+          pay.
         </p>
       </span>
     </div>

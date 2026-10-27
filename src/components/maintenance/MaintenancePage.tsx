@@ -157,7 +157,7 @@ export function MaintenancePage({ from }: { from?: string }) {
 
   return (
     <div className="mt-root">
-      <Link to="/" className="mt-logo" aria-label="Geo Pin home">
+      <Link to="/" className="mt-logo" aria-label="Geo Pin Properties home">
         <span className="mt-logo-tile">
           <svg
             width="18"
@@ -174,7 +174,7 @@ export function MaintenancePage({ from }: { from?: string }) {
             <circle cx="12" cy="10" r="2.5" />
           </svg>
         </span>
-        <span className="mt-logo-text">Geo Pin</span>
+        <span className="mt-logo-text">Geo Pin Properties</span>
       </Link>
       <button
         type="button"
@@ -203,8 +203,8 @@ export function MaintenancePage({ from }: { from?: string }) {
           </h1>
           <p className="mt-lede mt-r" style={{ animationDelay: ".3s" }}>
             {unplanned
-              ? "Something went wrong on our side and Geo Pin is offline while we fix it. Your account, saved plots and listings are safe. Nothing you posted has been lost."
-              : "Geo Pin is down for a planned upgrade. We're moving to faster map tiles and re-checking plot boundaries so the map loads quicker and the corners sit exactly where they should. Your account, saved plots and listings are safe."}
+              ? "Something went wrong on our side and Geo Pin Properties is offline while we fix it. Your account, saved plots and listings are safe. Nothing you posted has been lost."
+              : "Geo Pin Properties is down for a planned upgrade. We're moving to faster map tiles and re-checking plot boundaries so the map loads quicker and the corners sit exactly where they should. Your account, saved plots and listings are safe."}
           </p>
 
           {showCard && (
@@ -311,7 +311,7 @@ export function MaintenancePage({ from }: { from?: string }) {
                 <span className="mt-done-copy">
                   <span className="mt-done-title">You're on the list.</span>
                   <span className="mt-done-text">
-                    We'll email <strong>{email}</strong> when Geo Pin is back.
+                    We'll email <strong>{email}</strong> when Geo Pin Properties is back.
                   </span>
                 </span>
                 <button type="button" className="mt-change" onClick={() => setSubscribed(false)}>

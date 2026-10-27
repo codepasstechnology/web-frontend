@@ -205,6 +205,7 @@ export function RegisterPage() {
         phone: digits ? `+254${digits}` : "",
         password: form.password,
         role: API_ROLE[form.goal],
+        acceptedTerms: form.terms,
       });
       navigate({ to: "/loading", search: { mode: "signup" } });
     } catch (error: unknown) {
@@ -308,9 +309,13 @@ export function RegisterPage() {
             <h1 className="is-display">
               Create your account<span className="ga-dot-mark">.</span>
             </h1>
-            <p>First, what brings you to Geo Pin?</p>
+            <p>First, what brings you to Geo Pin Properties?</p>
           </div>
-          <div role="radiogroup" aria-label="What brings you to Geo Pin" className="ga-roles">
+          <div
+            role="radiogroup"
+            aria-label="What brings you to Geo Pin Properties"
+            className="ga-roles"
+          >
             {GOALS.map((g) => {
               const on = form.goal === g.id;
               return (
