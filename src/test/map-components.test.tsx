@@ -142,7 +142,7 @@ describe("listing panel", () => {
     unmount();
 
     panel(makeParcel("a", { status: "verified" }));
-    expect(screen.getByText("Documents reviewed by Geo Pin")).toBeInTheDocument();
+    expect(screen.getByText("Documents reviewed by Geo Pin Properties")).toBeInTheDocument();
   });
 });
 

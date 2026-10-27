@@ -108,7 +108,7 @@ function ResetPasswordPage() {
             <h1>
               Choose a new password<span className="ga-dot-mark">.</span>
             </h1>
-            <p>Make it something you haven&apos;t used before on Geo Pin.</p>
+            <p>Make it something you haven&apos;t used before on Geo Pin Properties.</p>
           </div>
 
           <form onSubmit={onSubmit} className="ga-stack" noValidate>

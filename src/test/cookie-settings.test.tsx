@@ -58,7 +58,7 @@ describe("Cookie settings page", () => {
     expect(
       screen.getByText("You haven't made a choice yet, so optional cookies are off."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Geo Pin analytics" })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: "Geo Pin Properties analytics" })).not.toBeChecked();
     [
       "Optional cookies",
       "Always on",
@@ -77,7 +77,7 @@ describe("Cookie settings page", () => {
     await loadPage();
 
     await userEvent.click(screen.getByRole("button", { name: "Accept all" }));
-    expect(screen.getByRole("switch", { name: "Geo Pin analytics" })).toBeChecked();
+    expect(screen.getByRole("switch", { name: "Geo Pin Properties analytics" })).toBeChecked();
     expect(storedChoice()).toMatchObject({ choice: "all", version: "1.0" });
     expect(mockPost).toHaveBeenCalledWith(
       "/cookie-consent",
@@ -85,8 +85,8 @@ describe("Cookie settings page", () => {
     );
     expect(mockToast).toHaveBeenCalledWith("Optional cookies turned on.");
 
-    await userEvent.click(screen.getByRole("switch", { name: "Geo Pin analytics" }));
-    expect(screen.getByRole("switch", { name: "Geo Pin analytics" })).not.toBeChecked();
+    await userEvent.click(screen.getByRole("switch", { name: "Geo Pin Properties analytics" }));
+    expect(screen.getByRole("switch", { name: "Geo Pin Properties analytics" })).not.toBeChecked();
     expect(storedChoice()).toMatchObject({ choice: "essential" });
     expect(mockPost).toHaveBeenCalledWith(
       "/cookie-consent",

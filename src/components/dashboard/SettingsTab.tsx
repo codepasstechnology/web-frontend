@@ -1156,7 +1156,7 @@ export function SettingsTab({
               <div>
                 <h2 className="gd-h2">Cookies</h2>
                 <p className="gd-sub mt-1 text-sm">
-                  See what Geo Pin stores and turn optional cookies on or off.
+                  See what Geo Pin Properties stores and turn optional cookies on or off.
                 </p>
               </div>
               <Link to="/cookie-settings" className="gd-btn gd-o">

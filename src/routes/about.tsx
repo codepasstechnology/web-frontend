@@ -50,7 +50,7 @@ function AboutPage() {
   return (
     <MarketingShell>
       <PageHero
-        eyebrow="About Geo Pin"
+        eyebrow="About Geo Pin Properties"
         title="Putting Kenya's land"
         highlight="on the map."
         lede="Buying land should not mean guessing where it starts and ends, or who you are really dealing with. We are building the map that makes land listings clear, credible and easy to act on."
@@ -70,12 +70,14 @@ function AboutPage() {
             Why we started
           </h2>
           <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
-            [Your founding story: who started Geo Pin, the problem you saw in Kenya&apos;s land
-            market, and the moment you decided to fix it. Two or three short paragraphs work best.]
+            [Your founding story: who started Geo Pin Properties, the problem you saw in
+            Kenya&apos;s land market, and the moment you decided to fix it. Two or three short
+            paragraphs work best.]
           </p>
           <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
-            Today, Geo Pin brings plotted parcels, property listings and rentals together on one
-            GIS-powered map, so people can see the land, check it and connect with the right person.
+            Today, Geo Pin Properties brings plotted parcels, property listings and rentals together
+            on one GIS-powered map, so people can see the land, check it and connect with the right
+            person.
           </p>
           <span className="gs-hand gs-tilt">find. connect. own.</span>
         </div>
@@ -117,9 +119,9 @@ function AboutPage() {
             How we review listings
           </h2>
           <p className="gs-text">
-            Geo Pin advertises land and property. We review each listing's documents to confirm it
-            refers to a real parcel; this is not a title search, so buyers should still carry out an
-            official search before paying.
+            Geo Pin Properties advertises land and property. We review each listing's documents to
+            confirm it refers to a real parcel; this is not a title search, so buyers should still
+            carry out an official search before paying.
           </p>
         </div>
         <ol className="gs-steps">

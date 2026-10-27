@@ -113,8 +113,8 @@ function CookieSettingsPage() {
       <div className="min-h-screen bg-background text-foreground">
         <PageHeader eyebrow="Privacy" title="Cookies & Browsing">
           <p className="max-w-[60ch] text-muted-foreground">
-            Use this page to choose which optional cookies Geo Pin may use. Changes apply straight
-            away. Read the{" "}
+            Use this page to choose which optional cookies Geo Pin Properties may use. Changes apply
+            straight away. Read the{" "}
             <Link to="/cookie-policy" className="font-medium text-primary underline">
               Cookie policy
             </Link>{" "}
@@ -152,11 +152,11 @@ function CookieSettingsPage() {
             </div>
 
             <Category
-              title="Geo Pin analytics"
-              purpose="To measure how many people use Geo Pin, where they come from and which pages help them, so we can improve the site."
+              title="Geo Pin Properties analytics"
+              purpose="To measure how many people use Geo Pin Properties, where they come from and which pages help them, so we can improve the site."
               control={
                 <Switch
-                  aria-label="Geo Pin analytics"
+                  aria-label="Geo Pin Properties analytics"
                   checked={analyticsOn}
                   disabled={!ready}
                   onCheckedChange={(on) => apply(on ? "all" : "essential")}
@@ -196,7 +196,7 @@ function CookieSettingsPage() {
 
             <Category
               title="Technically necessary"
-              purpose="Stored in your browser whenever you use Geo Pin. The site can't work without them."
+              purpose="Stored in your browser whenever you use Geo Pin Properties. The site can't work without them."
             >
               {ESSENTIAL.map((c) => (
                 <Item key={c.name} name={c.name}>
@@ -232,12 +232,12 @@ function CookieSettingsPage() {
             <h2 className="text-xl font-bold">Browsing</h2>
             <Category
               title="Shared links and campaign links (UTM)"
-              purpose="Listing links shared from Geo Pin carry a short code, and links in our adverts or partners' posts can carry UTM tags."
+              purpose="Listing links shared from Geo Pin Properties carry a short code, and links in our adverts or partners' posts can carry UTM tags."
             >
               <p className="text-muted-foreground">
-                When Geo Pin analytics is on, we use them to see which shared links and campaigns
-                bring people to Geo Pin and lead to sign-ups, reported only as totals. Turning
-                analytics off above stops this too.
+                When Geo Pin Properties analytics is on, we use them to see which shared links and
+                campaigns bring people to Geo Pin Properties and lead to sign-ups, reported only as
+                totals. Turning analytics off above stops this too.
               </p>
             </Category>
           </div>

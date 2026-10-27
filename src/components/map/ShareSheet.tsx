@@ -169,7 +169,7 @@ export function ShareSheet({
                   <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
                 </svg>
               </span>
-              Geo Pin
+              Geo Pin Properties
             </span>
           </div>
         </div>

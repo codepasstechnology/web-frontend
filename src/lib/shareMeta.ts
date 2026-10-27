@@ -55,7 +55,7 @@ export function shareHead(
       p.listing_type === "lease" ? "Land for lease" : "Land for sale",
       p.listing_type === "lease" ? `${kes(p.price)} / yr` : kes(p.price),
       `${place}, ${p.county} County`,
-      p.status === "verified" ? "Documents reviewed by Geo Pin" : "",
+      p.status === "verified" ? "Documents reviewed by Geo Pin Properties" : "",
     ]
       .filter(Boolean)
       .join(" · ");

@@ -277,7 +277,7 @@ export function LoginPage() {
               </svg>
             </span>
             <span className="ga-newcard-text">
-              <span className="ga-newcard-title">New to Geo Pin?</span>
+              <span className="ga-newcard-title">New to Geo Pin Properties?</span>
               <span className="ga-newcard-desc">
                 Create an account to save plots and get alerts for land near you.
               </span>

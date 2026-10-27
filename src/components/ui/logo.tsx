@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** The Geo Pin map-pin mark. Colors follow `--brand`, so it retints with the theme. */
+/** The Geo Pin Properties map-pin mark. Colors follow `--brand`, so it retints with the theme. */
 function LogoMark({ className, ...props }: React.ComponentProps<"svg">) {
   return (
     <svg
