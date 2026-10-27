@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { plainTextError } from "@/components/auth/validation";
 import { DashboardShell } from "@/components/DashboardShell";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import { LandBoundaryMap } from "@/components/map/LazyMaps";
@@ -34,6 +35,7 @@ import {
   WizardFooter,
   WizardHeader,
 } from "@/components/dashboard/wizard";
+import { compressImage } from "@/lib/compressImage";
 
 export const Route = createFileRoute("/dashboard/properties")({
   component: PostPropertyPage,
@@ -49,7 +51,7 @@ export const Route = createFileRoute("/dashboard/properties")({
 
 const steps = ["Property details", "Location", "Photos", "Review & submit"];
 
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 const AMENITY_OPTIONS = [
   "Water",
@@ -285,6 +287,7 @@ function PostPropertyPage() {
 
   const detailErrors: Partial<Record<DetailsField, string>> = {};
   if (!form.title.trim()) detailErrors.title = "Give the listing a title.";
+  else if (plainTextError(form.title)) detailErrors.title = plainTextError(form.title);
   if (!(Number(form.price) > 0)) detailErrors.price = "Enter the price in KES.";
   if (!form.county) detailErrors.county = "Choose the county the property is in.";
   const shownErrors = showErrors ? detailErrors : {};
@@ -306,24 +309,28 @@ function PostPropertyPage() {
     goTo(step + 1);
   };
 
-  const addPhotos = (files: FileList | null) => {
+  const addPhotos = async (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files);
     const wrongType = arr.filter((f) => f.type && !f.type.startsWith("image/"));
-    const oversized = arr.filter((f) => !wrongType.includes(f) && f.size > MAX_PHOTO_BYTES);
-    const valid = arr.filter((f) => !wrongType.includes(f) && f.size <= MAX_PHOTO_BYTES);
+    // Shrunk before the size check, so a large phone photo still fits once compressed.
+    const images = await Promise.all(arr.filter((f) => !wrongType.includes(f)).map(compressImage));
+    const oversized = images.filter((f) => f.size > MAX_PHOTO_BYTES);
+    const valid = images.filter((f) => f.size <= MAX_PHOTO_BYTES);
     setPhotoError(
       [
         wrongType.length &&
           `${wrongType.map((f) => f.name).join(", ")} ${wrongType.length === 1 ? "isn't an image file" : "aren't image files"}.`,
         oversized.length &&
-          `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 5MB limit per photo.`,
+          `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 10MB limit per photo.`,
       ]
         .filter(Boolean)
         .join(" "),
     );
-    const allowed = photoLimit - existingPhotos.length - form.photos.length;
-    set("photos", [...form.photos, ...valid.slice(0, Math.max(0, allowed))]);
+    setForm((f) => {
+      const allowed = photoLimit - existingPhotos.length - f.photos.length;
+      return { ...f, photos: [...f.photos, ...valid.slice(0, Math.max(0, allowed))] };
+    });
   };
 
   const submit = async () => {
@@ -396,6 +403,27 @@ function PostPropertyPage() {
       value: `${form.bedrooms || "—"} bed · ${form.bathrooms || "—"} bath${form.furnished ? " · furnished" : ""}`,
       step: 0,
     },
+    ...(form.intent === "bnb"
+      ? [
+          { label: "Minimum nights", value: form.minNights || "—", step: 0 },
+          {
+            label: "Cleaning fee",
+            value: form.cleaningFee ? formatPrice(Number(form.cleaningFee), "total") : "—",
+            step: 0,
+          },
+        ]
+      : []),
+    { label: "Amenities", value: form.amenities.join(", ") || "None", step: 0 },
+    { label: "Description", value: form.description || "—", step: 0 },
+    {
+      label: "Posted by",
+      value:
+        form.postedBy === "broker"
+          ? ["Broker / agent", form.agentName, form.agentAgency].filter(Boolean).join(" · ")
+          : "Owner",
+      step: 0,
+    },
+    { label: "Contact phone", value: form.agentPhone || "Not provided", step: 0 },
     {
       label: "Location",
       value: form.pin ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}` : "Not set",
@@ -750,6 +778,16 @@ function PostPropertyPage() {
             {step === 3 && (
               <div className="flex flex-col gap-4">
                 <ReviewRows rows={reviewRows} onEdit={setStep} />
+                {pickerPhotos.length > 0 && (
+                  <div className="gd-pgrid">
+                    {pickerPhotos.map((p) => (
+                      <div key={p.key} className="gd-ph">
+                        <img src={p.url} alt="" className="h-full w-full object-cover" />
+                        {p.key === coverKey && <span className="gd-cover">Cover</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {error && <ErrorBox>{error}</ErrorBox>}
               </div>
             )}

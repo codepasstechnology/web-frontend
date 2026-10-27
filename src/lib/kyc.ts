@@ -8,6 +8,7 @@ export interface KycDocument {
   mime_type: string | null;
   size: number | null;
   verification_status: string;
+  file_deleted_at?: string | null;
 }
 
 export interface KycApplication {

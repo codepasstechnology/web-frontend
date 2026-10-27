@@ -42,6 +42,8 @@ src/
     api.ts        # Fetch wrapper — Bearer token, auto-detects FormData
     auth.tsx      # AuthProvider, useAuth(), NewListingInput type
     plans.ts      # Plan definitions and PlanId type
+    consent.ts    # Cookie banner choice: 12-month expiry, policy version, account sync, Global Privacy Control
+    traffic.ts    # Page-view tracker and tagged share links for the admin Traffic page; runs only after analytics consent
   components/
     DashboardShell.tsx   # Authenticated layout wrapper — fills viewport width on large screens
     LandMap.tsx          # Leaflet map with parcel markers (marketplace map)
@@ -64,6 +66,7 @@ src/
     register.tsx         # User registration
     forgot-password.tsx  # Password reset request
     terms.tsx            # Terms of Service (fetched from CMS)
+    cookie-settings.tsx  # Cookies & Browsing: every stored item by category, optional cookies on/off
     privacy.tsx          # Privacy Policy (fetched from CMS)
     rentals.tsx          # Rentals listing page
     dashboard.index.tsx  # Authenticated dashboard home

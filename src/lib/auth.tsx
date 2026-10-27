@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, getToken, setToken, clearToken } from "./api";
+import { compressImage } from "@/lib/compressImage";
 
 export type UserRole = "individual" | "agent" | "developer" | "account_manager";
 
@@ -13,6 +14,8 @@ export interface UserListing {
   views: number;
   createdAt: string;
   coverPhotoUrl: string | null;
+  /** Hidden from the site and not using one of the plan's live listing slots. */
+  paused?: boolean;
 }
 
 export interface AppUser {
@@ -27,6 +30,8 @@ export interface AppUser {
   planEndsAt: string | null;
   planCancelledAt: string | null;
   maxListings: number; // Infinity = unlimited
+  /** Set while the user has more live listings than their plan allows: the day the extras get paused. */
+  listingsPauseOn?: string | null;
   analyticsAccess: boolean;
   customReports: boolean;
   manager: { name: string; email: string } | null;
@@ -102,6 +107,7 @@ interface ApiListing {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+  paused?: boolean;
   /** The new listing's land overlaps another listing; it is flagged for review. */
   location_overlaps?: boolean;
 }
@@ -137,6 +143,7 @@ interface ApiSubscription {
   ends_at?: string | null;
   cancelled_at?: string | null;
   max_listings?: number;
+  listings_pause_on?: string | null;
   analytics_access?: boolean;
   custom_reports?: boolean;
   dedicated_manager?: { name: string; email: string } | null;
@@ -189,6 +196,7 @@ function mapApiUser(
     planCancelledAt: sub.cancelled_at ?? null,
     maxListings:
       sub.max_listings === -1 || sub.max_listings === undefined ? Infinity : sub.max_listings,
+    listingsPauseOn: sub.listings_pause_on ?? null,
     analyticsAccess: sub.analytics_access ?? false,
     customReports: sub.custom_reports ?? false,
     manager: sub.dedicated_manager ?? null,
@@ -223,6 +231,7 @@ function mapApiUser(
       views: l.views,
       createdAt: l.created_at,
       coverPhotoUrl: l.cover_photo_url,
+      paused: l.paused ?? false,
     })),
     payments: payments.map((p) => ({
       number: p.number,
@@ -318,6 +327,7 @@ interface AuthCtx {
   ) => Promise<ListingSaved>;
   removeListing: (id: string) => Promise<void>;
   markListingSold: (id: string) => Promise<void>;
+  setListingPaused: (id: string, paused: boolean) => Promise<void>;
   updateUser: (patch: Partial<AppUser>) => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshListings: () => Promise<void>;
@@ -573,6 +583,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           views: l.views,
           createdAt: l.created_at,
           coverPhotoUrl: l.cover_photo_url,
+          paused: l.paused ?? false,
         })),
       };
     });
@@ -602,9 +613,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
       l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
+      const docFiles = await Promise.all((l.documents ?? []).map((d) => compressImage(d.file)));
       l.documents?.forEach((d, i) => {
         fd.append(`documents[${i}][type]`, d.type);
-        fd.append(`documents[${i}][file]`, d.file);
+        fd.append(`documents[${i}][file]`, docFiles[i]);
       });
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       body = fd;
@@ -699,9 +711,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (l.boundarySource) fd.append("boundary_source", l.boundarySource);
       l.utilities?.forEach((u, i) => fd.append(`utilities[${i}]`, u));
+      const docFiles = await Promise.all((l.documents ?? []).map((d) => compressImage(d.file)));
       l.documents?.forEach((d, i) => {
         fd.append(`documents[${i}][type]`, d.type);
-        fd.append(`documents[${i}][file]`, d.file);
+        fd.append(`documents[${i}][file]`, docFiles[i]);
       });
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       l.removePhotoIds?.forEach((pid) => fd.append("remove_photo_ids[]", pid));
@@ -743,6 +756,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.delete(`/user/listings/${id}`);
     setUser((prev) =>
       prev ? { ...prev, listings: prev.listings.filter((x) => x.id !== id) } : prev,
+    );
+  }, []);
+
+  const setListingPaused = useCallback(async (id: string, paused: boolean) => {
+    await api.patch<unknown>(`/user/listings/${id}/${paused ? "pause" : "resume"}`, {});
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            listings: prev.listings.map((x) => (x.id === id ? { ...x, paused } : x)),
+          }
+        : prev,
     );
   }, []);
 
@@ -855,6 +880,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateListing,
         removeListing,
         markListingSold,
+        setListingPaused,
         updateUser,
         deleteAccount,
         refreshListings,

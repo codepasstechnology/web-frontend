@@ -1,3 +1,6 @@
+import { countyCenter } from "@/lib/countyCenters";
+import { ListingLoadStatus } from "@/components/map/ListingLoadStatus";
+import { preloadMap } from "@/lib/mapPreload";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { List } from "lucide-react";
@@ -14,7 +17,7 @@ import { useKnownListings, useRecentlyViewed } from "@/components/map/useMapPage
 import { DEAL_COLOR, DEAL_TAG } from "@/components/map/markers";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import type { LandParcel } from "@/lib/landData";
-import { useMapParcels, useSavedParcels } from "@/lib/parcels";
+import { useMapParcels, useSavedParcels, useParcel, useParcelDetails } from "@/lib/parcels";
 import {
   DEFAULT_FILTERS,
   filtersActive as anyFilter,
@@ -40,7 +43,10 @@ export const Route = createFileRoute("/land")({
     county: typeof s.county === "string" ? s.county : undefined,
   }),
   loaderDeps: ({ search }) => ({ parcel: search.parcel }),
-  loader: ({ deps }) => shareQuery(deps.parcel),
+  loader: ({ deps }) => {
+    preloadMap();
+    return shareQuery(deps.parcel);
+  },
   head: ({ loaderData }) => ({
     ...shareHead(loaderData, {
       title: "Land Parcels Map — Geo Pin Properties Kenya",
@@ -106,7 +112,14 @@ function LandContent() {
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
 
-  const selected = search.parcel ? (known.get(search.parcel) ?? null) : null;
+  const detail = useParcel(search.parcel);
+  const selected = detail.data ?? null;
+  const flyTarget = useMemo(() => {
+    const at = countyCenter(filters.county);
+    return at ? { lat: at[0], lng: at[1], zoom: 11 } : null;
+  }, [filters.county]);
+  const comparison = useParcelDetails(compareOpen ? compareIds : []);
+  const comparisonReady = comparison.length > 0 && comparison.every((q) => q.isSuccess);
 
   const select = (p: LandParcel | null) => {
     navigate({ to: "/land", search: { parcel: p?.id }, replace: true });
@@ -194,9 +207,12 @@ function LandContent() {
       <div className="gm-mapwrap" data-panel={!!selected}>
         <LandMap
           mode="land"
+          initialCenter={countyCenter(search.county)}
+          flyTarget={flyTarget}
           parcels={filtered}
           onSelectParcel={select}
-          selectedId={selected?.id ?? null}
+          selectedId={search.parcel ?? null}
+          focusedParcel={selected}
           hotIds={hotIds}
           onHover={setHotIds}
           seenIds={recent.ids}
@@ -243,7 +259,6 @@ function LandContent() {
               onChange={(v) => set("status", v)}
               options={[
                 { value: "all", label: "All" },
-                { value: "verified", label: "Documents reviewed" },
                 { value: "available", label: "Available" },
               ]}
             />
@@ -291,9 +306,9 @@ function LandContent() {
             onClear={() => setCompareIds([])}
           />
         )}
-        {compareOpen && compared.length > 0 && (
+        {compareOpen && comparisonReady && (
           <CompareModal
-            parcels={compared}
+            parcels={comparison.map((q) => q.data!)}
             onRemove={toggleCompare}
             onView={select}
             onClose={() => setCompareOpen(false)}
@@ -311,6 +326,15 @@ function LandContent() {
             onToggleCompare={() => toggleCompare(selected.id)}
           />
         )}
+        {search.parcel && <ListingLoadStatus query={detail} onClose={() => select(null)} />}
+        {compareOpen &&
+          comparison.map((q, i) => (
+            <ListingLoadStatus
+              key={compareIds[i]}
+              query={q}
+              onClose={() => setCompareOpen(false)}
+            />
+          ))}
         <MapToastOutlet />
       </div>
     </>

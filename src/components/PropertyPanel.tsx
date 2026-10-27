@@ -353,67 +353,17 @@ function About({ title, text, children }: { title: string; text: string; childre
 }
 
 function VerificationCard({ parcel }: { parcel: LandParcel }) {
-  const { user } = useAuth();
-  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">("idle");
-
-  if (parcel.status === "verified") {
-    return (
-      <div className="gm-vcard">
-        <ShieldCheck width={22} height={22} aria-hidden style={{ flex: "none" }} />
-        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <strong>Documents reviewed by Geo Pin</strong>
-          <p style={{ opacity: 0.85 }}>
-            We checked the seller&apos;s ownership documents against this listing. Geo Pin
-            advertises land and does not certify title, so carry out an official search before you
-            pay.
-          </p>
-        </span>
-      </div>
-    );
-  }
-
-  const request = async () => {
-    setState("loading");
-    try {
-      await api.post(`/parcels/${parcel.id}/verification-request`);
-      setState("sent");
-    } catch {
-      setState("error");
-    }
-  };
-
+  if (parcel.status !== "verified") return null;
   return (
-    <div className="gm-vcard gm-plain">
-      <strong>Documents not yet reviewed</strong>
-      <p>Ask us to review this listing&apos;s ownership documents before you proceed.</p>
-      {state === "sent" ? (
-        <span
-          role="status"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontWeight: 600,
-            color: "var(--accent)",
-          }}
-        >
-          <Check width={18} height={18} strokeWidth={2.6} aria-hidden /> Request sent. We&apos;ll
-          update you.
-        </span>
-      ) : user ? (
-        <button type="button" className="gm-btn" onClick={request} disabled={state === "loading"}>
-          <ShieldCheck width={18} height={18} aria-hidden />
-          {state === "loading"
-            ? "Requesting…"
-            : state === "error"
-              ? "Couldn't send. Try again"
-              : "Request a document review"}
-        </button>
-      ) : (
-        <SignInLink className="gm-btn">
-          <ShieldCheck width={18} height={18} aria-hidden /> Sign in to request a document review
-        </SignInLink>
-      )}
+    <div className="gm-vcard">
+      <ShieldCheck width={22} height={22} aria-hidden style={{ flex: "none" }} />
+      <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <strong>Documents reviewed by Geo Pin</strong>
+        <p style={{ opacity: 0.85 }}>
+          We checked the seller&apos;s ownership documents against this listing. Geo Pin advertises
+          land and does not certify title, so carry out an official search before you pay.
+        </p>
+      </span>
     </div>
   );
 }
@@ -590,7 +540,8 @@ export function ParcelPanel({
           meta={`${parcel.size} · ${DEAL_TAG[parcel.listingType]} · ${place}${verified ? " · Documents reviewed" : ""}`}
           price={price + (parcel.listingType === "lease" ? " / yr" : "")}
           url={url}
-          waText={`${parcel.size} plot, ${parcel.area || parcel.county} (${parcel.parcelNumber}) ${price} ${url}`}
+          listing={{ type: "parcel", id: parcel.id }}
+          waText={`${parcel.size} plot, ${parcel.area || parcel.county} (${parcel.parcelNumber}) ${price}`}
           shape={
             (parcel.polygon
               ? { kind: "polygon", points: parcel.polygon, verified }
@@ -707,7 +658,8 @@ export function RentalPanel({
           meta={`${INTENT_LABELS[property.intent]} · ${place}`}
           price={price + per}
           url={url}
-          waText={`${property.title}, ${property.area || property.county} ${price}${per} ${url}`}
+          listing={{ type: "property", id: property.id }}
+          waText={`${property.title}, ${property.area || property.county} ${price}${per}`}
           shape={{ kind: "home" }}
           color={color}
           onClose={() => setSharing(false)}

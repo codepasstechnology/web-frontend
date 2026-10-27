@@ -287,16 +287,6 @@ html.dark .gp-header {
   min-height: 44px;
 }
 
-.gp-logo-tile {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: var(--gp-brand);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .gp-logo-text {
   font-family: "Bricolage Grotesque", "Segoe UI", sans-serif;
   font-weight: 700;
@@ -434,6 +424,15 @@ html.dark .gp-menu-btn {
 
 html.dark .gp-mobile-menu {
   border-top-color: rgba(244, 238, 226, 0.08);
+}
+
+.gp-mobile-cookie {
+  align-self: flex-start;
+  padding: 12px 4px 0;
+  color: var(--gp-muted-dark);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .gp-mobile-link {

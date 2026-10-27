@@ -1949,7 +1949,7 @@ html.dark .gm-tchip {
 
 .gm-corner span {
   position: absolute;
-  inset: 0;
+  inset: var(--inset, 0px);
   border-radius: 50%;
   background: #ffffff;
   border: 3px solid var(--pc);
@@ -1957,7 +1957,7 @@ html.dark .gm-tchip {
 }
 
 .gm-corner[data-first="true"] span {
-  inset: -3px;
+  inset: calc(var(--inset, 0px) - 3px);
 }
 
 .gm-corner[data-glow="true"] span {
@@ -2225,7 +2225,8 @@ html.dark .gm-pline[data-tone="warn"] {
 .gm-full {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  /* Above the dashboard's mobile nav bar (90), which otherwise covers Confirm location. */
+  z-index: 100;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -2268,7 +2269,7 @@ html.dark .gm-pline[data-tone="warn"] {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 14px 16px;
+  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line2);
 }
 
@@ -2496,6 +2497,34 @@ html.dark .gm-pline[data-tone="warn"] {
     left: 12px;
     max-width: none;
     bottom: 12px;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* Below the satellite toggle (top-left) and clear of the zoom buttons (right). */
+  .gm-plot-status {
+    top: 130px;
+    width: max-content;
+    max-width: calc(100% - 120px);
+  }
+
+  .gm-plot-status .gm-chipx {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .gm-tracebar .gm-tbtn {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* Smaller beacons so they don't hide the land being plotted; scaled around the tip they point with. */
+  .gm-plot .gm-bcn-in {
+    scale: 0.72;
+    transform-origin: 50% 91%;
   }
 
   .gm-plot .leaflet-bottom.leaflet-right {

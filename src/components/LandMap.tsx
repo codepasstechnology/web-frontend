@@ -69,6 +69,8 @@ interface Props {
   onSelectParcel?: (p: LandParcel | null) => void;
   onSelectProperty?: (p: Property | null) => void;
   selectedId?: string | null;
+  focusedParcel?: LandParcel | null;
+  focusedProperty?: Property | null;
   parcels?: LandParcel[];
   properties?: Property[];
   flyTarget?: FlyTarget | null;
@@ -79,6 +81,7 @@ interface Props {
   seenIds?: string[];
   /** Fired after the map settles, so the page can load just the visible area. */
   onBoundsChange?: (bbox: Bbox) => void;
+  initialCenter?: [number, number];
   areaLoading?: boolean;
   loadError?: boolean;
   retrying?: boolean;
@@ -92,11 +95,12 @@ const LABEL_MIN_ZOOM = 15;
 
 const isMobileWidth = () => window.innerWidth <= 900;
 
-// Fits map to all parcels/properties on first load, and zooms to the
-// selected one when chosen.
+// Zoom to a selected listing without fitting to each visible-area response.
 function MapController({
   mode,
   selectedId,
+  focusedParcel,
+  focusedProperty,
   parcels,
   properties,
 }: {
@@ -104,28 +108,11 @@ function MapController({
   selectedId?: string | null;
   parcels: LandParcel[];
   properties: Property[];
+  focusedParcel?: LandParcel | null;
+  focusedProperty?: Property | null;
 }) {
   const map = useMap();
-  const fitted = useRef(false);
   const flownTo = useRef<string | null>(null);
-  useEffect(() => {
-    if (fitted.current) return;
-    const all = [
-      ...(mode === "rentals"
-        ? []
-        : parcels.flatMap(
-            (p) =>
-              p.polygon ??
-              (p.latitude != null && p.longitude != null
-                ? [[p.latitude, p.longitude] as [number, number]]
-                : []),
-          )),
-      ...(mode === "land" ? [] : properties.map((p) => p.position)),
-    ];
-    if (all.length === 0) return;
-    fitted.current = true;
-    map.fitBounds(all as L.LatLngBoundsLiteral, { padding: [40, 40] });
-  }, [map, mode, parcels, properties]);
   useEffect(() => {
     if (!selectedId) {
       flownTo.current = null;
@@ -135,8 +122,18 @@ function MapController({
     if (flownTo.current === selectedId) return;
 
     let bounds: [number, number][] | null = null;
-    const parcel = mode === "rentals" ? undefined : parcels.find((x) => x.id === selectedId);
-    const property = mode === "land" ? undefined : properties.find((x) => x.id === selectedId);
+    const parcel =
+      mode === "rentals"
+        ? undefined
+        : focusedParcel?.id === selectedId
+          ? focusedParcel
+          : parcels.find((x) => x.id === selectedId);
+    const property =
+      mode === "land"
+        ? undefined
+        : focusedProperty?.id === selectedId
+          ? focusedProperty
+          : properties.find((x) => x.id === selectedId);
     if (parcel) {
       bounds =
         parcel.polygon ??
@@ -165,7 +162,7 @@ function MapController({
       maxZoom: 17,
       duration: 1,
     });
-  }, [map, mode, selectedId, parcels, properties]);
+  }, [map, mode, selectedId, parcels, properties, focusedParcel, focusedProperty]);
   return null;
 }
 
@@ -177,15 +174,21 @@ function BoundsWatcher({ onChange }: { onChange?: (bbox: Bbox) => void }) {
   const loaded = useRef<L.LatLngBounds | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
+  const map = useMap();
+  useEffect(() => {
+    const b = map.getBounds().pad(BBOX_PAD);
+    loaded.current = b;
+    onChangeRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    return () => clearTimeout(timer.current ?? undefined);
+  }, [map]);
   useMapEvents({
     moveend(e) {
       if (!onChangeRef.current) return;
       const view = (e.target as L.Map).getBounds();
       // Zooming in or a short pan stays inside the padded area already loaded,
       // so its listings are on hand and there is nothing to fetch.
-      if (loaded.current?.contains(view)) return;
       clearTimeout(timer.current ?? undefined);
+      if (loaded.current?.contains(view)) return;
       timer.current = setTimeout(() => {
         const b = view.pad(BBOX_PAD);
         loaded.current = b;
@@ -518,6 +521,8 @@ export function LandMap({
   onSelectParcel,
   onSelectProperty,
   selectedId,
+  focusedParcel,
+  focusedProperty,
   parcels = [],
   properties = [],
   flyTarget,
@@ -525,6 +530,7 @@ export function LandMap({
   onHover,
   seenIds = [],
   onBoundsChange,
+  initialCenter = [-1.286389, 36.817223],
   areaLoading = false,
   loadError = false,
   retrying = false,
@@ -584,7 +590,7 @@ export function LandMap({
   return (
     <div className="gm-mapfill" data-satellite={isSatellite || undefined}>
       <MapContainer
-        center={[-1.286389, 36.817223]}
+        center={initialCenter}
         zoom={11}
         scrollWheelZoom
         zoomControl={false}
@@ -595,6 +601,8 @@ export function LandMap({
         <MapController
           mode={mode}
           selectedId={selectedId}
+          focusedParcel={focusedParcel}
+          focusedProperty={focusedProperty}
           parcels={parcels}
           properties={properties}
         />

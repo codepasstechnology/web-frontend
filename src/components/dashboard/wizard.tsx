@@ -284,7 +284,7 @@ export function PhotoPicker({
         </span>
         <span className="font-semibold">Drag and drop photos, or click to browse</span>
         <span className="text-[13px] text-muted-foreground">
-          JPG, PNG, WEBP or HEIC · max 5 MB each · the starred photo is the cover
+          JPG, PNG, WEBP or HEIC · max 10 MB each · the starred photo is the cover
         </span>
       </button>
       {error && (

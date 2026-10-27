@@ -19,6 +19,10 @@ vi.mock("@/lib/draftPhotoStore", () => ({
   loadDraftPhotos: () => Promise.resolve([]),
   clearDraftPhotos: vi.fn(),
 }));
+vi.mock("@/lib/properties", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/properties")>()),
+  useUsedListings: () => 0,
+}));
 vi.mock("@/lib/plans", () => ({ kenyaCounties: ["Kajiado"], usePlans: () => ({ data: [] }) }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
@@ -54,11 +58,29 @@ describe("upload wizard, basic details", () => {
     render(<UploadPage />);
 
     const title = screen.getByLabelText("Title number");
-    await userEvent.type(title, "kaj ktg 4521");
-    expect(title).toHaveValue("KAJ KTG 4521");
+    await userEvent.type(title, "kaj#ktg");
+    expect(title).toHaveValue("KAJ#KTG");
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Use the format on the deed, like KAJ/KTG/4521.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Use letters, numbers, spaces and / . - ( ) , as on the deed, including the plot number.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    "naivasha/maraigushu block 7/2312",
+    "(naivasha/maraigushu block 7/2312)",
+    "l.r. no. 209/1234",
+    "ir 12345",
+  ])("accepts real deed formats like %s", async (deed) => {
+    render(<UploadPage />);
+
+    await userEvent.type(screen.getByLabelText("Title number"), deed);
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.queryByText(/as on the deed, including the plot number/)).not.toBeInTheDocument();
   });
 
   it("moves on once the basics are filled in", async () => {

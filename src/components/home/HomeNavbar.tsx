@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDown,
+  Cookie,
   CreditCard,
   House,
   LandPlot,
@@ -101,22 +102,7 @@ export function HomeNavbar() {
     <header className="gp-header">
       <nav aria-label="Main" className="gp-nav">
         <Link to="/" className="gp-logo" onClick={close}>
-          <span className="gp-logo-tile">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#FFFFFF"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
-              <circle cx="12" cy="10" r="2.5" />
-            </svg>
-          </span>
+          <img src="/favicon.svg" alt="" width={34} height={34} />
           <span className="gp-logo-text">Geo Pin Properties</span>
         </Link>
 
@@ -217,6 +203,11 @@ export function HomeNavbar() {
                       <Moon size={17} aria-hidden="true" />
                     )}
                     {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gd-mi" asChild>
+                    <Link to="/cookie-settings">
+                      <Cookie size={17} aria-hidden="true" /> Cookie settings
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="gd-mi"
@@ -351,6 +342,9 @@ export function HomeNavbar() {
               </Link>
             </>
           )}
+          <Link to="/cookie-settings" className="gp-mobile-cookie" onClick={close}>
+            Cookie settings
+          </Link>
           <span className="gp-mobile-tag">find. connect. own.</span>
         </div>
       )}

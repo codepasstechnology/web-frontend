@@ -19,7 +19,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/hooks/useTheme";
 import { NotificationBell } from "@/components/NotificationBell";
-import { LogoMark } from "@/components/ui/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,7 +129,7 @@ export function Navbar({
           to="/"
           className="flex shrink-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <LogoMark aria-hidden className="h-8" />
+          <img src="/favicon.svg" alt="" className="h-8 w-auto" />
           <div className="flex flex-col leading-tight">
             <span
               className={`text-sm font-semibold tracking-tight ${dark ? "text-white" : "text-foreground"}`}

@@ -20,6 +20,7 @@ export function HomeFooter() {
             <Link to="/about">About</Link>
             <Link to="/help">Help centre</Link>
             <Link to="/contact">Contact</Link>
+            <Link to="/cookie-settings">Cookie settings</Link>
           </nav>
         </div>
       </div>

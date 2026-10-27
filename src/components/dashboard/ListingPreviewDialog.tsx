@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, Pencil, Tag, Trash2, X } from "lucide-react";
+import { Camera, Pencil, Share2, Tag, Trash2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMyProperty, formatPrice, INTENT_LABELS, TYPE_LABELS } from "@/lib/properties";
 import type { ListingRow } from "@/components/dashboard/ListingsTab";
@@ -297,6 +297,7 @@ export function ListingPreviewDialog({
   closeLabel,
   onClose,
   onEdit,
+  onShare,
   onMarkClosed,
   onDelete,
 }: {
@@ -307,6 +308,7 @@ export function ListingPreviewDialog({
   closeLabel: string;
   onClose: () => void;
   onEdit?: () => void;
+  onShare?: () => void;
   onMarkClosed?: () => void;
   onDelete: () => void;
 }) {
@@ -349,6 +351,11 @@ export function ListingPreviewDialog({
               {onEdit && (
                 <button type="button" className="gd-btn gd-o" onClick={onEdit}>
                   <Pencil size={16} aria-hidden="true" /> Edit
+                </button>
+              )}
+              {onShare && (
+                <button type="button" className="gd-btn gd-o" onClick={onShare}>
+                  <Share2 size={16} aria-hidden="true" /> Share
                 </button>
               )}
               {onMarkClosed && (

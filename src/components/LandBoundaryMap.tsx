@@ -10,7 +10,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
-import "leaflet-draw/dist/leaflet.draw.css";
+import { countyCenter } from "@/lib/countyCenters";
 import type { DrawEvents } from "leaflet";
 import {
   AlertTriangle,
@@ -51,7 +51,7 @@ const TUTORIAL_STEPS: { title: string; body: string; path: string; dots: boolean
   [
     {
       title: "Find your land",
-      body: 'Search for a place or tap "Near me", then zoom in until you can see fences, roads and roofs on the satellite view.',
+      body: 'Search for a place, paste coordinates from Google Maps, or tap "Near me", then zoom in until you can see fences, roads and roofs on the satellite view.',
       path: "",
       dots: false,
       pin: false,
@@ -79,11 +79,16 @@ const TUTORIAL_STEPS: { title: string; body: string; path: string; dots: boolean
     },
   ];
 
-const cornerIcon = (color: string, size: number) =>
+// Esri has imagery to zoom 18 almost everywhere in Kenya; past that the tiles
+// are scaled up, which is blurrier but lets sellers place corners precisely.
+const MAX_ZOOM = 20;
+
+/** `hit` is the tappable area; on touch it's larger than the dot so the dot can stay small. */
+const cornerIcon = (color: string, size: number, hit = size) =>
   L.divIcon({
     className: "gm-corner",
-    html: `<span style="--pc:${color}"></span>`,
-    iconSize: [size, size],
+    html: `<span style="--pc:${color};--inset:${(hit - size) / 2}px"></span>`,
+    iconSize: [hit, hit],
   });
 
 const centreIcon = (color: string) =>
@@ -121,19 +126,24 @@ function PolygonDrawTrigger({
   cancelTrigger,
   undoTrigger,
   finishTrigger,
+  focus,
   color,
   onCreated,
   onTracingChange,
   onPointsChange,
+  onLoadError,
 }: {
   trigger: number;
   cancelTrigger: number;
   undoTrigger: number;
   finishTrigger: number;
+  /** Where to zoom in when tracing starts from too far out, usually the dropped pin. */
+  focus: [number, number] | null;
   color: string;
   onCreated: (boundary: LatLng[]) => void;
   onTracingChange: (tracing: boolean) => void;
   onPointsChange: (points: LatLng[]) => void;
+  onLoadError: () => void;
 }) {
   const map = useMap();
   const [ready, setReady] = useState(false);
@@ -154,31 +164,26 @@ function PolygonDrawTrigger({
   const onPointsChangeRef = useRef(onPointsChange);
   onPointsChangeRef.current = onPointsChange;
 
+  const onLoadErrorRef = useRef(onLoadError);
+  onLoadErrorRef.current = onLoadError;
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
+
   // leaflet-draw touches `window` at import time, so it must never load during SSR.
   useEffect(() => {
     let cancelled = false;
-    import("leaflet-draw").then(() => {
-      if (!cancelled) setReady(true);
-    });
+    if (trigger === 0) return;
+    Promise.all([import("leaflet-draw"), import("leaflet-draw/dist/leaflet.draw.css")])
+      .then(() => {
+        if (!cancelled) setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) onLoadErrorRef.current();
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!ready || trigger === 0) return;
-    // leaflet-draw only handles the taps; the draft itself (halo, edges,
-    // closing edge, area) is drawn by LandBoundaryMap so it can be styled.
-    const handler = new L.Draw.Polygon(map as L.DrawMap, {
-      showArea: false,
-      shapeOptions: { color, opacity: 0, fill: false },
-      icon: cornerIcon(color, 16),
-      touchIcon: cornerIcon(color, 22),
-    });
-    handlerRef.current = handler;
-    handler.enable();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, trigger, map]);
+  }, [trigger]);
 
   useEffect(() => {
     if (!ready || cancelTrigger === 0) return;
@@ -198,6 +203,9 @@ function PolygonDrawTrigger({
   useEffect(() => {
     if (!ready) return;
     const onDrawStart = () => {
+      if (map.getZoom() < TRACE_ZOOM) {
+        map.setView(focusRef.current ?? map.getCenter(), TRACE_ZOOM);
+      }
       map.doubleClickZoom.disable();
       onPointsChangeRef.current([]);
       onTracingChangeRef.current(true);
@@ -235,10 +243,32 @@ function PolygonDrawTrigger({
     };
   }, [ready, map]);
 
+  useEffect(() => {
+    if (!ready || trigger === 0) return;
+    // leaflet-draw only handles the taps; the draft itself (halo, edges,
+    // closing edge, area) is drawn by LandBoundaryMap so it can be styled.
+    const handler = new L.Draw.Polygon(map as L.DrawMap, {
+      showArea: false,
+      shapeOptions: { color, opacity: 0, fill: false },
+      icon: cornerIcon(color, 16),
+      touchIcon: cornerIcon(color, 14, 30),
+    });
+    handlerRef.current = handler;
+    handler.enable();
+    return () => {
+      handler.disable();
+      handlerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, trigger, map]);
+
   return null;
 }
 
 const toTuple = (p: LatLng): [number, number] => [p.lat, p.lng];
+
+/** Tracing needs fences and roofs in view; below this the corners can't be placed accurately. */
+const TRACE_ZOOM = 17;
 
 interface LandBoundaryMapProps {
   pin: [number, number] | null;
@@ -328,24 +358,18 @@ export function LandBoundaryMap({
   };
   const [flyCoords, setFlyCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Center on the chosen county before the seller has placed anything —
-  // never overrides a pin/boundary they've already set.
+  const localCenter = countyCenter(county);
+  const previousCounty = useRef(county);
   useEffect(() => {
-    if (!county || pin || boundary) return;
-    fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`${county} County, Kenya`)}&format=json&limit=1`,
-      { headers: { "Accept-Language": "en" } },
-    )
-      .then((r) => r.json())
-      .then((data: { lat: string; lon: string }[]) => {
-        if (!data[0]) return;
-        setFlyCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
-        setCountyChip(true);
-        setTimeout(() => setCountyChip(false), 3400);
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [county]);
+    if (previousCounty.current === county) return;
+    previousCounty.current = county;
+    const center = countyCenter(county);
+    if (!center || pin || boundary) return;
+    setFlyCoords({ lat: center[0], lng: center[1] });
+    setCountyChip(true);
+    const timer = setTimeout(() => setCountyChip(false), 3400);
+    return () => clearTimeout(timer);
+  }, [county, pin, boundary]);
 
   const [countyMismatch, setCountyMismatch] = useState<string | null>(null);
 
@@ -357,35 +381,44 @@ export function LandBoundaryMap({
       return;
     }
     let cancelled = false;
-    fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${pin[0]}&lon=${pin[1]}&format=json&zoom=8`,
-      { headers: { "Accept-Language": "en" } },
-    )
-      .then((r) => r.json())
-      .then((data: { address?: Record<string, string> }) => {
-        if (cancelled) return;
-        // Nominatim's generic "county" address field maps to Kenya's
-        // sub-counties/constituencies (e.g. "Kikuyu"), not its 47 counties —
-        // "state" is the field that actually holds the Kenyan county (e.g.
-        // "Kiambu").
-        const detected = data.address?.state ?? data.address?.county;
-        if (!detected) {
-          setCountyMismatch(null);
-          return;
-        }
-        const norm = (s: string) =>
-          s
-            .toLowerCase()
-            .replace(/\s*county\s*$/i, "")
-            .trim();
-        const same =
-          norm(detected) === norm(county) ||
-          norm(detected).includes(norm(county)) ||
-          norm(county).includes(norm(detected));
-        setCountyMismatch(same ? null : detected.replace(/\s*county\s*$/i, ""));
-      })
-      .catch(() => {});
+    const controller = new AbortController();
+    setCountyMismatch(null);
+    const timer = setTimeout(() => {
+      fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${pin[0]}&lon=${pin[1]}&format=json&zoom=8`,
+        { headers: { "Accept-Language": "en" }, signal: controller.signal },
+      )
+        .then((r) => {
+          if (!r.ok) throw new Error("Geocoding failed");
+          return r.json();
+        })
+        .then((data: { address?: Record<string, string> }) => {
+          if (cancelled) return;
+          // Nominatim's generic "county" address field maps to Kenya's
+          // sub-counties/constituencies (e.g. "Kikuyu"), not its 47 counties —
+          // "state" is the field that actually holds the Kenyan county (e.g.
+          // "Kiambu").
+          const detected = data.address?.state ?? data.address?.county;
+          if (!detected) {
+            setCountyMismatch(null);
+            return;
+          }
+          const norm = (s: string) =>
+            s
+              .toLowerCase()
+              .replace(/\s*county\s*$/i, "")
+              .trim();
+          const same =
+            norm(detected) === norm(county) ||
+            norm(detected).includes(norm(county)) ||
+            norm(county).includes(norm(detected));
+          setCountyMismatch(same ? null : detected.replace(/\s*county\s*$/i, ""));
+        })
+        .catch(() => {});
+    }, 500);
     return () => {
+      clearTimeout(timer);
+      controller.abort();
       cancelled = true;
     };
   }, [pin, county]);
@@ -445,7 +478,10 @@ export function LandBoundaryMap({
   };
 
   const startCenter: [number, number] =
-    pin ?? (boundary && boundary.length ? [boundary[0].lat, boundary[0].lng] : initialCenter);
+    pin ??
+    (boundary && boundary.length
+      ? [boundary[0].lat, boundary[0].lng]
+      : (localCenter ?? initialCenter));
 
   const chip = tracing
     ? draftCrosses
@@ -495,6 +531,7 @@ export function LandBoundaryMap({
         <MapContainer
           center={startCenter}
           zoom={pin || boundary?.length ? 15 : 11}
+          maxZoom={MAX_ZOOM}
           zoomControl={false}
           className="gm-map"
         >
@@ -504,20 +541,28 @@ export function LandBoundaryMap({
             url={isSatellite ? SATELLITE_TILES : STREET_TILES}
             attribution={isSatellite ? SATELLITE_ATTRIBUTION : STREET_ATTRIBUTION}
             className={dark && !isSatellite ? DARK_TILES_CLASS : undefined}
+            maxZoom={MAX_ZOOM}
+            maxNativeZoom={isSatellite ? 18 : 19}
           />
-          <PolygonDrawTrigger
-            trigger={drawTrigger}
-            cancelTrigger={cancelTrigger}
-            undoTrigger={undoTrigger}
-            finishTrigger={finishTrigger}
-            color={traceColor}
-            onCreated={handleBoundaryCreated}
-            onTracingChange={(t) => {
-              setTracing(t);
-              if (!t) setRetracing(false);
-            }}
-            onPointsChange={setDraft}
-          />
+          {!pinOnly && (
+            <PolygonDrawTrigger
+              onLoadError={() =>
+                say("Couldn't load drawing tools. Tap Trace boundary to try again.")
+              }
+              trigger={drawTrigger}
+              cancelTrigger={cancelTrigger}
+              undoTrigger={undoTrigger}
+              finishTrigger={finishTrigger}
+              focus={pin}
+              color={traceColor}
+              onCreated={handleBoundaryCreated}
+              onTracingChange={(t) => {
+                setTracing(t);
+                if (!t) setRetracing(false);
+              }}
+              onPointsChange={setDraft}
+            />
+          )}
 
           {boundary && (
             <>
@@ -628,6 +673,11 @@ export function LandBoundaryMap({
             if (tracing || (boundary && !pinOnly)) return;
             onPinChange([lat, lng]);
             say("Pin dropped at your location");
+          }}
+          onCoordinates={(lat, lng) => {
+            if (tracing || (boundary && !pinOnly)) return;
+            onPinChange([lat, lng]);
+            say("Pin dropped at your coordinates");
           }}
         />
         <div

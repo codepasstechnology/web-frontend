@@ -5,6 +5,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { useAuth } from "@/lib/auth";
 import { usePlans, type Plan } from "@/lib/plans";
+import { useUsedListings } from "@/lib/properties";
 import { ListingsTab } from "@/components/dashboard/ListingsTab";
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
 import { AnalyticsTab } from "@/components/dashboard/AnalyticsTab";
@@ -54,6 +55,7 @@ function DashboardPage() {
     confirmEmailChange,
   } = useAuth();
   const { data: plans = [] } = usePlans();
+  const usedListings = useUsedListings();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<DashTab>(search.tab ?? "overview");
@@ -107,7 +109,7 @@ function DashboardPage() {
           planCancelledAt={user.planCancelledAt}
           plans={plans}
           maxListings={user.maxListings}
-          usedListings={user.listings.length}
+          usedListings={usedListings}
           payments={user.payments}
           onSelectPlan={handleSelectPlan}
           manager={user.manager}

@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import L from "leaflet";
 
 type Handler = (e: unknown) => void;
 const listeners: Record<string, Handler[]> = {};
+const mapCenters = vi.fn();
 const fakeMap = {
   on: (ev: string, fn: Handler) => (listeners[ev] ??= []).push(fn),
   off: (ev: string, fn: Handler) => {
@@ -14,11 +15,16 @@ const fakeMap = {
   fire: (ev: string, data: unknown) => (listeners[ev] ?? []).forEach((fn) => fn(data)),
   doubleClickZoom: { enable: vi.fn(), disable: vi.fn() },
   flyTo: vi.fn(),
+  getZoom: vi.fn(() => 18),
+  setView: vi.fn(),
 };
 let mapClick: ((e: { latlng: { lat: number; lng: number } }) => void) | undefined;
 
 vi.mock("react-leaflet", () => ({
-  MapContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  MapContainer: ({ children, center }: { children: React.ReactNode; center: [number, number] }) => {
+    mapCenters(center);
+    return <div>{children}</div>;
+  },
   TileLayer: () => null,
   ZoomControl: () => null,
   Marker: ({ icon }: { icon: L.DivIcon }) => (
@@ -121,15 +127,73 @@ const square = [
 ];
 
 describe("LandBoundaryMap", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
   beforeEach(() => {
     onPin.mockReset();
     onBoundary.mockReset();
     for (const k of Object.keys(listeners)) delete listeners[k];
   });
 
+  it("starts at the county without a search request and preserves an existing pin", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const props = {
+      pin: null,
+      boundary: null,
+      onPinChange: vi.fn(),
+      onBoundaryChange: vi.fn(),
+      county: "Mombasa",
+      tutorial: false,
+    };
+    const view = render(<LandBoundaryMap {...props} />);
+    expect(mapCenters).toHaveBeenLastCalledWith([-4.0435, 39.6682]);
+    expect(fetch).not.toHaveBeenCalled();
+    view.rerender(<LandBoundaryMap {...props} pin={[-1.3, 36.8]} />);
+    expect(mapCenters).toHaveBeenLastCalledWith([-1.3, 36.8]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("debounces reverse geocoding and cancels the previous pin request", async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn((_url: string, _options: RequestInit) => new Promise(() => {}));
+    vi.stubGlobal("fetch", fetch);
+    const props = {
+      boundary: null,
+      onPinChange: vi.fn(),
+      onBoundaryChange: vi.fn(),
+      county: "Kiambu",
+      tutorial: false,
+    };
+    const view = render(<LandBoundaryMap {...props} pin={[-1.1, 36.8]} />);
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    view.rerender(<LandBoundaryMap {...props} pin={[-1.2, 36.9]} />);
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][0]).toContain("lat=-1.2&lon=36.9");
+    const signal = (fetch.mock.calls[0][1] as RequestInit).signal!;
+    view.rerender(<LandBoundaryMap {...props} pin={[-1.3, 37]} />);
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const latest = (fetch.mock.calls[1][1] as RequestInit).signal!;
+    view.unmount();
+    expect(latest.aborted).toBe(true);
+  });
+
   it("enables Undo from 2 corners and Confirm from 3, then pins the centre", async () => {
     await renderReady(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "Trace boundary" }));
+    await screen.findByRole("button", { name: "Cancel" });
     expect(screen.getByText("Tap points around your land…")).toBeInTheDocument();
 
     const undo = () => screen.getByRole("button", { name: "Undo point" });
@@ -164,6 +228,7 @@ describe("LandBoundaryMap", () => {
   it("stops a draft whose lines cross from being confirmed", async () => {
     await renderReady(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "Trace boundary" }));
+    await screen.findByRole("button", { name: "Cancel" });
 
     tapCorner(square[0].lat, square[0].lng);
     tapCorner(square[2].lat, square[2].lng);
@@ -203,5 +268,13 @@ describe("LandBoundaryMap", () => {
     await renderReady(<Harness />);
     act(() => mapClick?.({ latlng: { lat: -1.3, lng: 36.8 } }));
     expect(onPin).toHaveBeenCalledWith([-1.3, 36.8]);
+  });
+
+  it("zooms in on the pin when tracing starts from too far out", async () => {
+    fakeMap.getZoom.mockReturnValueOnce(12);
+    await renderReady(<Harness initialPin={[-1.47, 36.95]} />);
+    await userEvent.click(screen.getByRole("button", { name: "Trace boundary" }));
+
+    expect(fakeMap.setView).toHaveBeenCalledWith([-1.47, 36.95], 17);
   });
 });

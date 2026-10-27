@@ -1,3 +1,4 @@
+import { preloadMap } from "@/lib/mapPreload";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -21,6 +22,7 @@ import { LandBoundaryMap } from "@/components/map/LazyMaps";
 import { useAuth, type NewListingInput } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { kenyaCounties, usePlans, type Plan } from "@/lib/plans";
+import { useUsedListings } from "@/lib/properties";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
@@ -43,6 +45,7 @@ import {
 } from "@/components/dashboard/wizard";
 import "@/components/site/site-pages.css";
 import "@/components/map/map.css";
+import { compressImage } from "@/lib/compressImage";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({
@@ -59,10 +62,12 @@ export const Route = createFileRoute("/dashboard/upload")({
 
 const steps = ["Basic details", "Location on map", "Photos & documents", "Review & submit"];
 
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MAX_DEED_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_MAX = 5000;
-const TITLE_NUMBER = /^[A-Z0-9]+(\/[A-Z0-9]+)+$/;
+// Deeds come in many shapes (KAJ/KTG/4521, NAIVASHA/MARAIGUSHU BLOCK 7/2312,
+// L.R. NO. 209/1234, IR 12345), so only the characters and a number are checked.
+const TITLE_NUMBER = /^(?=.*\d)[A-Z0-9 ./(),'-]{3,100}$/;
 
 const LAND_TYPES: Record<NonNullable<NewListingInput["landType"]>, string> = {
   residential: "Residential",
@@ -281,12 +286,16 @@ type BasicsField = "parcelNumber" | "county" | "size" | "price";
 function UploadPage() {
   const { user, ready, addListing, fetchListing, updateListing } = useAuth();
   const { data: plans = [] } = usePlans();
+  const used = useUsedListings();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const search = Route.useSearch();
   const editId = search.edit;
   const draft = useRef(editId ? null : loadDraft()).current;
   const [step, setStep] = useState(draft?.step ?? 0);
+  useEffect(() => {
+    if (step === 0) preloadMap("plotting");
+  }, [step]);
   const [maxStep, setMaxStep] = useState(draft?.step ?? 0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -460,7 +469,6 @@ function UploadPage() {
     );
   }
 
-  const used = user.listings.length;
   const remaining = user.maxListings === Infinity ? Infinity : user.maxListings - used;
   const limitReached = !editId && remaining <= 0;
   const planName = plan?.name ?? user.plan;
@@ -474,23 +482,28 @@ function UploadPage() {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const handlePhotos = (files: FileList | null) => {
+  const handlePhotos = async (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files);
     const wrongType = arr.filter((f) => f.type && !f.type.startsWith("image/"));
-    const oversized = arr.filter((f) => !wrongType.includes(f) && f.size > MAX_PHOTO_BYTES);
-    const valid = arr.filter((f) => !wrongType.includes(f) && f.size <= MAX_PHOTO_BYTES);
+    // Shrunk before the size check, so a large phone photo still fits once compressed.
+    const images = await Promise.all(arr.filter((f) => !wrongType.includes(f)).map(compressImage));
+    const oversized = images.filter((f) => f.size > MAX_PHOTO_BYTES);
+    const valid = images.filter((f) => f.size <= MAX_PHOTO_BYTES);
     const errors = [
       wrongType.length &&
         `${wrongType.map((f) => f.name).join(", ")} ${wrongType.length === 1 ? "isn't an image file" : "aren't image files"}.`,
       oversized.length &&
-        `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 5MB limit per photo.`,
+        `${oversized.map((f) => f.name).join(", ")} ${oversized.length === 1 ? "is" : "are"} over the 10MB limit per photo.`,
     ].filter(Boolean);
     setFileError(errors.join(" "));
-    const allowed = photoLimit - existingPhotos.length - form.photos.length;
-    const slice = valid.slice(0, Math.max(0, allowed));
-    const mapped = slice.map((f) => ({ name: f.name, url: URL.createObjectURL(f), file: f }));
-    set("photos", [...form.photos, ...mapped]);
+    setForm((f) => {
+      const allowed = photoLimit - existingPhotos.length - f.photos.length;
+      const mapped = valid
+        .slice(0, Math.max(0, allowed))
+        .map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
+      return { ...f, photos: [...f.photos, ...mapped] };
+    });
   };
 
   const sizeAcres = sizeToAcres(
@@ -512,8 +525,9 @@ function UploadPage() {
 
   const basicsErrors: Partial<Record<BasicsField, string>> = {};
   if (!form.parcelNumber) basicsErrors.parcelNumber = "Enter the title number from the title deed.";
-  else if (!TITLE_NUMBER.test(form.parcelNumber))
-    basicsErrors.parcelNumber = "Use the format on the deed, like KAJ/KTG/4521.";
+  else if (!TITLE_NUMBER.test(form.parcelNumber.trim()))
+    basicsErrors.parcelNumber =
+      "Use letters, numbers, spaces and / . - ( ) , as on the deed, including the plot number.";
   if (!form.county) basicsErrors.county = "Choose the county the land is in.";
   if (sizeAcres == null) basicsErrors.size = "Enter a size greater than 0.";
   if (!(Number(form.price) > 0)) basicsErrors.price = "Enter the asking price in KES.";
@@ -576,8 +590,8 @@ function UploadPage() {
     setSubmitErr("");
     setUploadProgress(form.documents.length || form.photos.length ? 0 : null);
     const payload: NewListingInput = {
-      title: form.parcelNumber,
-      parcelNumber: form.parcelNumber,
+      title: form.parcelNumber.trim(),
+      parcelNumber: form.parcelNumber.trim(),
       phone: form.phone || undefined,
       county: form.county,
       area: form.area || undefined,
@@ -830,7 +844,7 @@ function UploadPage() {
                   <input
                     id="u-parcelNumber"
                     className="gd-input gd-mono"
-                    placeholder="e.g. KAJ/KTG/4521"
+                    placeholder="e.g. KAJ/KTG/4521 or NAIVASHA/MARAIGUSHU BLOCK 7/2312"
                     autoCapitalize="characters"
                     value={form.parcelNumber}
                     onChange={(e) => set("parcelNumber", e.target.value.toUpperCase())}

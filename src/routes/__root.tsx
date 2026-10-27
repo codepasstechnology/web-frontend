@@ -1,3 +1,4 @@
+import { preloadMap } from "@/lib/mapPreload";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -14,11 +15,13 @@ import { useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
+import { CookieBanner } from "@/components/CookieBanner";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { isUnderMaintenance } from "@/lib/maintenance";
 import { ALWAYS_OPEN_PATHS } from "@/lib/maintenanceRedirect";
+import { trackPageView } from "@/lib/traffic";
 
 const AUTH_BG_URLS = [
   "https://images.unsplash.com/photo-1535342604578-a175d3fc4f22?w=1920&q=90&auto=format&fit=crop",
@@ -176,6 +179,7 @@ const OWN_CHROME_PATHS = new Set([
   "/privacy",
   "/terms",
   "/cookie-policy",
+  "/cookie-settings",
   "/data-usage",
 ]);
 const NO_NAVBAR_PREFIXES = [
@@ -189,6 +193,20 @@ const NO_NAVBAR_PREFIXES = [
 ];
 
 function RootComponent() {
+  useEffect(() => {
+    const prepare = (event: Event) => {
+      if (!(event.target instanceof Element)) return;
+      const link = event.target.closest("a");
+      if (!link || link.origin !== window.location.origin) return;
+      if (["/land", "/explore", "/rentals"].includes(link.pathname)) preloadMap();
+    };
+    document.addEventListener("pointerover", prepare);
+    document.addEventListener("focusin", prepare);
+    return () => {
+      document.removeEventListener("pointerover", prepare);
+      document.removeEventListener("focusin", prepare);
+    };
+  }, []);
   const { queryClient } = Route.useRouteContext();
   const { pathname } = useLocation();
   const showNavbar =
@@ -196,6 +214,10 @@ function RootComponent() {
     !pathname.startsWith("/blog/") &&
     !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
   const showFooter = showNavbar;
+
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     AUTH_BG_URLS.forEach((url) => {
@@ -210,6 +232,7 @@ function RootComponent() {
         <Outlet />
         {showFooter && <SiteFooter />}
         <Toaster position="bottom-center" />
+        <CookieBanner />
       </AuthProvider>
     </QueryClientProvider>
   );

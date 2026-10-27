@@ -28,6 +28,7 @@ import {
 import { LandBoundaryMap } from "@/components/LandBoundaryMap";
 import { Beacon, StatusChip, type ChipKind } from "@/components/dashboard/parts";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { compressImage } from "@/lib/compressImage";
 
 const STATUS: Record<
   string,
@@ -144,7 +145,7 @@ function KycCard({
     try {
       const fd = new FormData();
       if (text) fd.append("reply", text);
-      if (replyFile) fd.append("document", replyFile);
+      if (replyFile) fd.append("document", await compressImage(replyFile));
       await api.post(`/user/kyc/${kyc.id}/reply`, fd);
       onReplied(text, replyFile);
       toast.success("Reply sent to the reviewer.");
@@ -444,7 +445,9 @@ function KycCard({
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-sm font-semibold">{docLabel(doc.type)}</span>
                     <span className="gd-mono truncate text-[12.5px] text-muted-foreground">
-                      {doc.original_name}
+                      {doc.file_deleted_at
+                        ? "Deleted under the 60-day retention policy"
+                        : doc.original_name}
                     </span>
                   </span>
                   {doc.verification_status === "accepted" && (
@@ -457,9 +460,9 @@ function KycCard({
                     type="button"
                     className="gd-link text-[13.5px]"
                     onClick={() => viewDoc(doc.id)}
-                    disabled={viewingDoc === doc.id}
+                    disabled={!!doc.file_deleted_at || viewingDoc === doc.id}
                   >
-                    {viewingDoc === doc.id ? "Opening…" : "View"}
+                    {doc.file_deleted_at ? "Deleted" : viewingDoc === doc.id ? "Opening…" : "View"}
                   </button>
                 </div>
               ))}
@@ -536,9 +539,10 @@ function SubmitKycDialog({
     try {
       const fd = new FormData();
       fd.append("parcel_id", parcelId);
+      const files = await Promise.all(documents.map((d) => compressImage(d.file)));
       documents.forEach((d, i) => {
         fd.append(`documents[${i}][type]`, d.type);
-        fd.append(`documents[${i}][file]`, d.file);
+        fd.append(`documents[${i}][file]`, files[i]);
       });
       const res = await api.post<{ data: KycApplication }>("/user/kyc", fd);
       onSubmitted(res.data);

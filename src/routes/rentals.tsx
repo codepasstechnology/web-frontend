@@ -1,8 +1,9 @@
+import { ListingLoadStatus } from "@/components/map/ListingLoadStatus";
+import { preloadMap } from "@/lib/mapPreload";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List } from "lucide-react";
 import { LandMap } from "@/components/map/LazyMaps";
-import type { FlyTarget } from "@/components/LandMap";
 import { MapFilterMenu } from "@/components/map/MapFilterMenu";
 import { MapSidebar, PriceRangeFilter, SegFilter, SelectFilter } from "@/components/MapSidebar";
 import { RentalPanel } from "@/components/PropertyPanel";
@@ -33,7 +34,10 @@ export const Route = createFileRoute("/rentals")({
     property: typeof s.property === "string" ? s.property : undefined,
   }),
   loaderDeps: ({ search }) => ({ property: search.property }),
-  loader: ({ deps }) => shareQuery(undefined, deps.property),
+  loader: ({ deps }) => {
+    preloadMap();
+    return shareQuery(undefined, deps.property);
+  },
   head: ({ loaderData }) => ({
     ...shareHead(loaderData, {
       title: "Rentals Map — Geo Pin Properties Kenya",
@@ -63,11 +67,10 @@ function RentalsContent() {
   const [beds, setBeds] = useState<Beds>("all");
   const [price, setPrice] = useState(ANY_PRICE);
   const [bbox, setBbox] = useState<Bbox | null>(null);
-  const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const [hotIds, setHotIds] = useState<string[]>([]);
   const [drawer, setDrawer] = useState(false);
   const recent = useRecentlyViewed();
-  const query = usePublicProperties({ intent }, bbox);
+  const query = usePublicProperties({ intent }, bbox, true);
   const loaded = useMemo(() => query.data ?? [], [query.data]);
   const known = useKnownListings(loaded);
   const properties = useMemo(
@@ -79,9 +82,8 @@ function RentalsContent() {
   // is there, and fetch it by id when it is not — the feed is paginated and
   // filtered, so a shared link often names a listing this page has not loaded.
   const openId = search.property;
-  const fromList = openId ? known.get(openId) : undefined;
-  const { data: fetched } = useProperty(fromList ? undefined : openId);
-  const selected = fromList ?? (fetched?.id === openId ? fetched : null);
+  const detail = useProperty(openId);
+  const selected = detail.data ?? null;
 
   // Centre the map on a listing opened from a shared link, once — without the
   // guard every re-render would yank the map back and the viewer could not pan.
@@ -89,7 +91,6 @@ function RentalsContent() {
   useEffect(() => {
     if (centredFromLink.current || !selected) return;
     centredFromLink.current = true;
-    setFlyTarget({ lat: selected.position[0], lng: selected.position[1], zoom: 16 });
     api.post(`/properties/${selected.id}/view`).catch(() => {});
   }, [selected]);
 
@@ -174,8 +175,8 @@ function RentalsContent() {
           mode="rentals"
           properties={properties}
           onSelectProperty={handleSelect}
-          selectedId={selected?.id ?? null}
-          flyTarget={flyTarget}
+          selectedId={openId ?? null}
+          focusedProperty={selected}
           hotIds={hotIds}
           onHover={setHotIds}
           seenIds={recent.ids}
@@ -227,6 +228,7 @@ function RentalsContent() {
         {selected && (
           <RentalPanel key={selected.id} property={selected} onClose={() => handleSelect(null)} />
         )}
+        {openId && <ListingLoadStatus query={detail} onClose={() => handleSelect(null)} />}
         <MapToastOutlet />
       </div>
     </>

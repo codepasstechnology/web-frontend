@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQueries,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { api } from "./api";
 import type { LandParcel, LandStatus } from "./landData";
 import { bboxParam, type Bbox } from "./mapGeo";
@@ -78,21 +84,23 @@ export interface ApiParcel {
   } | null;
 }
 
+// Fields are re-checked here because a partial or malformed response would
+// otherwise crash the panels (e.g. price.toLocaleString on undefined).
 export function mapApiParcel(p: ApiParcel): LandParcel {
   return {
     id: p.id,
-    title: p.parcel_number,
-    parcelNumber: p.parcel_number,
+    title: p.parcel_number ?? "",
+    parcelNumber: p.parcel_number ?? "",
     size: p.size || "—",
-    price: p.price,
+    price: Number(p.price) || 0,
     status: (p.status === "verified" ? "verified" : "available") as LandStatus,
-    listingType: p.listing_type,
-    postedBy: p.posted_by,
-    county: p.county,
+    listingType: p.listing_type === "lease" ? "lease" : "sale",
+    postedBy: p.posted_by === "broker" ? "broker" : "owner",
+    county: p.county ?? "",
     description: p.description || "",
-    verified: p.verified,
-    featured: p.featured,
-    photos: p.photos ?? [],
+    verified: p.verified === true,
+    featured: p.featured === true,
+    photos: Array.isArray(p.photos) ? p.photos : [],
     seller: {
       name: p.seller_name || "—",
       phone: p.seller_phone || "—",
@@ -104,11 +112,11 @@ export function mapApiParcel(p: ApiParcel): LandParcel {
       shopping: p.amenities?.shopping ?? "—",
       mainRoad: p.amenities?.main_road ?? "—",
       distanceToTarmac: p.amenities?.distance_to_tarmac ?? "—",
-      utilities: p.amenities?.utilities ?? [],
+      utilities: Array.isArray(p.amenities?.utilities) ? p.amenities.utilities : [],
       developmentScore: p.amenities?.development_score ?? 0,
     },
     polygon:
-      p.boundary && p.boundary.length >= 3
+      Array.isArray(p.boundary) && p.boundary.length >= 3
         ? p.boundary.map((v): [number, number] => [Number(v.lat), Number(v.lng)])
         : undefined,
     latitude: p.latitude != null ? Number(p.latitude) : undefined,
@@ -120,17 +128,18 @@ export function mapApiParcel(p: ApiParcel): LandParcel {
 }
 
 /**
- * Full parcels, with boundaries and seller details, for the map pages. With a
+ * Lightweight summaries with boundaries for map pages. Detail panels fetch by id. With a
  * bbox only the visible area is loaded; the previous result stays on screen
  * until the new one arrives, and a superseded request is cancelled.
  */
 export function useMapParcels(bbox: Bbox | null = null, refetchInterval?: number) {
   return useQuery({
-    queryKey: ["parcels", "map", bbox],
+    queryKey: ["parcels", "map-summary", bbox],
+    enabled: bbox !== null,
     queryFn: async ({ signal }) =>
-      (
-        await api.get<ApiParcel[]>(bbox ? `/parcels?bbox=${bboxParam(bbox)}` : "/parcels", signal)
-      ).map(mapApiParcel),
+      (await api.get<ApiParcel[]>(`/parcels?map=1&bbox=${bboxParam(bbox!)}`, signal)).map(
+        mapApiParcel,
+      ),
     staleTime: 60_000,
     placeholderData: keepPreviousData,
     refetchInterval,
@@ -156,4 +165,21 @@ export function useSavedParcels(signedIn: boolean) {
     savedIds: signedIn ? data : [],
     toggleSaved: (id: string) => toggle.mutate(id),
   };
+}
+
+const parcelDetailOptions = (id: string | undefined) => ({
+  queryKey: ["parcel", id],
+  queryFn: async ({ signal }: { signal: AbortSignal }) =>
+    mapApiParcel(await api.get<ApiParcel>(`/parcels/${id}`, signal)),
+  enabled: !!id,
+  staleTime: 60_000,
+});
+
+export function useParcel(id: string | undefined) {
+  return useQuery(parcelDetailOptions(id));
+}
+
+/** Fetch full amenities only for plots explicitly opened in the comparison. */
+export function useParcelDetails(ids: string[]) {
+  return useQueries({ queries: ids.map(parcelDetailOptions) });
 }

@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { useAuth } from "./auth";
 import { bboxParam, type Bbox } from "./mapGeo";
 
 export type PropertyIntent = "rent" | "bnb" | "sale";
@@ -51,6 +52,8 @@ export interface MyProperty {
   views: number;
   createdAt: string;
   coverPhotoUrl: string | null;
+  /** Hidden from the site and not using one of the plan's live listing slots. */
+  paused?: boolean;
 }
 
 export interface MyPropertyDetail extends MyProperty {
@@ -114,6 +117,7 @@ interface ApiMyProperty {
   views: number;
   created_at: string;
   cover_photo_url: string | null;
+  paused?: boolean;
 }
 
 interface ApiMyPropertyDetail extends ApiMyProperty {
@@ -166,17 +170,19 @@ export function formatPrice(price: number, period: PricePeriod): string {
   return period === "total" ? amount : `${amount} / ${period}`;
 }
 
+// Fields are re-checked here because a partial or malformed response would
+// otherwise crash the panels (e.g. price.toLocaleString on undefined).
 export function mapApiProperty(p: ApiProperty): Property {
   return {
     id: p.id,
-    reference: p.reference_number,
-    title: p.title,
+    reference: p.reference_number ?? "",
+    title: p.title ?? "",
     description: p.description ?? "",
     county: p.county ?? "",
     area: p.area ?? "",
     intent: p.intent,
     type: p.type,
-    price: p.price,
+    price: Number(p.price) || 0,
     pricePeriod: p.price_period,
     status: p.status,
     minNights: p.min_nights,
@@ -184,7 +190,7 @@ export function mapApiProperty(p: ApiProperty): Property {
     bedrooms: p.bedrooms ?? 0,
     bathrooms: p.bathrooms ?? 0,
     furnished: p.furnished ?? false,
-    amenities: p.amenities ?? [],
+    amenities: Array.isArray(p.amenities) ? p.amenities : [],
     postedBy: p.posted_by,
     agent: {
       name: p.agent_name || "—",
@@ -192,7 +198,7 @@ export function mapApiProperty(p: ApiProperty): Property {
       agency: p.agent_agency || "",
     },
     position: [Number(p.latitude), Number(p.longitude)],
-    photos: p.photos ?? [],
+    photos: Array.isArray(p.photos) ? p.photos : [],
     featured: p.featured ?? false,
     svAvailable: p.sv_available ?? null,
   };
@@ -214,6 +220,7 @@ function mapApiMyProperty(p: ApiMyProperty): MyProperty {
     views: p.views ?? 0,
     createdAt: p.created_at,
     coverPhotoUrl: p.cover_photo_url,
+    paused: p.paused ?? false,
   };
 }
 
@@ -254,12 +261,17 @@ function toQuery(filters: PropertyFilters, bbox: Bbox | null = null): string {
   return q ? `?${q}` : "";
 }
 
-export function usePublicProperties(filters: PropertyFilters = {}, bbox: Bbox | null = null) {
+export function usePublicProperties(
+  filters: PropertyFilters = {},
+  bbox: Bbox | null = null,
+  mapOnly = false,
+) {
   return useQuery({
-    queryKey: ["properties", filters, bbox],
+    queryKey: ["properties", filters, bbox, mapOnly],
+    enabled: !mapOnly || bbox !== null,
     queryFn: async ({ signal }) => {
       const page = await api.get<{ data: ApiProperty[] }>(
-        `/properties${toQuery(filters, bbox)}`,
+        `/properties${toQuery(filters, bbox)}${mapOnly ? "&map=1" : ""}`,
         signal,
       );
       return page.data.map(mapApiProperty);
@@ -277,7 +289,8 @@ export function usePublicProperties(filters: PropertyFilters = {}, bbox: Bbox | 
 export function useProperty(id: string | undefined) {
   return useQuery({
     queryKey: ["property", id],
-    queryFn: async () => mapApiProperty(await api.get<ApiProperty>(`/properties/${id}`)),
+    queryFn: async ({ signal }) =>
+      mapApiProperty(await api.get<ApiProperty>(`/properties/${id}`, signal)),
     enabled: !!id,
     staleTime: 60_000,
   });
@@ -288,6 +301,13 @@ export function useMyProperties() {
     queryKey: ["my-properties"],
     queryFn: async () => (await api.get<ApiMyProperty[]>("/user/properties")).map(mapApiMyProperty),
   });
+}
+
+/** Live land listings and properties share the plan's listing limit; paused ones don't count. */
+export function useUsedListings(): number {
+  const { user } = useAuth();
+  const { data: properties = [] } = useMyProperties();
+  return [...(user?.listings ?? []), ...properties].filter((l) => !l.paused).length;
 }
 
 /**
@@ -397,6 +417,16 @@ export function useDeleteProperty() {
 
   return useMutation({
     mutationFn: (id: string) => api.delete<unknown>(`/user/properties/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
+  });
+}
+
+export function useSetPropertyPaused() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, paused }: { id: string; paused: boolean }) =>
+      api.patch<unknown>(`/user/properties/${id}/${paused ? "pause" : "resume"}`, {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-properties"] }),
   });
 }
