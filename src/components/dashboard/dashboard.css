@@ -64,6 +64,25 @@
     font-weight: 700;
   }
 
+  .gd-nav-count {
+    margin-left: auto;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 11px;
+    background: var(--brand);
+    color: var(--brand-foreground);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+  }
+
+  .gd-mbi .gd-badge {
+    top: -5px;
+    right: -7px;
+  }
+
   .gd-avatar-btn {
     display: flex;
     padding: 3px;
@@ -245,6 +264,7 @@
   }
 
   .gd-mbi {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;

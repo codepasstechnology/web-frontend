@@ -59,4 +59,28 @@ describe("NotificationBell", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard", search: { tab: "kyc" } });
     expect(mockMarkRead).not.toHaveBeenCalled();
   });
+
+  it("opens the agency page for viewing updates and replies", async () => {
+    notifications = [
+      {
+        ...note("1", "viewing_confirmed"),
+        data: {
+          type: "viewing_confirmed",
+          message: "Kilimani Homes confirmed your viewing",
+          agency_slug: "kilimani-homes",
+        },
+      },
+      note("2", "agency_replied", true),
+    ];
+    render(<NotificationBell />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Notifications, 1 unread" }));
+    expect(screen.getByText("New reply")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Viewing confirmed"));
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/agency/$slug",
+      params: { slug: "kilimani-homes" },
+    });
+  });
 });

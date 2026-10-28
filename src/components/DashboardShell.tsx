@@ -15,8 +15,10 @@ import {
   LineChart,
   ExternalLink,
 } from "lucide-react";
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, type ReactNode } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { LEAD_SOURCE_LABELS, useMarkLeadsSeen, useUnseenLeads } from "@/lib/agency";
 import { usePlans } from "@/lib/plans";
 import { useUsedListings } from "@/lib/properties";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
@@ -155,6 +157,35 @@ const NavPill = forwardRef<
   );
 });
 
+/**
+ * How many leads came in since this member last opened the Leads tab. A new one
+ * pops up while they work elsewhere in the dashboard; opening the tab clears it.
+ */
+function useLeadsBadge(active: DashTab, open: () => void): number {
+  const { data } = useUnseenLeads();
+  const { mutate: markSeen } = useMarkLeadsSeen();
+  const count = data?.count ?? 0;
+  const seen = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (active === "leads" && count > 0) markSeen();
+  }, [active, count, markSeen]);
+
+  useEffect(() => {
+    if (!data) return;
+    const before = seen.current;
+    seen.current = data.count;
+    if (before === undefined || data.count <= before || !data.latest || active === "leads") return;
+    const lead = data.latest;
+    toast(`New ${LEAD_SOURCE_LABELS[lead.source].toLowerCase()}`, {
+      description: [lead.name ?? "A visitor", lead.listingTitle].filter(Boolean).join(" · "),
+      action: { label: "Open leads", onClick: open },
+    });
+  }, [data, active, open]);
+
+  return active === "leads" ? 0 : count;
+}
+
 interface Props {
   active: DashTab;
   onChange?: (t: DashTab) => void;
@@ -183,6 +214,9 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
     onChange?.(t);
     navigate({ to: "/dashboard", search: { tab: t } });
   };
+  const unseenLeads = useLeadsBadge(active, () => handleSelect("leads"));
+  const badge = (id: DashTab) => (id === "leads" ? unseenLeads : 0);
+  const countLabel = (n: number) => (n > 99 ? "99+" : String(n));
 
   const planName = plans.find((p) => p.id === user?.plan)?.name ?? user?.plan;
   const used = useUsedListings();
@@ -215,6 +249,11 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
               >
                 {it.icon}
                 {it.label}
+                {badge(it.id) > 0 && (
+                  <span className="gd-nav-count" aria-label={`${badge(it.id)} new`}>
+                    {countLabel(badge(it.id))}
+                  </span>
+                )}
               </button>
             ))}
             {user?.agency && (
@@ -287,8 +326,13 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
         {mobilePrimaryItems.map((it) => (
           <NavPill
             key={it.id}
-            icon={it.icon}
-            label={it.label}
+            icon={
+              <>
+                {it.icon}
+                {badge(it.id) > 0 && <span className="gd-badge">{countLabel(badge(it.id))}</span>}
+              </>
+            }
+            label={badge(it.id) > 0 ? `${it.label}, ${badge(it.id)} new` : it.label}
             short={it.short}
             expanded={it.id === active}
             aria-current={it.id === active ? "page" : undefined}
@@ -314,6 +358,11 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
               >
                 {it.icon}
                 {it.label}
+                {badge(it.id) > 0 && (
+                  <span className="gd-nav-count" aria-label={`${badge(it.id)} new`}>
+                    {countLabel(badge(it.id))}
+                  </span>
+                )}
               </DropdownMenuItem>
             ))}
             {user?.agency && (

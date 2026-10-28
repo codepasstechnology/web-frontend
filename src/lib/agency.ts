@@ -889,6 +889,11 @@ export interface Lead {
   assignedTo: string | null;
   assignee: string | null;
   respondedAt: string | null;
+  /** The last reply sent from the inbox, which went to them by email and notification. */
+  reply: string | null;
+  repliedAt: string | null;
+  /** They left an email or have an account, so a reply from the inbox reaches them. */
+  canReplyInApp: boolean;
   createdAt: string;
 }
 
@@ -909,6 +914,9 @@ interface ApiLead {
   assigned_to: string | null;
   assignee: string | null;
   responded_at: string | null;
+  reply?: string | null;
+  replied_at?: string | null;
+  can_reply_in_app?: boolean;
   created_at: string;
 }
 
@@ -929,6 +937,9 @@ const mapLead = (l: ApiLead): Lead => ({
   assignedTo: l.assigned_to,
   assignee: l.assignee,
   respondedAt: l.responded_at,
+  reply: l.reply ?? null,
+  repliedAt: l.replied_at ?? null,
+  canReplyInApp: l.can_reply_in_app ?? false,
   createdAt: l.created_at,
 });
 
@@ -973,6 +984,66 @@ export function useUpdateLead() {
       responded?: boolean;
     }) => api.patch<unknown>(`/user/agency/leads/${id}`, patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["agency-leads"] }),
+  });
+}
+
+export function useReplyToLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: string }) =>
+      api.post<unknown>(`/user/agency/leads/${id}/reply`, { body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["agency-leads"] }),
+  });
+}
+
+export interface UnseenLeads {
+  count: number;
+  latest: {
+    id: string;
+    source: LeadSource;
+    name: string | null;
+    listingTitle: string | null;
+  } | null;
+}
+
+const UNSEEN_KEY = ["agency-leads-unseen"];
+
+/** Leads since this member last opened the inbox, for the badge on the Leads tab. */
+export function useUnseenLeads() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: UNSEEN_KEY,
+    enabled: !!user?.agency,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<UnseenLeads> => {
+      const res = await api.get<{
+        count: number;
+        latest: {
+          id: string;
+          source: LeadSource;
+          name: string | null;
+          listing_title: string | null;
+        } | null;
+      }>("/user/agency/leads/unseen");
+      return {
+        count: res.count,
+        latest: res.latest && {
+          id: res.latest.id,
+          source: res.latest.source,
+          name: res.latest.name,
+          listingTitle: res.latest.listing_title,
+        },
+      };
+    },
+  });
+}
+
+export function useMarkLeadsSeen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<unknown>("/user/agency/leads/seen"),
+    onMutate: () =>
+      queryClient.setQueryData<UnseenLeads>(UNSEEN_KEY, (prev) => prev && { ...prev, count: 0 }),
   });
 }
 

@@ -158,6 +158,40 @@ describe("lead inbox", () => {
       "href",
       expect.stringContaining("wa.me/254722000000"),
     );
+    expect(screen.queryByRole("button", { name: /Send reply/ })).not.toBeInTheDocument();
+  });
+
+  it("sends a reply from the inbox to someone the platform can reach", async () => {
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/user/agency") return Promise.resolve(myAgency);
+      if (path.startsWith("/user/agency/leads"))
+        return Promise.resolve({
+          data: [
+            {
+              ...viewingLead,
+              source: "message",
+              email: "wanjiku@example.com",
+              can_reply_in_app: true,
+              reply: "Earlier reply",
+              replied_at: "2026-11-01T10:00:00Z",
+            },
+          ],
+          counts: { new: 1 },
+        });
+      if (path === "/user/agency/replies") return Promise.resolve([]);
+      return Promise.reject(new Error(path));
+    });
+    renderWithClient(<LeadsTab />);
+    await screen.findByText("Wanjiku Mwangi");
+    expect(screen.getByText("Earlier reply")).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Reply"));
+    await userEvent.type(screen.getByLabelText("Reply"), "Yes, come on Saturday.");
+    await userEvent.click(screen.getByRole("button", { name: /Send reply/ }));
+
+    expect(mockPost).toHaveBeenCalledWith("/user/agency/leads/lead-1/reply", {
+      body: "Yes, come on Saturday.",
+    });
   });
 });
 

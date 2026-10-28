@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DashTab } from "@/components/DashboardShell";
+import type { UnseenLeads } from "@/lib/agency";
 
 const mockNavigate = vi.fn();
 
@@ -28,6 +29,16 @@ vi.mock("@/lib/properties", async (importOriginal) => ({
   useUsedListings: () => 0,
 }));
 vi.mock("@/lib/plans", () => ({ usePlans: () => ({ data: [] }) }));
+
+let unseen: UnseenLeads | undefined;
+const mockMarkSeen = vi.fn();
+vi.mock("@/lib/agency", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/agency")>()),
+  useUnseenLeads: () => ({ data: unseen }),
+  useMarkLeadsSeen: () => ({ mutate: mockMarkSeen }),
+}));
+const mockToast = vi.fn();
+vi.mock("sonner", () => ({ toast: (...args: unknown[]) => mockToast(...args) }));
 
 const { DashboardShell } = await import("@/components/DashboardShell");
 
@@ -112,7 +123,10 @@ describe("DashboardShell — agency accounts", () => {
     agency: { id: "a-1", name: "Kilimani Homes", slug: "kilimani-homes", role },
   });
 
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    unseen = undefined;
+  });
 
   it("links to the agency's public page and offers the owner an agency upgrade", () => {
     mockUser.mockReturnValue(agencyUser("owner"));
@@ -132,5 +146,41 @@ describe("DashboardShell — agency accounts", () => {
 
     expect(screen.getAllByRole("link", { name: "View agency page" }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /Upgrade/ })).not.toBeInTheDocument();
+  });
+
+  it("counts new leads on the Leads tab and pops up when another arrives", () => {
+    mockUser.mockReturnValue(agencyUser("owner", "agency-pro"));
+    unseen = {
+      count: 2,
+      latest: { id: "l-1", source: "message", name: "Amina", listingTitle: null },
+    };
+    const { rerender } = show("overview");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("button", { name: /Leads/ })).toHaveTextContent("2");
+    expect(bar().getByRole("button", { name: "Leads, 2 new" })).toBeInTheDocument();
+    expect(mockToast).not.toHaveBeenCalled();
+
+    unseen = {
+      count: 3,
+      latest: { id: "l-2", source: "viewing", name: "Brian", listingTitle: "Kilimani 2BR" },
+    };
+    rerender(<DashboardShell active="overview">content</DashboardShell>);
+    expect(mockToast).toHaveBeenCalledWith(
+      "New viewing request",
+      expect.objectContaining({ description: "Brian · Kilimani 2BR" }),
+    );
+  });
+
+  it("clears the count once the Leads tab is open", () => {
+    mockUser.mockReturnValue(agencyUser("owner", "agency-pro"));
+    unseen = {
+      count: 2,
+      latest: { id: "l-1", source: "message", name: "Amina", listingTitle: null },
+    };
+    show("leads");
+
+    expect(mockMarkSeen).toHaveBeenCalled();
+    expect(bar().getByRole("button", { name: "Leads" })).not.toHaveTextContent("2");
   });
 });

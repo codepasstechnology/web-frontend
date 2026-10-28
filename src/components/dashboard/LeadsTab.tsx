@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarClock, Mail, MessageCircle, Phone, Plus, Search, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Mail,
+  MessageCircle,
+  Phone,
+  Plus,
+  Search,
+  Send,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { StatusChip, type ChipKind } from "@/components/dashboard/parts";
 import { ErrorBox, Field } from "@/components/dashboard/wizard";
 import {
@@ -9,6 +19,7 @@ import {
   LEAD_STATUS_LABELS,
   useLeads,
   useMyAgency,
+  useReplyToLead,
   useSavedReplies,
   useSavedReplyMutations,
   useUpdateLead,
@@ -214,6 +225,7 @@ function LeadRow({
   manages: boolean;
 }) {
   const update = useUpdateLead();
+  const sendReply = useReplyToLead();
   const [reply, setReply] = useState(
     `Hi ${lead.name?.split(" ")[0] ?? "there"}, thanks for your interest in ${lead.listingTitle ?? "our listing"}.`,
   );
@@ -306,7 +318,16 @@ function LeadRow({
         </div>
       )}
 
-      {lead.phone && (
+      {lead.reply && lead.repliedAt && (
+        <p className="rounded-[12px] border border-border-subtle px-3 py-2 text-sm">
+          <span className="block text-xs text-muted-foreground">
+            Your reply · {when(lead.repliedAt)}
+          </span>
+          {lead.reply}
+        </p>
+      )}
+
+      {(lead.phone || lead.canReplyInApp) && (
         <div className="flex flex-col gap-2">
           {replies.length > 0 && (
             <select
@@ -337,12 +358,32 @@ function LeadRow({
       )}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-border-subtle pt-3">
+        {lead.canReplyInApp && (
+          <button
+            type="button"
+            className="gd-btn gd-sm"
+            disabled={!reply.trim() || sendReply.isPending}
+            title="Emails them, and shows in their notifications if they have an account"
+            onClick={() =>
+              sendReply.mutate(
+                { id: lead.id, body: reply.trim() },
+                {
+                  onSuccess: () => toast.success(`Reply sent to ${lead.name ?? "them"}.`),
+                  onError: (e) =>
+                    toast.error(e instanceof Error ? e.message : "Couldn't send the reply."),
+                },
+              )
+            }
+          >
+            <Send size={15} aria-hidden="true" /> {sendReply.isPending ? "Sending…" : "Send reply"}
+          </button>
+        )}
         {wa && (
           <a
             href={wa}
             target="_blank"
             rel="noopener noreferrer"
-            className="gd-btn gd-sm"
+            className={lead.canReplyInApp ? "gd-btn gd-o gd-sm" : "gd-btn gd-sm"}
             onClick={responded}
           >
             <MessageCircle size={15} aria-hidden="true" /> Reply on WhatsApp
