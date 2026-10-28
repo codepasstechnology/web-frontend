@@ -163,6 +163,7 @@ function RentalsContent() {
                 selected={p.id === selected?.id}
                 hot={hotIds.includes(p.id)}
                 onSelect={() => handleSelect(p)}
+                agency={p.agency}
                 onHover={(on) => setHotIds(on ? [p.id] : [])}
               />
             </li>

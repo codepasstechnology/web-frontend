@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
 const mockApiPost = vi.fn();
@@ -64,6 +64,24 @@ describe("AuthProvider — login", () => {
     await act(async () => {});
     expect(result.current.user).toBeNull();
     expect(result.current.ready).toBe(true);
+  });
+
+  it("keeps the session through a server error while restoring it", async () => {
+    mockGetToken.mockReturnValue("tok" as never);
+    mockApiGet.mockImplementation((path: string) =>
+      path === "/user/me"
+        ? mockApiGet.mock.calls.filter(([p]) => p === "/user/me").length === 1
+          ? Promise.reject(new Error("Something went wrong. Please try again."))
+          : Promise.resolve(fakeApiUser)
+        : Promise.resolve([]),
+    );
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.user?.email).toBe("jane@example.com"), {
+      timeout: 3000,
+    });
+
+    expect(mockClearToken).not.toHaveBeenCalled();
   });
 
   it("login() calls the marketplace login endpoint and stores the token", async () => {

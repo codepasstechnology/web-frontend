@@ -26,6 +26,7 @@ import { useUsedListings } from "@/lib/properties";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
+import { LAND_DRAFT_KEY } from "@/lib/drafts";
 import { hasSelfIntersection, polygonAreaAcres } from "@/lib/mapGeo";
 import { plotStatus } from "@/lib/plotting";
 import { Beacon } from "@/components/dashboard/parts";
@@ -46,6 +47,8 @@ import {
 import "@/components/site/site-pages.css";
 import "@/components/map/map.css";
 import { compressImage } from "@/lib/compressImage";
+import { toLocalInput, useMyAgency } from "@/lib/agency";
+import { AgencyListingFields } from "@/components/dashboard/AgencyListingFields";
 
 export const Route = createFileRoute("/dashboard/upload")({
   head: () => ({
@@ -79,7 +82,7 @@ const LAND_TYPES: Record<NonNullable<NewListingInput["landType"]>, string> = {
 
 type SizeUnit = "acres" | "hectares" | "feet";
 
-const DRAFT_KEY = "lv_upload_draft_v1";
+const DRAFT_KEY = LAND_DRAFT_KEY;
 
 interface UploadDraft {
   step: number;
@@ -311,6 +314,12 @@ function UploadPage() {
   const [showErrors, setShowErrors] = useState(false);
   const [loadingListing, setLoadingListing] = useState(!!editId);
   const [loadError, setLoadError] = useState("");
+  const { data: agency } = useMyAgency();
+  const [agencyFields, setAgencyFields] = useState({
+    assignedAgentId: "",
+    projectId: "",
+    publishAt: "",
+  });
   const [existingPhotos, setExistingPhotos] = useState<
     { id: string; url: string; isCover: boolean }[]
   >([]);
@@ -381,6 +390,11 @@ function UploadPage() {
         }));
         setExistingPhotos(d.photos.map((p) => ({ id: p.id, url: p.url, isCover: p.isCover })));
         setCoverPhotoId(d.photos.find((p) => p.isCover)?.id);
+        setAgencyFields({
+          assignedAgentId: d.assignedAgentId ?? "",
+          projectId: d.projectId ?? "",
+          publishAt: toLocalInput(d.publishAt),
+        });
         setMaxStep(steps.length - 1);
       })
       .catch(() => setLoadError("Couldn't load this listing. Please try again."))
@@ -589,6 +603,12 @@ function UploadPage() {
     setSubmitting(true);
     setSubmitErr("");
     setUploadProgress(form.documents.length || form.photos.length ? 0 : null);
+    // New agency listings end with the agency's standard footer, once.
+    const footer = !editId && agency?.descriptionFooter ? agency.descriptionFooter.trim() : "";
+    const description =
+      footer && !form.description.includes(footer)
+        ? `${form.description.trim()}\n\n${footer}`.trim()
+        : form.description;
     const payload: NewListingInput = {
       title: form.parcelNumber.trim(),
       parcelNumber: form.parcelNumber.trim(),
@@ -598,7 +618,7 @@ function UploadPage() {
       size: sizeDisplay || undefined,
       areaAcres: sizeAcres ?? undefined,
       price: Number(form.price) || 0,
-      description: form.description || undefined,
+      description: description || undefined,
       latitude: form.pin?.[0],
       longitude: form.pin?.[1],
       boundary: form.boundary ?? undefined,
@@ -608,6 +628,15 @@ function UploadPage() {
       utilities: form.utilities.length ? form.utilities : undefined,
       documents: form.documents.length ? form.documents : undefined,
       photoFiles: form.photos.map((p) => p.file),
+      ...(agency
+        ? {
+            assignedAgentId: agencyFields.assignedAgentId || undefined,
+            projectId: agencyFields.projectId || undefined,
+            publishAt: agencyFields.publishAt
+              ? new Date(agencyFields.publishAt).toISOString()
+              : undefined,
+          }
+        : {}),
     };
     try {
       if (editId) {
@@ -1021,6 +1050,15 @@ function UploadPage() {
                     onChange={(e) => set("description", e.target.value)}
                   />
                 </Field>
+                {agency && (
+                  <AgencyListingFields
+                    agency={agency}
+                    assignedAgentId={agencyFields.assignedAgentId}
+                    projectId={agencyFields.projectId}
+                    publishAt={agencyFields.publishAt}
+                    onChange={(patch) => setAgencyFields((f) => ({ ...f, ...patch }))}
+                  />
+                )}
               </div>
             )}
 

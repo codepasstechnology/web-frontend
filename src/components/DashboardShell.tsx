@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   LayoutGrid,
   List,
@@ -9,6 +9,11 @@ import {
   ShieldCheck,
   MoreHorizontal,
   Crown,
+  Building2,
+  Inbox,
+  Users,
+  LineChart,
+  ExternalLink,
 } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
@@ -26,19 +31,85 @@ import "@/components/home/home.css";
 import "@/components/dashboard/dashboard.css";
 
 export type DashTab =
-  "overview" | "listings" | "upload" | "analytics" | "billing" | "settings" | "kyc";
+  | "overview"
+  | "listings"
+  | "upload"
+  | "analytics"
+  | "billing"
+  | "settings"
+  | "kyc"
+  | "agency"
+  | "leads"
+  | "team"
+  | "insights";
+
+type NavItem = { id: DashTab; label: string; short: string; icon: ReactNode };
 
 // `short` is what the bottom nav's expanded pill shows; `label` stays the full
 // name for the sidebar and for every button's accessible name.
-const items: { id: DashTab; label: string; short: string; icon: ReactNode }[] = [
-  { id: "overview", label: "Overview", short: "Overview", icon: <LayoutGrid size={19} /> },
-  { id: "listings", label: "My Listings", short: "Listings", icon: <List size={19} /> },
-  { id: "upload", label: "Upload", short: "Upload", icon: <Upload size={19} /> },
-  { id: "analytics", label: "Analytics", short: "Analytics", icon: <BarChart3 size={19} /> },
-  { id: "billing", label: "Billing & Plan", short: "Billing", icon: <Wallet size={19} /> },
-  { id: "kyc", label: "KYC Status", short: "KYC", icon: <ShieldCheck size={19} /> },
-  { id: "settings", label: "Account Settings", short: "Settings", icon: <Settings size={19} /> },
+const ITEM: Record<DashTab, NavItem> = {
+  overview: {
+    id: "overview",
+    label: "Overview",
+    short: "Overview",
+    icon: <LayoutGrid size={19} />,
+  },
+  listings: { id: "listings", label: "My Listings", short: "Listings", icon: <List size={19} /> },
+  upload: { id: "upload", label: "Upload", short: "Upload", icon: <Upload size={19} /> },
+  leads: { id: "leads", label: "Leads", short: "Leads", icon: <Inbox size={19} /> },
+  analytics: {
+    id: "analytics",
+    label: "Analytics",
+    short: "Analytics",
+    icon: <BarChart3 size={19} />,
+  },
+  insights: {
+    id: "insights",
+    label: "Agency Insights",
+    short: "Insights",
+    icon: <LineChart size={19} />,
+  },
+  agency: { id: "agency", label: "Agency Profile", short: "Agency", icon: <Building2 size={19} /> },
+  team: { id: "team", label: "Team", short: "Team", icon: <Users size={19} /> },
+  billing: { id: "billing", label: "Billing & Plan", short: "Billing", icon: <Wallet size={19} /> },
+  kyc: { id: "kyc", label: "KYC Status", short: "KYC", icon: <ShieldCheck size={19} /> },
+  settings: {
+    id: "settings",
+    label: "Account Settings",
+    short: "Settings",
+    icon: <Settings size={19} />,
+  },
+};
+
+const INDIVIDUAL_NAV: DashTab[] = [
+  "overview",
+  "listings",
+  "upload",
+  "analytics",
+  "billing",
+  "kyc",
+  "settings",
 ];
+
+/** Agency members get the agency's tabs; insights are for owners and managers. */
+function navFor(agencyRole: string | undefined): NavItem[] {
+  if (!agencyRole) return INDIVIDUAL_NAV.map((id) => ITEM[id]);
+  const manages = agencyRole === "owner" || agencyRole === "manager";
+  const ids: DashTab[] = [
+    "overview",
+    "listings",
+    "leads",
+    "upload",
+    "agency",
+    "team",
+    ...(manages ? (["insights"] as DashTab[]) : []),
+    "analytics",
+    "billing",
+    "kyc",
+    "settings",
+  ];
+  return ids.map((id) => ITEM[id]);
+}
 
 /**
  * One slot of the floating bottom bar. Collapsed it is an icon-only tile;
@@ -84,12 +155,6 @@ const NavPill = forwardRef<
   );
 });
 
-// The mobile bottom nav only has room for a handful of comfortable tap
-// targets — the rest live behind "More" so none of them end up as an
-// unreadable, hard-to-tap sliver.
-const mobilePrimaryItems = items.slice(0, 4);
-const mobileOverflowItems = items.slice(4);
-
 interface Props {
   active: DashTab;
   onChange?: (t: DashTab) => void;
@@ -102,6 +167,12 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
   const { user } = useAuth();
   const { data: plans = [] } = usePlans();
   const navigate = useNavigate();
+  const items = navFor(user?.agency?.role);
+  // The mobile bottom nav only has room for a handful of comfortable tap
+  // targets — the rest live behind "More" so none of them end up as an
+  // unreadable, hard-to-tap sliver.
+  const mobilePrimaryItems = items.slice(0, 4);
+  const mobileOverflowItems = items.slice(4);
   const overflowActive = mobileOverflowItems.find((it) => it.id === active);
 
   const handleSelect = (t: DashTab) => {
@@ -117,7 +188,11 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
   const used = useUsedListings();
   const unlimited = user?.maxListings === Infinity;
   const usedPct = !user ? 0 : unlimited ? 12 : Math.min(100, (used / user.maxListings) * 100);
-  const canUpgrade = !!user && user.plan !== "pro" && user.plan !== "enterprise";
+  const agency = user?.agency;
+  // Agencies upgrade to agency plans, and only the owner pays for the team.
+  const topPlans = agency ? ["agency-pro", "agency-enterprise"] : ["pro", "enterprise"];
+  const canUpgrade =
+    !!user && (!agency || agency.role === "owner") && !topPlans.includes(user.plan);
 
   return (
     <div className="gd-root">
@@ -142,6 +217,17 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
                 {it.label}
               </button>
             ))}
+            {user?.agency && (
+              <Link
+                to="/agency/$slug"
+                params={{ slug: user.agency.slug }}
+                target="_blank"
+                className="gd-nav"
+              >
+                <ExternalLink size={19} aria-hidden="true" />
+                View agency page
+              </Link>
+            )}
           </nav>
 
           <div className="flex-1" />
@@ -184,7 +270,7 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
                   className="gd-plancard-upgrade"
                   onClick={() => (onUpgrade ? onUpgrade() : handleSelect("billing"))}
                 >
-                  Upgrade to Pro
+                  {agency ? "Upgrade to Agency Pro" : "Upgrade to Pro"}
                 </button>
               )}
             </div>
@@ -230,6 +316,14 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
                 {it.label}
               </DropdownMenuItem>
             ))}
+            {user?.agency && (
+              <DropdownMenuItem asChild className="gd-mi">
+                <Link to="/agency/$slug" params={{ slug: user.agency.slug }} target="_blank">
+                  <ExternalLink size={19} aria-hidden="true" />
+                  View agency page
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>

@@ -63,6 +63,7 @@ const property = {
   pricePeriod: "month",
   position: [-1.3, 36.8],
   photos: [],
+  agency: { id: "ag1", name: "Kilimani Homes", slug: "kilimani-homes" },
 } as unknown as Property;
 
 const query = <T,>(data: T[]) => ({
@@ -118,6 +119,20 @@ describe("Explore map", () => {
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(screen.getByRole("button", { name: "Land 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rentals 1" })).toBeInTheDocument();
+  });
+
+  it("filters by who listed it, down to one agency", async () => {
+    render(<ExplorePage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Filters" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Agencies" }));
+    expect(screen.getByTestId("map")).toHaveTextContent("0 parcels, 1 properties");
+    await userEvent.selectOptions(screen.getByLabelText("Agency"), "kilimani-homes");
+    expect(screen.getByTestId("map")).toHaveTextContent("0 parcels, 1 properties");
+
+    await userEvent.click(screen.getByRole("button", { name: "Owners" }));
+    expect(screen.getByTestId("map")).toHaveTextContent("1 parcels, 0 properties");
+    expect(screen.queryByLabelText("Agency")).not.toBeInTheDocument();
   });
 
   it("narrows to one kind from the URL", async () => {

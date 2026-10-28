@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { List } from "lucide-react";
 import { LandMap } from "@/components/map/LazyMaps";
 import { MapFilterMenu } from "@/components/map/MapFilterMenu";
-import { MapSidebar, PriceRangeFilter, SegFilter } from "@/components/MapSidebar";
+import { MapSidebar, PriceRangeFilter, SegFilter, SelectFilter } from "@/components/MapSidebar";
 import { ParcelPanel, RentalPanel } from "@/components/PropertyPanel";
 import { ListingCard } from "@/components/map/ListingCard";
 import { CompareModal, CompareTray } from "@/components/map/Compare";
@@ -19,6 +19,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { COMPARE_MAX } from "@/lib/compare";
 import type { LandParcel, ListingType } from "@/lib/landData";
+import type { ListingAgency } from "@/lib/listingAgency";
 import type { Bbox } from "@/lib/mapGeo";
 import { parcelPrice } from "@/lib/parcelFilters";
 import { ANY_PRICE, HOME_PRICE_KIND, inRange, LAND_PRICE_KIND } from "@/lib/priceRanges";
@@ -34,6 +35,14 @@ import {
 import { shareHead, shareQuery } from "@/lib/shareMeta";
 
 type Show = "land" | "rentals";
+type ListedBy = "all" | "agency" | "owner";
+
+/** Whether a listing passes the "Listed by" filter; `agencySlug` narrows it to one agency. */
+function listedBy(agency: ListingAgency | null | undefined, by: ListedBy, agencySlug: string) {
+  if (by === "all") return true;
+  if (by === "owner") return !agency;
+  return !!agency && (agencySlug === "" || agency.slug === agencySlug);
+}
 
 interface ExploreSearch {
   show?: Show;
@@ -87,6 +96,8 @@ function ExploreContent() {
   // Each price is on the scale of the chosen type, so changing type clears it.
   const [landPrice, setLandPrice] = useState(ANY_PRICE);
   const [homePrice, setHomePrice] = useState(ANY_PRICE);
+  const [by, setBy] = useState<ListedBy>("all");
+  const [agencySlug, setAgencySlug] = useState("");
   const recent = useRecentlyViewed();
   const { savedIds, toggleSaved } = useSavedParcels(!!user);
 
@@ -103,20 +114,30 @@ function ExploreContent() {
         ? []
         : parcels.filter(
             (p) =>
-              landType === "all" || (p.listingType === landType && inRange(p.price, landPrice)),
+              listedBy(p.agency, by, agencySlug) &&
+              (landType === "all" || (p.listingType === landType && inRange(p.price, landPrice))),
           ),
-    [parcels, search.show, landType, landPrice],
+    [parcels, search.show, landType, landPrice, by, agencySlug],
   );
   const shownProperties = useMemo(
     () =>
       search.show === "land"
         ? []
         : properties.filter(
-            (p) => homeIntent === "all" || (p.intent === homeIntent && inRange(p.price, homePrice)),
+            (p) =>
+              listedBy(p.agency, by, agencySlug) &&
+              (homeIntent === "all" || (p.intent === homeIntent && inRange(p.price, homePrice))),
           ),
-    [properties, search.show, homeIntent, homePrice],
+    [properties, search.show, homeIntent, homePrice, by, agencySlug],
   );
-  const filtersActive = !!search.show || landType !== "all" || homeIntent !== "all";
+  // The agencies with listings in the current map view, for the agency picker.
+  const agencies = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const l of [...parcels, ...properties])
+      if (l.agency) seen.set(l.agency.slug, l.agency.name);
+    return [...seen].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [parcels, properties]);
+  const filtersActive = !!search.show || landType !== "all" || homeIntent !== "all" || by !== "all";
   const chooseLand = (t: ListingType | "all") => {
     setLandType(t);
     setLandPrice(ANY_PRICE);
@@ -125,8 +146,13 @@ function ExploreContent() {
     setHomeIntent(i);
     setHomePrice(ANY_PRICE);
   };
+  const chooseBy = (b: ListedBy) => {
+    setBy(b);
+    setAgencySlug("");
+  };
   const resetFilters = () => {
     setSearch({ show: undefined });
+    chooseBy("all");
     chooseLand("all");
     chooseHome("all");
   };
@@ -251,6 +277,7 @@ function ExploreContent() {
                 hot={hotIds.includes(p.id)}
                 compare={{ on: compareIds.includes(p.id), toggle: () => toggleCompare(p.id) }}
                 onSelect={() => selectParcel(p)}
+                agency={p.agency}
                 onHover={(on) => setHotIds(on ? [p.id] : [])}
               />
             </li>
@@ -269,6 +296,7 @@ function ExploreContent() {
                 selected={p.id === selectedId}
                 hot={hotIds.includes(p.id)}
                 onSelect={() => selectProperty(p)}
+                agency={p.agency}
                 onHover={(on) => setHotIds(on ? [p.id] : [])}
               />
             </li>
@@ -306,6 +334,30 @@ function ExploreContent() {
               { value: "rentals", label: `Rentals ${properties.length}` },
             ]}
           />
+          <SegFilter
+            label="Listed by"
+            value={by}
+            onChange={chooseBy}
+            options={[
+              { value: "all", label: "Anyone" },
+              { value: "agency", label: "Agencies" },
+              { value: "owner", label: "Owners" },
+            ]}
+          />
+          {by === "agency" && agencies.length > 0 && (
+            <div className="gm-field">
+              <SelectFilter
+                id="explore-agency"
+                label="Agency"
+                value={agencySlug}
+                onChange={setAgencySlug}
+                options={[
+                  { value: "", label: "Any agency" },
+                  ...agencies.map(([slug, name]) => ({ value: slug, label: name })),
+                ]}
+              />
+            </div>
+          )}
           {search.show !== "rentals" && (
             <>
               <SegFilter

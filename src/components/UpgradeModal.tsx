@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
-import { usePlans } from "@/lib/plans";
+import { plansFor, usePlans } from "@/lib/plans";
+import { useAuth } from "@/lib/auth";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PlanCard } from "./PlanCard";
 
@@ -12,7 +13,9 @@ interface Props {
 }
 
 export function UpgradeModal({ open, currentPlan, onClose, onSelect, reason }: Props) {
-  const { data: plans = [] } = usePlans();
+  const { user } = useAuth();
+  const { data: allPlans = [] } = usePlans();
+  const plans = plansFor(allPlans, !!user?.agency);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="gd-dialog gd-xwide [&>button:last-child]:hidden">

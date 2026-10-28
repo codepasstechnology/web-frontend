@@ -8,12 +8,19 @@ const mockNavigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  Link: ({
+    to,
+    params,
+    children,
+  }: {
+    to: string;
+    params?: { slug: string };
+    children: React.ReactNode;
+  }) => <a href={params ? to.replace("$slug", params.slug) : to}>{children}</a>,
 }));
 
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null }) }));
+const mockUser = vi.fn<() => object | null>(() => null);
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: mockUser() }) }));
 vi.mock("@/components/VerifyAccountModal", () => ({ VerifyAccountModal: () => null }));
 vi.mock("@/components/home/HomeNavbar", () => ({ HomeNavbar: () => null }));
 vi.mock("@/lib/properties", async (importOriginal) => ({
@@ -95,5 +102,35 @@ describe("DashboardShell — bottom nav", () => {
     const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
     expect(sidebar.getByRole("button", { name: "Upload" })).toHaveAttribute("aria-current", "page");
     expect(sidebar.getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("DashboardShell — agency accounts", () => {
+  const agencyUser = (role: string, plan = "agency-free") => ({
+    plan,
+    maxListings: 5,
+    agency: { id: "a-1", name: "Kilimani Homes", slug: "kilimani-homes", role },
+  });
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("links to the agency's public page and offers the owner an agency upgrade", () => {
+    mockUser.mockReturnValue(agencyUser("owner"));
+    show("overview");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("link", { name: "View agency page" })).toHaveAttribute(
+      "href",
+      "/agency/kilimani-homes",
+    );
+    expect(sidebar.getByRole("button", { name: "Upgrade to Agency Pro" })).toBeInTheDocument();
+  });
+
+  it("does not ask agents to upgrade, since the owner pays for the team", () => {
+    mockUser.mockReturnValue(agencyUser("agent"));
+    show("overview");
+
+    expect(screen.getAllByRole("link", { name: "View agency page" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /Upgrade/ })).not.toBeInTheDocument();
   });
 });

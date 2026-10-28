@@ -12,6 +12,7 @@ export function HomeFooter() {
           <nav aria-label="Explore" className="gp-footer-col">
             <span>Explore</span>
             <Link to="/explore">Map</Link>
+            <Link to="/agencies">Find an agency</Link>
             <Link to="/pricing">Pricing</Link>
             <Link to="/blog">Blog</Link>
           </nav>

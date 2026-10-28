@@ -13,7 +13,7 @@ const navigate = vi.fn();
 const sendContact = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (opts: object) => opts,
+  createFileRoute: () => (opts: object) => ({ ...opts, useSearch: () => ({}) }),
   useNavigate: () => navigate,
   Link: ({
     to,
@@ -42,7 +42,8 @@ vi.mock("@/lib/content", () => ({
   useFaqs: () => ({ data: faqs(), isLoading: false }),
   useBlogPosts: () => ({ data: posts(), isLoading: false }),
 }));
-vi.mock("@/lib/plans", () => ({
+vi.mock("@/lib/plans", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/plans")>()),
   usePlans: () => ({ data: plans() }),
 }));
 vi.mock("@/lib/settings", () => ({
