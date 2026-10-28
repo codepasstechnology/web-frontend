@@ -1,3 +1,5 @@
+import type { ListingAgency } from "./listingAgency";
+
 export type LandStatus = "available" | "sold" | "reserved" | "verified" | "disputed";
 export type ListingType = "sale" | "lease";
 export type PostedBy = "owner" | "broker";
@@ -34,6 +36,9 @@ export interface LandParcel {
   area?: string;
   /** Google Street View covers this spot. Null until the background check has run. */
   svAvailable?: boolean | null;
+  /** Set when an agency posted it: the brand shown on the listing. */
+  agency?: ListingAgency | null;
+  project?: string | null;
 }
 
 const parcel = (

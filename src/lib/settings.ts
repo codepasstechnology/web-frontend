@@ -38,3 +38,10 @@ export function useCheckoutMethod(chosen: PaymentMethod): PaymentMethod | null {
 
   return methods.includes(chosen) ? chosen : (methods[0] ?? null);
 }
+
+/** A public on/off platform setting; treated as on until settings load. */
+export function useSettingFlag(key: string): boolean {
+  const { data } = usePublicSettings();
+
+  return data?.[key] !== "false";
+}

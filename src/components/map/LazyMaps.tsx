@@ -48,3 +48,15 @@ export function GeoMiniMap(props: ComponentProps<typeof GeoMiniMapModule>) {
     </Suspense>
   );
 }
+
+const AgencyListingsMapModule = lazy(() =>
+  import("@/components/agency/AgencyListingsMap").then((m) => ({ default: m.AgencyListingsMap })),
+);
+
+export function AgencyListingsMap(props: ComponentProps<typeof AgencyListingsMapModule>) {
+  return (
+    <Suspense fallback={<div className="h-full w-full bg-muted" />}>
+      <AgencyListingsMapModule {...props} />
+    </Suspense>
+  );
+}

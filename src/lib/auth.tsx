@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, getToken, setToken, clearToken } from "./api";
 import { compressImage } from "@/lib/compressImage";
+import { claimDrafts } from "@/lib/drafts";
 
 export type UserRole = "individual" | "agent" | "developer" | "account_manager";
 
@@ -16,6 +17,23 @@ export interface UserListing {
   coverPhotoUrl: string | null;
   /** Hidden from the site and not using one of the plan's live listing slots. */
   paused?: boolean;
+  /** The agency team member who handles it. */
+  agentName?: string | null;
+  /** Set while it is scheduled to go public later. */
+  publishAt?: string | null;
+}
+
+export type AgencyRole = "owner" | "manager" | "agent";
+
+/** The agency the user belongs to, and their place in it. */
+export interface UserAgency {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  brandColor: string | null;
+  role: AgencyRole;
+  suspended: boolean;
 }
 
 export interface AppUser {
@@ -62,6 +80,7 @@ export interface AppUser {
   emailVerified: boolean;
   /** Platform-wide setting — admins can turn the requirement off entirely. */
   emailVerificationRequired: boolean;
+  agency: UserAgency | null;
 }
 
 // ── API shapes ────────────────────────────────────────────────────────────────
@@ -82,6 +101,15 @@ interface ApiUser {
   two_factor_enabled: boolean;
   email_verified_at: string | null;
   email_verification_required?: boolean;
+  agency?: {
+    id: string;
+    name: string;
+    slug: string;
+    logo_url: string | null;
+    brand_color: string | null;
+    role: AgencyRole;
+    suspended: boolean;
+  } | null;
   notifications: {
     email_inquiries: boolean;
     sms_alerts: boolean;
@@ -108,6 +136,8 @@ interface ApiListing {
   created_at: string;
   cover_photo_url: string | null;
   paused?: boolean;
+  agent_name?: string | null;
+  publish_at?: string | null;
   /** The new listing's land overlaps another listing; it is flagged for review. */
   location_overlaps?: boolean;
 }
@@ -133,6 +163,9 @@ interface ApiListingDetail {
   utilities: string[];
   status: string;
   photos: { id: string; url: string; is_cover: boolean }[];
+  assigned_agent_id?: string | null;
+  project_id?: string | null;
+  publish_at?: string | null;
 }
 
 interface ApiSubscription {
@@ -205,6 +238,17 @@ function mapApiUser(
     // Defaults to false so a backend that omits the field suppresses the
     // verification modal rather than hard-blocking the dashboard.
     emailVerificationRequired: u.email_verification_required ?? false,
+    agency: u.agency
+      ? {
+          id: u.agency.id,
+          name: u.agency.name,
+          slug: u.agency.slug,
+          logoUrl: u.agency.logo_url,
+          brandColor: u.agency.brand_color,
+          role: u.agency.role,
+          suspended: u.agency.suspended,
+        }
+      : null,
     county: u.county ?? undefined,
     bio: u.bio ?? undefined,
     company: u.company ?? undefined,
@@ -232,6 +276,8 @@ function mapApiUser(
       createdAt: l.created_at,
       coverPhotoUrl: l.cover_photo_url,
       paused: l.paused ?? false,
+      agentName: l.agent_name ?? null,
+      publishAt: l.publish_at ?? null,
     })),
     payments: payments.map((p) => ({
       number: p.number,
@@ -265,6 +311,10 @@ export interface NewListingInput {
   utilities?: string[];
   documents?: { type: string; file: File }[];
   photoFiles?: File[];
+  /** Agency listings only. */
+  assignedAgentId?: string;
+  projectId?: string;
+  publishAt?: string;
 }
 
 export interface ListingEditInput extends NewListingInput {
@@ -292,6 +342,9 @@ export interface ListingDetail {
   utilities: string[];
   status: "pending" | "active" | "sold";
   photos: { id: string; url: string; isCover: boolean }[];
+  assignedAgentId?: string | null;
+  projectId?: string | null;
+  publishAt?: string | null;
 }
 
 interface AuthCtx {
@@ -312,6 +365,8 @@ interface AuthCtx {
     role: UserRole;
     /** The Terms checkbox; the server records the version accepted. */
     acceptedTerms: boolean;
+    /** From the "I'm an agency" sign-up: creates the agency with the account. */
+    agency?: { name: string; areas: string[] };
   }) => Promise<AppUser>;
   logout: () => Promise<void>;
   setPlan: (plan: string) => void;
@@ -377,6 +432,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   async function loadUser(apiUser: ApiUser): Promise<AppUser> {
+    claimDrafts(String(apiUser.id));
     const [listings, sub, payments] = await Promise.all([
       api.get<ApiListing[]>("/user/listings").catch(() => [] as ApiListing[]),
       api
@@ -394,11 +450,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    api
-      .get<ApiUser>("/user/me")
-      .then(loadUser)
-      .then(setUser)
-      .catch(() => clearToken())
+    // Only a 401 means the session is over, and api.ts already signs out on
+    // that. A network drop or a server error is retried once and never throws
+    // the session away.
+    const restore = () => api.get<ApiUser>("/user/me").then(loadUser).then(setUser);
+    restore()
+      .catch(() => new Promise((resolve) => setTimeout(resolve, 1500)).then(restore))
+      .catch(() => {})
       .finally(() => setReady(true));
   }, []);
 
@@ -451,6 +509,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     role: UserRole;
     acceptedTerms: boolean;
+    agency?: { name: string; areas: string[] };
   }): Promise<AppUser> => {
     const res = await api.post<AuthResponse>("/auth/register", {
       name: data.fullName,
@@ -460,6 +519,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password_confirmation: data.password,
       role: data.role,
       accept_terms: data.acceptedTerms,
+      agency: data.agency,
     });
     setToken(res.token);
     const u = await loadUser(res.user);
@@ -474,6 +534,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* already invalid */
     }
     clearToken();
+    claimDrafts(null);
     setUser(null);
   };
 
@@ -623,6 +684,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fd.append(`documents[${i}][file]`, docFiles[i]);
       });
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
+      if (l.assignedAgentId) fd.append("assigned_agent_id", l.assignedAgentId);
+      if (l.projectId) fd.append("project_id", l.projectId);
+      if (l.publishAt) fd.append("publish_at", l.publishAt);
       body = fd;
     } else {
       body = {
@@ -642,6 +706,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         listing_type: l.listingType ?? "sale",
         land_type: l.landType ?? "residential",
         utilities: l.utilities ?? undefined,
+        assigned_agent_id: l.assignedAgentId || undefined,
+        project_id: l.projectId || undefined,
+        publish_at: l.publishAt || undefined,
       };
     }
     const created = isMultipart
@@ -689,6 +756,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       utilities: d.utilities ?? [],
       status: (d.status as ListingDetail["status"]) ?? "pending",
       photos: d.photos.map((p) => ({ id: p.id, url: p.url, isCover: p.is_cover })),
+      assignedAgentId: d.assigned_agent_id ?? null,
+      projectId: d.project_id ?? null,
+      publishAt: d.publish_at ?? null,
     };
   }, []);
 
@@ -723,6 +793,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       l.photoFiles?.forEach((f) => fd.append("photos[]", f));
       l.removePhotoIds?.forEach((pid) => fd.append("remove_photo_ids[]", pid));
       if (l.coverPhotoId) fd.append("cover_photo_id", l.coverPhotoId);
+      if (l.assignedAgentId) fd.append("assigned_agent_id", l.assignedAgentId);
+      if (l.projectId) fd.append("project_id", l.projectId);
+      if (l.publishAt) fd.append("publish_at", l.publishAt);
 
       const updated = await api.postWithProgress<ApiListingDetail>(
         `/user/listings/${id}`,
@@ -821,6 +894,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = useCallback(async () => {
     await api.delete("/user/me");
     clearToken();
+    claimDrafts(null);
     setUser(null);
   }, []);
 
@@ -866,6 +940,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password_confirmation: next,
     });
     clearToken();
+    claimDrafts(null);
     setUser(null);
   }, []);
 

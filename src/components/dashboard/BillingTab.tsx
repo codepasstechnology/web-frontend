@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Check,
   CreditCard,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { addOns, type Plan } from "@/lib/plans";
+import { addOns, freePlanFor, plansFor, type Plan } from "@/lib/plans";
 import { BoostModal } from "@/components/BoostModal";
 import { StatusChip, type ChipKind } from "@/components/dashboard/parts";
 import {
@@ -24,8 +24,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const ORDER = ["free", "basic", "pro", "enterprise"];
 
 const BOOST_COPY: Record<string, string> = {
   boost: "Your listing shows first in its county on the map and in search for 7 days.",
@@ -65,19 +63,21 @@ export function CancelPlanDialog({
   open,
   planName,
   endsAt,
-  freeListings,
+  freePlan,
   onClose,
 }: {
   open: boolean;
   planName: string;
   endsAt: string | null;
-  freeListings: number | null;
+  freePlan: Plan | undefined;
   onClose: () => void;
 }) {
   const { cancelSubscription } = useAuth();
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState("");
   const until = endsAt ? fmtDate(endsAt) : "the end of your billing period";
+  const freeName = freePlan?.name ?? "Free";
+  const freeListings = freePlan && freePlan.listings !== Infinity ? freePlan.listings : null;
 
   const confirm = async () => {
     setCancelling(true);
@@ -99,10 +99,10 @@ export function CancelPlanDialog({
         <AlertDialogTitle className="gd-h1 text-[26px]">Cancel your subscription?</AlertDialogTitle>
         <AlertDialogDescription className="gd-sub m-0 leading-relaxed">
           Your {planName} plan stays active until {until}. It won&apos;t renew after that, and
-          you&apos;ll move to the Free plan. You can resume anytime before then.
+          you&apos;ll move to the {freeName} plan. You can resume anytime before then.
         </AlertDialogDescription>
         <div className="flex flex-col gap-2 rounded-2xl bg-track p-3.5 text-sm">
-          <span className="font-semibold">On Free you&apos;ll keep:</span>
+          <span className="font-semibold">On {freeName} you&apos;ll keep:</span>
           <span className="gd-feat">
             <Check size={15} strokeWidth={2.6} aria-hidden="true" />
             Your account, saved plots and invoices
@@ -174,6 +174,7 @@ export function BillingTab({
   planEndsAt,
   planCancelledAt,
   plans,
+  agencyRole,
   maxListings,
   usedListings,
   payments,
@@ -186,6 +187,8 @@ export function BillingTab({
   planEndsAt: string | null;
   planCancelledAt: string | null;
   plans: Plan[];
+  /** The account's role in its agency, or undefined for individual accounts. */
+  agencyRole?: string;
   maxListings: number;
   usedListings: number;
   payments: Payment[];
@@ -198,6 +201,10 @@ export function BillingTab({
   const [resuming, setResuming] = useState(false);
   const [boostAddOn, setBoostAddOn] = useState<(typeof addOns)[number] | null>(null);
   const [view, setView] = useState<"monthly" | "yearly">(billingCycle ?? "monthly");
+  const isAgency = agencyRole !== undefined;
+  const [audience, setAudience] = useState<"individual" | "agency">(
+    isAgency ? "agency" : "individual",
+  );
   const [ret, setRet] = useState<Return | null>(null);
 
   useEffect(() => {
@@ -269,10 +276,13 @@ export function BillingTab({
   };
   const active = free || planStatus === "active";
   const totalPaid = payments.filter((x) => x.status === "Paid").reduce((a, b) => a + b.amount, 0);
-  const currentRank = ORDER.indexOf(plan);
-  const freeListings = plans.find((pl) => pl.id === "free")?.listings ?? null;
+  const ownPlans = plansFor(plans, isAgency);
+  const shownPlans = plansFor(plans, audience === "agency");
+  const ownAudience = (audience === "agency") === isAgency;
+  const hasAgencyPlans = plans.some((pl) => pl.audience === "agency");
+  const upgradeTo = ownPlans.find((pl) => pl.id === (isAgency ? "agency-pro" : "pro"));
   const yearlySave = (() => {
-    const paid = plans.filter((pl) => pl.price > 0 && pl.priceYearly);
+    const paid = shownPlans.filter((pl) => pl.price > 0 && pl.priceYearly);
     if (paid.length === 0) return 0;
     const pl = paid[0];
     return Math.round((1 - (pl.priceYearly ?? 0) / (pl.price * 12)) * 100);
@@ -371,15 +381,18 @@ export function BillingTab({
                   : "—"}
           </span>
           <div className="mt-1 flex flex-wrap gap-2">
-            {plan !== "pro" && plan !== "enterprise" && (
-              <button
-                type="button"
-                className="gd-btn gd-sm"
-                onClick={() => onSelectPlan("pro", billingCycle ?? undefined)}
-              >
-                <Sparkles size={15} aria-hidden="true" /> Upgrade
-              </button>
-            )}
+            {agencyRole !== "agent" &&
+              agencyRole !== "manager" &&
+              upgradeTo &&
+              p.price < upgradeTo.price && (
+                <button
+                  type="button"
+                  className="gd-btn gd-sm"
+                  onClick={() => onSelectPlan(upgradeTo.id, billingCycle ?? undefined)}
+                >
+                  <Sparkles size={15} aria-hidden="true" /> Upgrade
+                </button>
+              )}
             {!free && cancelled && (
               <button
                 type="button"
@@ -429,94 +442,152 @@ export function BillingTab({
         </div>
       )}
 
-      <div className="gd-r mt-2 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="gd-h2 text-[22px]">Choose a plan</h2>
-          <p className="gd-sub text-[14.5px]">
-            Switch anytime. Upgrades start now; downgrades apply at your next billing date.
+      {agencyRole === "agent" || agencyRole === "manager" ? (
+        <div className="gd-r gd-card">
+          <h2 className="gd-h2 text-[22px]">Your agency&apos;s plan</h2>
+          <p className="gd-sub mt-1 text-[14.5px]">
+            You&apos;re on {p.name} with the rest of your team. Your agency&apos;s owner manages the
+            plan and its billing.
           </p>
         </div>
-        <div className="gd-seg" role="group" aria-label="Billing cycle">
-          <button
-            type="button"
-            aria-pressed={view === "monthly"}
-            onClick={() => setView("monthly")}
-          >
-            Monthly
-          </button>
-          <button type="button" aria-pressed={view === "yearly"} onClick={() => setView("yearly")}>
-            Yearly
-            {yearlySave > 0 && (
-              <span className="gd-st px-[7px] py-0.5 text-[11px]" data-k="ok">
-                −{yearlySave}%
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
-      <div className="gd-r gd-plans">
-        {plans.map((pl) => {
-          const cur = pl.id === plan;
-          const down = ORDER.indexOf(pl.id) < currentRank;
-          const yr = view === "yearly" && pl.priceYearly != null && pl.price > 0;
-          const shown = yr ? (pl.priceYearly ?? 0) : pl.price;
-          return (
-            <div
-              key={pl.id}
-              className="gd-plan"
-              data-pop={Boolean(pl.badge) && !cur}
-              data-cur={cur}
-            >
-              {pl.badge && !cur && <span className="gd-ribbon">{pl.badge.label}</span>}
-              <span className="flex items-center justify-between">
-                <span className="gd-eyebrow">{pl.name}</span>
-                {cur && <StatusChip kind="ok" label="Your plan" />}
-              </span>
-              <span className="flex items-baseline gap-1">
-                <span className="gd-h text-[28px]">
-                  {pl.price === 0 ? "Free" : `KES ${shown.toLocaleString()}`}
-                </span>
-                {pl.price > 0 && (
-                  <span className="text-sm text-muted-foreground">{yr ? "/ yr" : "/ mo"}</span>
-                )}
-              </span>
-              <span className="min-h-[18px] text-[13px] text-muted-foreground">
-                {pl.price === 0
-                  ? "Forever"
-                  : pl.priceYearly == null
-                    ? ""
-                    : yr
-                      ? `That is KES ${Math.round(pl.priceYearly / 12).toLocaleString()} a month`
-                      : `or KES ${pl.priceYearly.toLocaleString()} a year`}
-              </span>
-              <ul className="flex flex-1 flex-col gap-[7px]">
-                {pl.features.slice(0, 5).map((f) => (
-                  <li key={f} className="gd-feat">
-                    <Check size={15} strokeWidth={2.6} aria-hidden="true" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                disabled={cur}
-                onClick={() => (pl.id === "free" ? setCancelOpen(true) : onSelectPlan(pl.id, view))}
-                className={`gd-btn ${down ? "gd-o" : ""}`}
-                data-tone={cur ? "current" : undefined}
-              >
-                {cur
-                  ? "Current plan"
-                  : pl.id === "free"
-                    ? "Downgrade"
-                    : down
-                      ? `Switch to ${pl.name}`
-                      : `Upgrade to ${pl.name}`}
-              </button>
+      ) : (
+        <>
+          <div className="gd-r mt-2 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="gd-h2 text-[22px]">Choose a plan</h2>
+              <p className="gd-sub text-[14.5px]">
+                Switch anytime. Upgrades start now; downgrades apply at your next billing date.
+              </p>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex flex-wrap gap-2">
+              {hasAgencyPlans && (
+                <div className="gd-seg" role="group" aria-label="Account type">
+                  <button
+                    type="button"
+                    aria-pressed={audience === "individual"}
+                    onClick={() => setAudience("individual")}
+                  >
+                    Owners
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={audience === "agency"}
+                    onClick={() => setAudience("agency")}
+                  >
+                    Agencies
+                  </button>
+                </div>
+              )}
+              <div className="gd-seg" role="group" aria-label="Billing cycle">
+                <button
+                  type="button"
+                  aria-pressed={view === "monthly"}
+                  onClick={() => setView("monthly")}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={view === "yearly"}
+                  onClick={() => setView("yearly")}
+                >
+                  Yearly
+                  {yearlySave > 0 && (
+                    <span className="gd-st px-[7px] py-0.5 text-[11px]" data-k="ok">
+                      −{yearlySave}%
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {!ownAudience && (
+            <p className="gd-r gd-sub text-[14.5px]">
+              {isAgency
+                ? "These plans are for individual owners. Your agency stays on an agency plan."
+                : "Agency plans come with a team, a lead inbox and an agency page. Set up your agency in Settings to choose one."}
+            </p>
+          )}
+
+          <div className="gd-r gd-plans">
+            {shownPlans.map((pl) => {
+              const cur = pl.id === plan;
+              const down = pl.price < p.price;
+              const yr = view === "yearly" && pl.priceYearly != null && pl.price > 0;
+              const shown = yr ? (pl.priceYearly ?? 0) : pl.price;
+              return (
+                <div
+                  key={pl.id}
+                  className="gd-plan"
+                  data-pop={Boolean(pl.badge) && !cur}
+                  data-cur={cur}
+                >
+                  {pl.badge && !cur && <span className="gd-ribbon">{pl.badge.label}</span>}
+                  <span className="flex items-center justify-between">
+                    <span className="gd-eyebrow">{pl.name}</span>
+                    {cur && <StatusChip kind="ok" label="Your plan" />}
+                  </span>
+                  <span className="flex items-baseline gap-1">
+                    <span className="gd-h text-[28px]">
+                      {pl.price === 0 ? "Free" : `KES ${shown.toLocaleString()}`}
+                    </span>
+                    {pl.price > 0 && (
+                      <span className="text-sm text-muted-foreground">{yr ? "/ yr" : "/ mo"}</span>
+                    )}
+                  </span>
+                  <span className="min-h-[18px] text-[13px] text-muted-foreground">
+                    {pl.price === 0
+                      ? "Forever"
+                      : pl.priceYearly == null
+                        ? ""
+                        : yr
+                          ? `That is KES ${Math.round(pl.priceYearly / 12).toLocaleString()} a month`
+                          : `or KES ${pl.priceYearly.toLocaleString()} a year`}
+                  </span>
+                  <ul className="flex flex-1 flex-col gap-[7px]">
+                    {pl.features.slice(0, 5).map((f) => (
+                      <li key={f} className="gd-feat">
+                        <Check size={15} strokeWidth={2.6} aria-hidden="true" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  {!ownAudience ? (
+                    isAgency ? (
+                      <button type="button" disabled className="gd-btn gd-o">
+                        For individual accounts
+                      </button>
+                    ) : (
+                      <Link to="/dashboard" search={{ tab: "settings" }} className="gd-btn gd-o">
+                        Set up your agency
+                      </Link>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={cur}
+                      onClick={() =>
+                        pl.price === 0 ? setCancelOpen(true) : onSelectPlan(pl.id, view)
+                      }
+                      className={`gd-btn ${down ? "gd-o" : ""}`}
+                      data-tone={cur ? "current" : undefined}
+                    >
+                      {cur
+                        ? "Current plan"
+                        : pl.price === 0
+                          ? "Downgrade"
+                          : down
+                            ? `Switch to ${pl.name}`
+                            : `Upgrade to ${pl.name}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <div className="gd-r gd-g21b">
         <div className="gd-card flex flex-col gap-3.5">
@@ -674,7 +745,7 @@ export function BillingTab({
         open={cancelOpen}
         planName={p.name}
         endsAt={planEndsAt}
-        freeListings={freeListings === Infinity ? null : freeListings}
+        freePlan={freePlanFor(plans, isAgency)}
         onClose={() => setCancelOpen(false)}
       />
     </>

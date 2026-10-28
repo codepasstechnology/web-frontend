@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  Building2,
   ChevronDown,
   Cookie,
   CreditCard,
@@ -64,6 +65,12 @@ const PIN_LINKS = [
   { label: "Explore map", to: "/explore", icon: MapPinned, desc: "Land and rentals together" },
   { label: "Land", to: "/land", icon: LandPlot, desc: "Plotted parcels for sale or lease" },
   { label: "Rentals", to: "/rentals", icon: House, desc: "Homes, BnBs and property for sale" },
+  {
+    label: "Agencies",
+    to: "/agencies",
+    icon: Building2,
+    desc: "Find an agency and everything it lists",
+  },
 ] as const;
 
 const SITE_LINKS = [

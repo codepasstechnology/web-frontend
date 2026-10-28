@@ -3,17 +3,25 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DashTab } from "@/components/DashboardShell";
+import type { UnseenLeads } from "@/lib/agency";
 
 const mockNavigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  Link: ({
+    to,
+    params,
+    children,
+  }: {
+    to: string;
+    params?: { slug: string };
+    children: React.ReactNode;
+  }) => <a href={params ? to.replace("$slug", params.slug) : to}>{children}</a>,
 }));
 
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null }) }));
+const mockUser = vi.fn<() => object | null>(() => null);
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: mockUser() }) }));
 vi.mock("@/components/VerifyAccountModal", () => ({ VerifyAccountModal: () => null }));
 vi.mock("@/components/home/HomeNavbar", () => ({ HomeNavbar: () => null }));
 vi.mock("@/lib/properties", async (importOriginal) => ({
@@ -21,6 +29,16 @@ vi.mock("@/lib/properties", async (importOriginal) => ({
   useUsedListings: () => 0,
 }));
 vi.mock("@/lib/plans", () => ({ usePlans: () => ({ data: [] }) }));
+
+let unseen: UnseenLeads | undefined;
+const mockMarkSeen = vi.fn();
+vi.mock("@/lib/agency", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/agency")>()),
+  useUnseenLeads: () => ({ data: unseen }),
+  useMarkLeadsSeen: () => ({ mutate: mockMarkSeen }),
+}));
+const mockToast = vi.fn();
+vi.mock("sonner", () => ({ toast: (...args: unknown[]) => mockToast(...args) }));
 
 const { DashboardShell } = await import("@/components/DashboardShell");
 
@@ -95,5 +113,74 @@ describe("DashboardShell — bottom nav", () => {
     const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
     expect(sidebar.getByRole("button", { name: "Upload" })).toHaveAttribute("aria-current", "page");
     expect(sidebar.getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("DashboardShell — agency accounts", () => {
+  const agencyUser = (role: string, plan = "agency-free") => ({
+    plan,
+    maxListings: 5,
+    agency: { id: "a-1", name: "Kilimani Homes", slug: "kilimani-homes", role },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    unseen = undefined;
+  });
+
+  it("links to the agency's public page and offers the owner an agency upgrade", () => {
+    mockUser.mockReturnValue(agencyUser("owner"));
+    show("overview");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("link", { name: "View agency page" })).toHaveAttribute(
+      "href",
+      "/agency/kilimani-homes",
+    );
+    expect(sidebar.getByRole("button", { name: "Upgrade to Agency Pro" })).toBeInTheDocument();
+  });
+
+  it("does not ask agents to upgrade, since the owner pays for the team", () => {
+    mockUser.mockReturnValue(agencyUser("agent"));
+    show("overview");
+
+    expect(screen.getAllByRole("link", { name: "View agency page" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /Upgrade/ })).not.toBeInTheDocument();
+  });
+
+  it("counts new leads on the Leads tab and pops up when another arrives", () => {
+    mockUser.mockReturnValue(agencyUser("owner", "agency-pro"));
+    unseen = {
+      count: 2,
+      latest: { id: "l-1", source: "message", name: "Amina", listingTitle: null },
+    };
+    const { rerender } = show("overview");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("button", { name: /Leads/ })).toHaveTextContent("2");
+    expect(bar().getByRole("button", { name: "Leads, 2 new" })).toBeInTheDocument();
+    expect(mockToast).not.toHaveBeenCalled();
+
+    unseen = {
+      count: 3,
+      latest: { id: "l-2", source: "viewing", name: "Brian", listingTitle: "Kilimani 2BR" },
+    };
+    rerender(<DashboardShell active="overview">content</DashboardShell>);
+    expect(mockToast).toHaveBeenCalledWith(
+      "New viewing request",
+      expect.objectContaining({ description: "Brian · Kilimani 2BR" }),
+    );
+  });
+
+  it("clears the count once the Leads tab is open", () => {
+    mockUser.mockReturnValue(agencyUser("owner", "agency-pro"));
+    unseen = {
+      count: 2,
+      latest: { id: "l-1", source: "message", name: "Amina", listingTitle: null },
+    };
+    show("leads");
+
+    expect(mockMarkSeen).toHaveBeenCalled();
+    expect(bar().getByRole("button", { name: "Leads" })).not.toHaveTextContent("2");
   });
 });

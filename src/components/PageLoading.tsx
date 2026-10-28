@@ -1,5 +1,5 @@
 import { KENYA_OUTLINE } from "@/components/home/kenyaMapData";
-import "@/components/auth/auth.css";
+import "@/components/loading.css";
 
 // Nairobi as a share of the map's width and height, where the pin sits.
 const NAIROBI = { left: 37.14, top: 65.25 };

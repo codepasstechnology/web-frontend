@@ -8,6 +8,7 @@ import {
 import { api } from "./api";
 import type { LandParcel, LandStatus } from "./landData";
 import { bboxParam, type Bbox } from "./mapGeo";
+import { mapListingAgency, type ApiListingAgency } from "./listingAgency";
 
 interface ApiParcelSummary {
   id: string;
@@ -72,6 +73,8 @@ export interface ApiParcel {
   seller_name: string;
   seller_phone: string;
   seller_agency: string;
+  agency?: ApiListingAgency | null;
+  project?: string | null;
   photos: string[];
   amenities: {
     school: string | null;
@@ -124,6 +127,8 @@ export function mapApiParcel(p: ApiParcel): LandParcel {
     area: p.area || undefined,
     landUse: p.land_type ? p.land_type.charAt(0).toUpperCase() + p.land_type.slice(1) : undefined,
     svAvailable: p.sv_available ?? null,
+    agency: mapListingAgency(p.agency),
+    project: p.project ?? null,
   };
 }
 

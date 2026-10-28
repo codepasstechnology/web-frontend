@@ -7,7 +7,7 @@ import { MarketingShell } from "@/components/site/MarketingShell";
 import { PageHero } from "@/components/site/PageHero";
 import { useAuth } from "@/lib/auth";
 import { useFaqs } from "@/lib/content";
-import { usePlans, type Plan } from "@/lib/plans";
+import { plansFor, usePlans, type Plan } from "@/lib/plans";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -26,6 +26,8 @@ export const Route = createFileRoute("/pricing")({
     ],
     links: MARKETING_FONT_LINKS,
   }),
+  validateSearch: (s: Record<string, unknown>): { audience?: "agency" } =>
+    s.audience === "agency" ? { audience: "agency" } : {},
   component: PricingPage,
 });
 
@@ -101,10 +103,16 @@ function ComparisonCell({ value }: { value: Cell }) {
 
 function PricingPage() {
   const { user, setPlan } = useAuth();
-  const { data: plans = [] } = usePlans();
+  const { data: allPlans = [] } = usePlans();
   const { data: faqs = [] } = useFaqs();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [yearly, setYearly] = useState(false);
+  const [audience, setAudience] = useState<"individual" | "agency">(
+    search.audience ?? (user?.agency ? "agency" : "individual"),
+  );
+  const hasAgencyPlans = allPlans.some((p) => p.audience === "agency");
+  const plans = plansFor(allPlans, audience === "agency");
 
   const choose = (id: string) => {
     if (!user) {
@@ -129,6 +137,29 @@ function PricingPage() {
         highlight="serious land."
         lede="Explore the map for free. Upgrade when you are ready to list or manage properties."
       >
+        {hasAgencyPlans && (
+          <div
+            role="group"
+            aria-label="Who the plans are for"
+            className="gs-billing"
+            style={{ marginBottom: 12 }}
+          >
+            <button
+              type="button"
+              aria-pressed={audience === "individual"}
+              onClick={() => setAudience("individual")}
+            >
+              Owners &amp; sellers
+            </button>
+            <button
+              type="button"
+              aria-pressed={audience === "agency"}
+              onClick={() => setAudience("agency")}
+            >
+              Agencies
+            </button>
+          </div>
+        )}
         <div role="group" aria-label="Billing period" className="gs-billing">
           <button type="button" aria-pressed={!yearly} onClick={() => setYearly(false)}>
             Monthly

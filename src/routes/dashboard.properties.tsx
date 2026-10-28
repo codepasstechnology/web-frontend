@@ -12,6 +12,7 @@ import { kenyaCounties, usePlans, type Plan } from "@/lib/plans";
 import { usePaymentMethods } from "@/lib/settings";
 import { formatThousands, toDigits } from "@/lib/utils";
 import { saveDraftPhotos, loadDraftPhotos, clearDraftPhotos } from "@/lib/draftPhotoStore";
+import { PROPERTY_DRAFT_KEY } from "@/lib/drafts";
 import {
   useCreateProperty,
   useMyProperty,
@@ -37,6 +38,9 @@ import {
   WizardHeader,
 } from "@/components/dashboard/wizard";
 import { compressImage } from "@/lib/compressImage";
+import { toLocalInput, useMyAgency } from "@/lib/agency";
+import { AgencyListingFields, UnitsEditor } from "@/components/dashboard/AgencyListingFields";
+import type { PropertyUnit } from "@/lib/properties";
 
 export const Route = createFileRoute("/dashboard/properties")({
   component: PostPropertyPage,
@@ -73,7 +77,7 @@ const PRICE_LABEL: Record<PropertyIntent, string> = {
   sale: "Asking price (KES)",
 };
 
-const DRAFT_KEY = "lv_property_draft_v1";
+const DRAFT_KEY = PROPERTY_DRAFT_KEY;
 
 interface PropertyDraft {
   step: number;
@@ -95,6 +99,10 @@ interface PropertyDraft {
   agentPhone: string;
   agentAgency: string;
   pin: [number, number] | null;
+  assignedAgentId?: string;
+  projectId?: string;
+  publishAt?: string;
+  units?: PropertyUnit[];
 }
 
 function loadDraft(): PropertyDraft | null {
@@ -132,6 +140,10 @@ interface Form {
   agentAgency: string;
   pin: [number, number] | null;
   photos: File[];
+  assignedAgentId: string;
+  projectId: string;
+  publishAt: string;
+  units: PropertyUnit[];
 }
 
 const emptyForm: Form = {
@@ -154,6 +166,10 @@ const emptyForm: Form = {
   agentAgency: "",
   pin: null,
   photos: [],
+  assignedAgentId: "",
+  projectId: "",
+  publishAt: "",
+  units: [],
 };
 
 type DetailsField = "title" | "price" | "county";
@@ -189,7 +205,12 @@ function PostPropertyPage() {
     agentAgency: draft?.agentAgency ?? emptyForm.agentAgency,
     pin: draft?.pin ?? emptyForm.pin,
     photos: [],
+    assignedAgentId: draft?.assignedAgentId ?? emptyForm.assignedAgentId,
+    projectId: draft?.projectId ?? emptyForm.projectId,
+    publishAt: draft?.publishAt ?? emptyForm.publishAt,
+    units: draft?.units ?? emptyForm.units,
   });
+  const { data: agency } = useMyAgency();
   const [existingPhotos, setExistingPhotos] = useState<{ id: string; url: string }[]>([]);
   const [removePhotoIds, setRemovePhotoIds] = useState<string[]>([]);
   const [photoError, setPhotoError] = useState("");
@@ -232,6 +253,10 @@ function PostPropertyPage() {
       agentAgency: p.agent.agency,
       pin: p.position,
       photos: [],
+      assignedAgentId: p.assignedAgentId ?? "",
+      projectId: p.projectId ?? "",
+      publishAt: toLocalInput(p.publishAt),
+      units: p.units,
     });
     setExistingPhotos(p.photoItems);
     setMaxStep(steps.length - 1);
@@ -290,7 +315,10 @@ function PostPropertyPage() {
   const detailErrors: Partial<Record<DetailsField, string>> = {};
   if (!form.title.trim()) detailErrors.title = "Give the listing a title.";
   else if (plainTextError(form.title)) detailErrors.title = plainTextError(form.title);
-  if (!(Number(form.price) > 0)) detailErrors.price = "Enter the price in KES.";
+  const units = form.units.filter((u) => u.name.trim());
+  if (units.some((u) => !(u.price > 0))) detailErrors.price = "Give every unit type a price.";
+  else if (units.length === 0 && !(Number(form.price) > 0))
+    detailErrors.price = "Enter the price in KES.";
   if (!form.county) detailErrors.county = "Choose the county the property is in.";
   const shownErrors = showErrors ? detailErrors : {};
 
@@ -338,14 +366,20 @@ function PostPropertyPage() {
   const submit = async () => {
     if (!form.pin) return;
     setError("");
+    // New agency listings end with the agency's standard footer, once.
+    const footer = !editId && agency?.descriptionFooter ? agency.descriptionFooter.trim() : "";
+    const description =
+      footer && !form.description.includes(footer)
+        ? `${form.description.trim()}\n\n${footer}`.trim()
+        : form.description;
     const payload: PropertyPayload = {
       title: form.title,
       county: form.county,
       area: form.area || undefined,
-      description: form.description || undefined,
+      description: description || undefined,
       intent: form.intent,
       type: form.type,
-      price: Number(form.price),
+      price: units.length > 0 ? Math.min(...units.map((u) => u.price)) : Number(form.price),
       bedrooms: form.bedrooms ? Number(form.bedrooms) : undefined,
       bathrooms: form.bathrooms ? Number(form.bathrooms) : undefined,
       furnished: form.furnished,
@@ -359,6 +393,18 @@ function PostPropertyPage() {
       latitude: form.pin[0],
       longitude: form.pin[1],
       photos: form.photos,
+      ...(agency
+        ? {
+            postedBy: undefined,
+            agentName: undefined,
+            agentAgency: undefined,
+            assignedAgentId: form.assignedAgentId || undefined,
+            projectId: form.projectId || undefined,
+            publishAt: form.publishAt ? new Date(form.publishAt).toISOString() : undefined,
+            // Sent only when there are, or were, unit types, so a plain listing never touches them.
+            units: units.length > 0 || (editId && existing.data?.units.length) ? units : undefined,
+          }
+        : {}),
     };
     try {
       if (editId) {
@@ -417,15 +463,37 @@ function PostPropertyPage() {
       : []),
     { label: "Amenities", value: form.amenities.join(", ") || "None", step: 0 },
     { label: "Description", value: form.description || "—", step: 0 },
-    {
-      label: "Posted by",
-      value:
-        form.postedBy === "broker"
-          ? ["Broker / agent", form.agentName, form.agentAgency].filter(Boolean).join(" · ")
-          : "Owner",
-      step: 0,
-    },
-    { label: "Contact phone", value: form.agentPhone || "Not provided", step: 0 },
+    ...(agency
+      ? [
+          { label: "Posted as", value: agency.name, step: 0 },
+          ...(units.length > 0
+            ? [
+                {
+                  label: "Units",
+                  value: units
+                    .map((u) => `${u.name} · ${u.availableUnits}/${u.totalUnits}`)
+                    .join(", "),
+                  step: 0,
+                },
+              ]
+            : []),
+          {
+            label: "Goes live",
+            value: form.publishAt ? new Date(form.publishAt).toLocaleString() : "Once approved",
+            step: 0,
+          },
+        ]
+      : [
+          {
+            label: "Posted by",
+            value:
+              form.postedBy === "broker"
+                ? ["Broker / agent", form.agentName, form.agentAgency].filter(Boolean).join(" · ")
+                : "Owner",
+            step: 0,
+          },
+          { label: "Contact phone", value: form.agentPhone || "Not provided", step: 0 },
+        ]),
     {
       label: "Location",
       value: form.pin ? `${form.pin[0].toFixed(5)}, ${form.pin[1].toFixed(5)}` : "Not set",
@@ -687,48 +755,68 @@ function PostPropertyPage() {
                     placeholder="Describe the property — layout, condition, nearby amenities…"
                   />
                 </Field>
-                <Field label="Posted by">
-                  <Segmented
-                    label="Posted by"
-                    grid
-                    value={form.postedBy}
-                    onChange={(v) => set("postedBy", v)}
-                    options={[
-                      ["owner", "Owner"],
-                      ["broker", "Broker / agent"],
-                    ]}
-                  />
-                </Field>
-                <Field id="p-phone" label="Contact phone">
-                  <input
-                    id="p-phone"
-                    className="gd-input"
-                    type="tel"
-                    value={form.agentPhone}
-                    onChange={(e) => set("agentPhone", e.target.value)}
-                    placeholder="+254 7XX XXX XXX"
-                  />
-                </Field>
-                {form.postedBy === "broker" && (
+                {agency ? (
                   <>
-                    <Field id="p-agent" label="Agent name">
-                      <input
-                        id="p-agent"
-                        className="gd-input"
-                        value={form.agentName}
-                        onChange={(e) => set("agentName", e.target.value)}
-                        placeholder="e.g. Jane Wanjiru"
+                    <UnitsEditor
+                      units={form.units}
+                      onChange={(v) => set("units", v)}
+                      allowed={agency.plan.multiUnit}
+                      period={pricePeriod === "total" ? "" : ` / ${pricePeriod}`}
+                    />
+                    <AgencyListingFields
+                      agency={agency}
+                      assignedAgentId={form.assignedAgentId}
+                      projectId={form.projectId}
+                      publishAt={form.publishAt}
+                      onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Field label="Posted by">
+                      <Segmented
+                        label="Posted by"
+                        grid
+                        value={form.postedBy}
+                        onChange={(v) => set("postedBy", v)}
+                        options={[
+                          ["owner", "Owner"],
+                          ["broker", "Broker / agent"],
+                        ]}
                       />
                     </Field>
-                    <Field id="p-agency" label="Agency">
+                    <Field id="p-phone" label="Contact phone">
                       <input
-                        id="p-agency"
+                        id="p-phone"
                         className="gd-input"
-                        value={form.agentAgency}
-                        onChange={(e) => set("agentAgency", e.target.value)}
-                        placeholder="e.g. Prime Realty Kenya"
+                        type="tel"
+                        value={form.agentPhone}
+                        onChange={(e) => set("agentPhone", e.target.value)}
+                        placeholder="+254 7XX XXX XXX"
                       />
                     </Field>
+                    {form.postedBy === "broker" && (
+                      <>
+                        <Field id="p-agent" label="Agent name">
+                          <input
+                            id="p-agent"
+                            className="gd-input"
+                            value={form.agentName}
+                            onChange={(e) => set("agentName", e.target.value)}
+                            placeholder="e.g. Jane Wanjiru"
+                          />
+                        </Field>
+                        <Field id="p-agency" label="Agency">
+                          <input
+                            id="p-agency"
+                            className="gd-input"
+                            value={form.agentAgency}
+                            onChange={(e) => set("agentAgency", e.target.value)}
+                            placeholder="e.g. Prime Realty Kenya"
+                          />
+                        </Field>
+                      </>
+                    )}
                   </>
                 )}
               </div>

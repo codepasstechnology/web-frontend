@@ -4,7 +4,7 @@ import { DashboardShell, type DashTab } from "@/components/DashboardShell";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { useAuth } from "@/lib/auth";
-import { usePlans, type Plan } from "@/lib/plans";
+import { freePlanFor, usePlans, type Plan } from "@/lib/plans";
 import { useUsedListings } from "@/lib/properties";
 import { ListingsTab } from "@/components/dashboard/ListingsTab";
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
@@ -12,7 +12,14 @@ import { AnalyticsTab } from "@/components/dashboard/AnalyticsTab";
 import { BillingTab, CancelPlanDialog } from "@/components/dashboard/BillingTab";
 import { SettingsTab } from "@/components/dashboard/SettingsTab";
 import { KycTab } from "@/components/dashboard/KycTab";
+import { AgencyTab } from "@/components/dashboard/AgencyTab";
+import { LeadsTab } from "@/components/dashboard/LeadsTab";
+import { TeamTab } from "@/components/dashboard/TeamTab";
+import { InsightsTab } from "@/components/dashboard/InsightsTab";
+import { BecomeAgencyCard } from "@/components/dashboard/BecomeAgencyCard";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
+
+const AGENCY_TABS: DashTab[] = ["agency", "leads", "team", "insights"];
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -29,6 +36,7 @@ export const Route = createFileRoute("/dashboard/")({
       "billing",
       "settings",
       "kyc",
+      ...AGENCY_TABS,
     ];
     // "properties" was its own tab before land and rentals were merged; keep
     // old links and bookmarks landing on the combined list.
@@ -70,7 +78,7 @@ function DashboardPage() {
     if (selected && selected.price > 0) {
       setCheckoutCycle(cycle);
       setCheckoutPlan(selected);
-    } else if (user && user.plan !== "free") {
+    } else if (user && (plans.find((p) => p.id === user.plan)?.price ?? 0) > 0) {
       setCancelOpen(true);
     }
   };
@@ -85,22 +93,28 @@ function DashboardPage() {
   }, [ready, user, navigate]);
 
   if (!user || user.role === "account_manager") return null;
+  // Agency tabs only exist for agency members; anyone else lands on the overview.
+  const shown: DashTab = AGENCY_TABS.includes(tab) && !user.agency ? "overview" : tab;
   const goTab = (t: DashTab) => navigate({ to: "/dashboard", search: { tab: t } });
-  const freeListings = plans.find((p) => p.id === "free")?.listings ?? null;
 
   return (
-    <DashboardShell active={tab} onChange={setTab} onUpgrade={() => setUpgradeOpen(true)}>
-      {tab === "overview" && (
+    <DashboardShell active={shown} onChange={setTab} onUpgrade={() => setUpgradeOpen(true)}>
+      {shown === "overview" && (
         <OverviewTab user={user} onUpgrade={() => setUpgradeOpen(true)} onGoTab={goTab} />
       )}
 
-      {tab === "listings" && <ListingsTab />}
+      {shown === "listings" && <ListingsTab />}
 
-      {tab === "analytics" && (
+      {shown === "agency" && <AgencyTab />}
+      {shown === "leads" && <LeadsTab />}
+      {shown === "team" && <TeamTab />}
+      {shown === "insights" && <InsightsTab />}
+
+      {shown === "analytics" && (
         <AnalyticsTab onUpgrade={() => setUpgradeOpen(true)} onGoTab={goTab} />
       )}
 
-      {tab === "billing" && (
+      {shown === "billing" && (
         <BillingTab
           plan={user.plan}
           billingCycle={user.billingCycle}
@@ -108,6 +122,7 @@ function DashboardPage() {
           planEndsAt={user.planEndsAt}
           planCancelledAt={user.planCancelledAt}
           plans={plans}
+          agencyRole={user.agency?.role}
           maxListings={user.maxListings}
           usedListings={usedListings}
           payments={user.payments}
@@ -116,7 +131,9 @@ function DashboardPage() {
         />
       )}
 
-      {tab === "settings" && (
+      {shown === "settings" && !user.agency && <BecomeAgencyCard />}
+
+      {shown === "settings" && (
         <SettingsTab
           user={user}
           onUpdate={updateUser}
@@ -138,7 +155,7 @@ function DashboardPage() {
         />
       )}
 
-      {tab === "kyc" && <KycTab />}
+      {shown === "kyc" && <KycTab />}
 
       <UpgradeModal
         open={upgradeOpen}
@@ -151,7 +168,7 @@ function DashboardPage() {
         open={cancelOpen}
         planName={plans.find((p) => p.id === user.plan)?.name ?? user.plan}
         endsAt={user.planEndsAt}
-        freeListings={freeListings === Infinity ? null : freeListings}
+        freePlan={freePlanFor(plans, !!user.agency)}
         onClose={() => setCancelOpen(false)}
       />
 
