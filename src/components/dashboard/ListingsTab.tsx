@@ -5,6 +5,7 @@ import {
   BedDouble,
   CalendarCheck,
   ChevronRight,
+  Copy,
   DoorClosed,
   Download,
   Pause,
@@ -42,6 +43,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ListingPreviewDialog } from "@/components/dashboard/ListingPreviewDialog";
 import { Beacon, ListingStatus, ListingThumb } from "@/components/dashboard/parts";
+import { BulkTools } from "@/components/dashboard/BulkTools";
+import { useBulkTools } from "@/lib/agency";
 
 export type ListingRow = {
   kind: "land" | "property";
@@ -57,7 +60,21 @@ export type ListingRow = {
   coverPhotoUrl: string | null;
   /** Hidden from the site and not using a live listing slot. */
   paused: boolean;
+  /** Agency listings: the team member handling it, and a scheduled go-live time. */
+  agentName?: string | null;
+  publishAt?: string | null;
 };
+
+/** "· Agent: Jane · Goes live 3 Nov" for agency rows. */
+function agencySuffix(r: Pick<ListingRow, "agentName" | "publishAt">): string {
+  const parts = [
+    r.agentName ? `Agent: ${r.agentName}` : "",
+    r.publishAt && new Date(r.publishAt) > new Date()
+      ? `Goes live ${new Date(r.publishAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+      : "",
+  ].filter(Boolean);
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
+}
 
 type StatusAction = { label: string; to: "sold" | "taken" | BnbAvailability };
 
@@ -181,6 +198,31 @@ function ConfirmDialog({
   );
 }
 
+/** Agency rentals only: a pending copy to edit, for listing a similar unit fast. */
+function DuplicateButton({ row }: { row: ListingRow }) {
+  const { duplicate } = useBulkTools();
+  const copy = async () => {
+    try {
+      const created = await duplicate.mutateAsync(row.id);
+      toast.success(`Copied as "${created.title}". Edit it, then it goes to review.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't copy this listing.");
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="gd-ib"
+      data-tip="Duplicate"
+      aria-label={`Duplicate ${row.name}`}
+      onClick={copy}
+      disabled={duplicate.isPending}
+    >
+      <Copy size={18} aria-hidden="true" />
+    </button>
+  );
+}
+
 export function ListingsTab() {
   const navigate = useNavigate();
   const { user, removeListing, markListingSold, setListingPaused, reloadUser } = useAuth();
@@ -189,6 +231,7 @@ export function ListingsTab() {
   const markTaken = useMarkPropertyTaken();
   const setAvailability = useSetPropertyAvailability();
   const setPropertyPaused = useSetPropertyPaused();
+  const inAgency = !!user?.agency;
 
   const [filter, setFilter] = useState<"all" | "land" | "property">("all");
   const [query, setQuery] = useState("");
@@ -210,20 +253,22 @@ export function ListingsTab() {
       kind: "land",
       id: l.id,
       name: l.parcelNumber,
-      sub: `${l.county} · KES ${l.price.toLocaleString()}`,
+      sub: `${l.county} · KES ${l.price.toLocaleString()}${agencySuffix(l)}`,
       search: `${l.parcelNumber} ${l.title} ${l.county}`.toLowerCase(),
       status: l.status,
       views: l.views,
       createdAt: l.createdAt,
       coverPhotoUrl: l.coverPhotoUrl,
       paused: l.paused ?? false,
+      agentName: l.agentName,
+      publishAt: l.publishAt,
     }));
     const rentals: ListingRow[] = properties.map((p) => ({
       kind: "property",
       intent: p.intent,
       id: p.id,
       name: p.title,
-      sub: `${p.reference} · ${INTENT_LABELS[p.intent]} · ${TYPE_LABELS[p.type]} · ${formatPrice(p.price, p.pricePeriod)}`,
+      sub: `${p.reference} · ${INTENT_LABELS[p.intent]} · ${TYPE_LABELS[p.type]} · ${formatPrice(p.price, p.pricePeriod)}${agencySuffix(p)}`,
       search: `${p.title} ${p.reference} ${p.area} ${p.county}`.toLowerCase(),
       status: p.status,
       views: p.views,
@@ -390,6 +435,7 @@ export function ListingsTab() {
           <Share2 size={18} aria-hidden="true" />
         </button>
       )}
+      {inAgency && r.kind === "property" && <DuplicateButton row={r} />}
       <button
         type="button"
         className="gd-ib"
@@ -412,7 +458,7 @@ export function ListingsTab() {
   );
 
   const previewAction = previewTarget ? statusActions(previewTarget)[0] : undefined;
-  const cols = `minmax(0, 2.6fr) 90px 150px ${showViews ? "80px " : ""}110px 250px`;
+  const cols = `minmax(0, 2.6fr) 90px 150px ${showViews ? "80px " : ""}110px ${inAgency ? 290 : 250}px`;
 
   return (
     <>
@@ -437,6 +483,12 @@ export function ListingsTab() {
           </button>
         </div>
       </div>
+
+      {inAgency && (
+        <div className="gd-r flex flex-wrap gap-2.5">
+          <BulkTools properties={properties} />
+        </div>
+      )}
 
       <div className="gd-r flex flex-wrap items-center justify-between gap-3">
         <div className="gd-seg" role="group" aria-label="Filter listings">

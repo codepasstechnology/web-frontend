@@ -1,6 +1,16 @@
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell, Check, CreditCard, MapPin, MessageCircle, ShieldCheck } from "lucide-react";
+import {
+  Bell,
+  CalendarCheck,
+  CalendarClock,
+  CalendarX,
+  Check,
+  CreditCard,
+  MapPin,
+  MessageCircle,
+  ShieldCheck,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMarkNotificationsRead, useNotifications } from "@/lib/notifications";
 import type { DashTab } from "@/components/DashboardShell";
@@ -16,7 +26,8 @@ const fmtDate = (s: string) =>
 
 const kycIcon = <ShieldCheck size={16} aria-hidden="true" />;
 
-const TYPES: Record<string, { title: string; icon: ReactNode; tab: DashTab }> = {
+/** Without a tab, the notification opens the agency page it came from. */
+const TYPES: Record<string, { title: string; icon: ReactNode; tab?: DashTab }> = {
   kyc_info_requested: {
     title: "KYC — Additional information requested",
     icon: kycIcon,
@@ -43,6 +54,22 @@ const TYPES: Record<string, { title: string; icon: ReactNode; tab: DashTab }> = 
     title: "New inquiry",
     icon: <MessageCircle size={16} aria-hidden="true" />,
     tab: "listings",
+  },
+  viewing_confirmed: {
+    title: "Viewing confirmed",
+    icon: <CalendarCheck size={16} aria-hidden="true" />,
+  },
+  viewing_rescheduled: {
+    title: "Viewing moved",
+    icon: <CalendarClock size={16} aria-hidden="true" />,
+  },
+  viewing_declined: {
+    title: "Viewing declined",
+    icon: <CalendarX size={16} aria-hidden="true" />,
+  },
+  agency_replied: {
+    title: "New reply",
+    icon: <MessageCircle size={16} aria-hidden="true" />,
   },
 };
 
@@ -104,7 +131,11 @@ export function NotificationBell() {
                     className="gd-mi gd-notif"
                     onClick={() => {
                       setOpen(false);
-                      navigate({ to: "/dashboard", search: { tab: meta.tab } });
+                      if (!meta.tab && n.data.agency_slug) {
+                        navigate({ to: "/agency/$slug", params: { slug: n.data.agency_slug } });
+                      } else {
+                        navigate({ to: "/dashboard", search: { tab: meta.tab ?? "overview" } });
+                      }
                     }}
                   >
                     <span className="gd-notif-icon">{meta.icon}</span>

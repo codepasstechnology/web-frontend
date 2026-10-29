@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { CookieBanner } from "@/components/CookieBanner";
 
 import appCss from "../styles.css?url";
+import "@/components/loading.css";
 import { AuthProvider } from "@/lib/auth";
 import { isUnderMaintenance } from "@/lib/maintenance";
 import { ALWAYS_OPEN_PATHS } from "@/lib/maintenanceRedirect";
@@ -181,6 +182,7 @@ const OWN_CHROME_PATHS = new Set([
   "/cookie-policy",
   "/cookie-settings",
   "/data-usage",
+  "/agencies",
 ]);
 const NO_NAVBAR_PREFIXES = [
   "/dashboard",
@@ -212,6 +214,7 @@ function RootComponent() {
   const showNavbar =
     !OWN_CHROME_PATHS.has(pathname) &&
     !pathname.startsWith("/blog/") &&
+    !pathname.startsWith("/agency/") &&
     !NO_NAVBAR_PREFIXES.some((p) => pathname.startsWith(p));
   const showFooter = showNavbar;
 

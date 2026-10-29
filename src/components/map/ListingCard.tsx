@@ -1,5 +1,7 @@
 import type { KeyboardEvent } from "react";
 import { Check, Eye } from "lucide-react";
+import { AgencyLogo } from "@/components/agency/AgencyLogo";
+import type { ListingAgency } from "@/lib/listingAgency";
 
 /** One result in the sidebar. The list is the keyboard path to every listing on the map. */
 export function ListingCard({
@@ -16,6 +18,7 @@ export function ListingCard({
   selected,
   hot,
   compare,
+  agency,
   onSelect,
   onHover,
 }: {
@@ -32,6 +35,8 @@ export function ListingCard({
   selected: boolean;
   hot: boolean;
   compare?: { on: boolean; toggle: () => void };
+  /** Set on agency listings: its logo sits on the photo so they stand out from owners'. */
+  agency?: ListingAgency | null;
   onSelect: () => void;
   onHover: (on: boolean) => void;
 }) {
@@ -74,6 +79,17 @@ export function ListingCard({
             <Check width={13} height={13} strokeWidth={3} aria-hidden />
           </button>
         )}
+        {agency && (
+          <span className="gm-alogo" title={`Listed by ${agency.name}`}>
+            <AgencyLogo
+              name={agency.name}
+              logoUrl={agency.logoUrl}
+              brandColor={agency.brandColor}
+              size={28}
+              radius={8}
+            />
+          </span>
+        )}
       </div>
       <div className="gm-cbody">
         <div className="gm-tags">
@@ -93,7 +109,7 @@ export function ListingCard({
           )}
         </div>
         <span className={`gm-ctitle${mono ? " gm-mono" : ""}`}>{title}</span>
-        <span className="gm-csub">{sub}</span>
+        <span className="gm-csub">{agency ? `${sub} · ${agency.name}` : sub}</span>
         <span className="gm-cprice">{price}</span>
       </div>
     </div>

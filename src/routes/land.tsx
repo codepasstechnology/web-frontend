@@ -197,6 +197,7 @@ function LandContent() {
                 hot={hotIds.includes(p.id)}
                 compare={{ on: compareIds.includes(p.id), toggle: () => toggleCompare(p.id) }}
                 onSelect={() => select(p)}
+                agency={p.agency}
                 onHover={(on) => setHotIds(on ? [p.id] : [])}
               />
             </li>

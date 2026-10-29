@@ -55,9 +55,9 @@ const GOALS: { id: Goal; label: string; desc: string; icon: string }[] = [
   },
   {
     id: "agent",
-    label: "I'm an agent",
-    desc: "I list for clients",
-    icon: "M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1",
+    label: "I'm an agency",
+    desc: "We list properties for clients",
+    icon: "M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M3 21h18M8 7h4M8 11h4M8 15h4",
   },
 ];
 
@@ -74,8 +74,8 @@ const COUNTIES = [
 const LIST_TYPES = ["Land", "Houses for sale", "Rentals"];
 const HOW_MANY = ["Just one", "2 to 5", "6 or more"];
 
-// The account type the API stores. Buyers and sellers are individuals; the owner and
-// agency details are collected on the form but not saved yet.
+// The account type the API stores. Buyers and sellers are individuals; an agent's
+// agency is created with the account from the details on the agency step.
 const API_ROLE: Record<Goal, UserRole> = { buy: "individual", sell: "individual", agent: "agent" };
 
 function flowFor(goal: Goal): Step[] {
@@ -100,7 +100,6 @@ interface Form {
   county: string;
   howMany: string;
   agency: string;
-  earb: string;
   areas: string[];
   password: string;
   terms: boolean;
@@ -115,7 +114,6 @@ const EMPTY: Form = {
   county: "",
   howMany: "",
   agency: "",
-  earb: "",
   areas: [],
   password: "",
   terms: false,
@@ -126,7 +124,7 @@ type Field = keyof Form;
 const FIELDS_BY_STEP: Partial<Record<Step, Field[]>> = {
   details: ["name", "email", "phone"],
   owner: ["listTypes", "county", "howMany"],
-  agent: ["agency", "earb", "areas"],
+  agent: ["agency", "areas"],
   password: ["password", "terms"],
 };
 
@@ -146,8 +144,6 @@ function errorFor(form: Form, field: Field): string {
       return form.howMany ? "" : "Pick one.";
     case "agency":
       return form.agency.trim() ? plainTextError(form.agency) : "Enter your agency name.";
-    case "earb":
-      return form.earb.trim() ? "" : "Enter your EARB registration number.";
     case "areas":
       return form.areas.length ? "" : "Pick at least one county.";
     case "password":
@@ -206,6 +202,7 @@ export function RegisterPage() {
         password: form.password,
         role: API_ROLE[form.goal],
         acceptedTerms: form.terms,
+        agency: form.goal === "agent" ? { name: form.agency.trim(), areas: form.areas } : undefined,
       });
       navigate({ to: "/loading", search: { mode: "signup" } });
     } catch (error: unknown) {
@@ -464,7 +461,10 @@ export function RegisterPage() {
             <h1 className="is-small">
               About your agency<span className="ga-dot-mark">.</span>
             </h1>
-            <p>We use this to confirm agent details, so buyers know who they are dealing with.</p>
+            <p>
+              Your listings will show your agency&apos;s name, and you get a page where buyers see
+              everything you&apos;ve listed.
+            </p>
           </div>
           <div className="ga-stack">
             <FloatField
@@ -477,17 +477,6 @@ export function RegisterPage() {
               shake={errorShown("agency") ? shake : null}
               placeholder="e.g. Savannah Realty Ltd"
               autoComplete="organization"
-            />
-            <FloatField
-              id="ag-earb"
-              label="EARB registration number"
-              value={form.earb}
-              onChange={(v) => set("earb", v)}
-              error={errorShown("earb")}
-              valid={!errorFor(form, "earb")}
-              shake={errorShown("earb") ? shake : null}
-              placeholder="Estate Agents Registration Board no."
-              autoComplete="off"
             />
           </div>
           <ChipGroup

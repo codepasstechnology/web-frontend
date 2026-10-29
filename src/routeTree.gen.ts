@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AgenciesRouteImport } from './routes/agencies'
+import { Route as AgencyInviteRouteImport } from './routes/agency-invite'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
@@ -30,6 +32,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AgencySlugRouteImport } from './routes/agency.$slug'
 import { Route as BlogSlugRouteImport } from './routes/blog_.$slug'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardPropertiesRouteImport } from './routes/dashboard.properties'
@@ -43,6 +46,16 @@ const IndexRoute = IndexRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgenciesRoute = AgenciesRouteImport.update({
+  id: '/agencies',
+  path: '/agencies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgencyInviteRoute = AgencyInviteRouteImport.update({
+  id: '/agency-invite',
+  path: '/agency-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -140,6 +153,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgencySlugRoute = AgencySlugRouteImport.update({
+  id: '/agency/$slug',
+  path: '/agency/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/blog_/$slug',
   path: '/blog/$slug',
@@ -164,6 +182,8 @@ const DashboardUploadRoute = DashboardUploadRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/agencies': typeof AgenciesRoute
+  '/agency-invite': typeof AgencyInviteRoute
   '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
@@ -183,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/agency/$slug': typeof AgencySlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/properties': typeof DashboardPropertiesRoute
   '/dashboard/upload': typeof DashboardUploadRoute
@@ -191,6 +212,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/agencies': typeof AgenciesRoute
+  '/agency-invite': typeof AgencyInviteRoute
   '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
@@ -210,6 +233,7 @@ export interface FileRoutesByTo {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/agency/$slug': typeof AgencySlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/properties': typeof DashboardPropertiesRoute
   '/dashboard/upload': typeof DashboardUploadRoute
@@ -219,6 +243,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/agencies': typeof AgenciesRoute
+  '/agency-invite': typeof AgencyInviteRoute
   '/blog': typeof BlogRoute
   '/contact': typeof ContactRoute
   '/cookie-policy': typeof CookiePolicyRoute
@@ -238,6 +264,7 @@ export interface FileRoutesById {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/agency/$slug': typeof AgencySlugRoute
   '/blog_/$slug': typeof BlogSlugRoute
   '/dashboard/properties': typeof DashboardPropertiesRoute
   '/dashboard/upload': typeof DashboardUploadRoute
@@ -248,6 +275,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/agencies'
+    | '/agency-invite'
     | '/blog'
     | '/contact'
     | '/cookie-policy'
@@ -267,6 +296,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/terms'
+    | '/agency/$slug'
     | '/blog/$slug'
     | '/dashboard/properties'
     | '/dashboard/upload'
@@ -275,6 +305,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/agencies'
+    | '/agency-invite'
     | '/blog'
     | '/contact'
     | '/cookie-policy'
@@ -294,6 +326,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/terms'
+    | '/agency/$slug'
     | '/blog/$slug'
     | '/dashboard/properties'
     | '/dashboard/upload'
@@ -302,6 +335,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/agencies'
+    | '/agency-invite'
     | '/blog'
     | '/contact'
     | '/cookie-policy'
@@ -321,6 +356,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/terms'
+    | '/agency/$slug'
     | '/blog_/$slug'
     | '/dashboard/properties'
     | '/dashboard/upload'
@@ -330,6 +366,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AgenciesRoute: typeof AgenciesRoute
+  AgencyInviteRoute: typeof AgencyInviteRoute
   BlogRoute: typeof BlogRoute
   ContactRoute: typeof ContactRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
@@ -349,6 +387,7 @@ export interface RootRouteChildren {
   RentalsRoute: typeof RentalsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
+  AgencySlugRoute: typeof AgencySlugRoute
   BlogSlugRoute: typeof BlogSlugRoute
   DashboardPropertiesRoute: typeof DashboardPropertiesRoute
   DashboardUploadRoute: typeof DashboardUploadRoute
@@ -369,6 +408,20 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agencies': {
+      id: '/agencies'
+      path: '/agencies'
+      fullPath: '/agencies'
+      preLoaderRoute: typeof AgenciesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agency-invite': {
+      id: '/agency-invite'
+      path: '/agency-invite'
+      fullPath: '/agency-invite'
+      preLoaderRoute: typeof AgencyInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -504,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agency/$slug': {
+      id: '/agency/$slug'
+      path: '/agency/$slug'
+      fullPath: '/agency/$slug'
+      preLoaderRoute: typeof AgencySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog_/$slug': {
       id: '/blog_/$slug'
       path: '/blog/$slug'
@@ -538,6 +598,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AgenciesRoute: AgenciesRoute,
+  AgencyInviteRoute: AgencyInviteRoute,
   BlogRoute: BlogRoute,
   ContactRoute: ContactRoute,
   CookiePolicyRoute: CookiePolicyRoute,
@@ -557,6 +619,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentalsRoute: RentalsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
+  AgencySlugRoute: AgencySlugRoute,
   BlogSlugRoute: BlogSlugRoute,
   DashboardPropertiesRoute: DashboardPropertiesRoute,
   DashboardUploadRoute: DashboardUploadRoute,

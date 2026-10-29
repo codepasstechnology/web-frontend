@@ -36,6 +36,11 @@ vi.mock("@/lib/properties", async (importOriginal) => ({
   useUsedListings: () => 0,
 }));
 vi.mock("@/lib/plans", () => ({ kenyaCounties: ["Kajiado"], usePlans: () => ({ data: [] }) }));
+// The seller isn't in an agency, so the agency details the form can show never load.
+vi.mock("@/lib/agency", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/agency")>()),
+  useMyAgency: () => ({ data: undefined }),
+}));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
     user: { role: "individual", plan: "free", listings: [], maxListings: 5 },

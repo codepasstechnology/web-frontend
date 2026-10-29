@@ -31,6 +31,9 @@ import { PhotoViewer } from "@/components/PhotoViewer";
 import { DEAL_COLOR, DEAL_TAG, INTENT_COLOR } from "@/components/map/markers";
 import { ShareSheet, type ShareShape } from "@/components/map/ShareSheet";
 import { useMapToast } from "@/components/map/mapToastContext";
+import { ListingAgencyCard } from "@/components/agency/ListingAgencyCard";
+import { trackContact } from "@/lib/agency";
+import type { PropertyUnit } from "@/lib/properties";
 
 const SHEET_HALF = 46;
 const SHEET_FULL = 88;
@@ -200,16 +203,21 @@ function ContactActions({
   save,
   onShare,
   phone,
+  whatsapp,
   message,
   onWhatsApp,
+  onCall,
 }: {
   save?: ReactNode;
   onShare: () => void;
   phone: string;
+  /** A separate WhatsApp number, when an agency has one. */
+  whatsapp?: string;
   message: string;
   onWhatsApp?: () => void;
+  onCall?: () => void;
 }) {
-  const wa = whatsappUrl(phone, message);
+  const wa = whatsappUrl(whatsapp || phone, message);
   const tel = phone.replace(/[^\d+]/g, "");
   return (
     <div className="gm-acts">
@@ -231,7 +239,7 @@ function ContactActions({
         </a>
       )}
       {tel.length >= 9 && (
-        <a href={`tel:${tel}`} className="gm-act">
+        <a href={`tel:${tel}`} className="gm-act" onClick={onCall}>
           <Phone width={18} height={18} aria-hidden />
           Call
         </a>
@@ -352,6 +360,31 @@ function About({ title, text, children }: { title: string; text: string; childre
   );
 }
 
+/** A building's unit types: what each costs and how many are free. */
+function Units({ units, period }: { units: PropertyUnit[]; period: string }) {
+  const available = units.reduce((n, u) => n + u.availableUnits, 0);
+  const total = units.reduce((n, u) => n + u.totalUnits, 0);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span className="gm-flab">
+        Units · {available} of {total} available
+      </span>
+      {units.map((u) => (
+        <div key={u.id ?? u.name} className="gm-irow">
+          <span style={{ flex: 1 }}>{u.name}</span>
+          <span style={{ color: "var(--muted)", fontSize: 13 }}>
+            {u.availableUnits > 0 ? `${u.availableUnits} available` : "Fully let"}
+          </span>
+          <span style={{ fontWeight: 600, textAlign: "right" }}>
+            KES {u.price.toLocaleString("en-US")}
+            {period}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VerificationCard({ parcel }: { parcel: LandParcel }) {
   if (parcel.status !== "verified") return null;
   return (
@@ -440,7 +473,11 @@ export function ParcelPanel({
               </span>
             )}
             <span className="gm-atag" style={{ borderStyle: "solid" }}>
-              {parcel.postedBy === "owner" ? "Posted by owner" : "Posted by broker"}
+              {parcel.agency
+                ? `By ${parcel.agency.name}`
+                : parcel.postedBy === "owner"
+                  ? "Posted by owner"
+                  : "Posted by broker"}
             </span>
           </>
         }
@@ -482,10 +519,25 @@ export function ParcelPanel({
             )
           }
           onShare={() => setSharing(true)}
-          phone={parcel.seller.phone}
+          phone={parcel.agency?.phone || parcel.seller.phone}
+          whatsapp={parcel.agency?.whatsapp}
           message={`Hi, I'm interested in ${parcel.parcelNumber} listed on Geo Pin Properties.`}
-          onWhatsApp={() => api.post(`/parcels/${parcel.id}/inquiry`).catch(() => {})}
+          onWhatsApp={() => {
+            api.post(`/parcels/${parcel.id}/inquiry`).catch(() => {});
+            if (parcel.agency) trackContact("parcel", parcel.id, "whatsapp");
+          }}
+          onCall={parcel.agency ? () => trackContact("parcel", parcel.id, "call") : undefined}
         />
+        {parcel.agency && (
+          <ListingAgencyCard
+            agency={parcel.agency}
+            anchor={sheet.panel.current}
+            kind="parcel"
+            listingId={parcel.id}
+            listingTitle={parcel.parcelNumber}
+            project={parcel.project}
+          />
+        )}
         <PlaceActions
           lat={lat}
           lng={lng}
@@ -524,11 +576,13 @@ export function ParcelPanel({
         </div>
         <Chips label="Utilities" items={parcel.amenities.utilities} />
         <About title="About this plot" text={parcel.description}>
-          <span style={{ fontSize: 14 }}>
-            {parcel.postedBy === "owner" ? "Listed by owner" : "Listed by broker"}:{" "}
-            {parcel.seller.name}
-            {parcel.seller.agency ? ` · ${parcel.seller.agency}` : ""}
-          </span>
+          {!parcel.agency && (
+            <span style={{ fontSize: 14 }}>
+              {parcel.postedBy === "owner" ? "Listed by owner" : "Listed by broker"}:{" "}
+              {parcel.seller.name}
+              {parcel.seller.agency ? ` · ${parcel.seller.agency}` : ""}
+            </span>
+          )}
         </About>
         <VerificationCard parcel={parcel} />
       </div>
@@ -596,7 +650,11 @@ export function RentalPanel({
               {TYPE_LABELS[property.type]}
             </span>
             <span className="gm-atag" style={{ borderStyle: "solid" }}>
-              {property.postedBy === "owner" ? "Posted by owner" : "Posted by broker"}
+              {property.agency
+                ? `By ${property.agency.name}`
+                : property.postedBy === "owner"
+                  ? "Posted by owner"
+                  : "Posted by broker"}
             </span>
             {property.status === "occupied" && <span className="gm-seen">Occupied</span>}
           </>
@@ -624,9 +682,25 @@ export function RentalPanel({
         />
         <ContactActions
           onShare={() => setSharing(true)}
-          phone={property.agent.phone}
+          phone={property.agency?.phone || property.agent.phone}
+          whatsapp={property.agency?.whatsapp}
           message={`Hi, I'm interested in ${property.title} (${property.reference}) listed on Geo Pin Properties.`}
+          onWhatsApp={
+            property.agency ? () => trackContact("property", property.id, "whatsapp") : undefined
+          }
+          onCall={property.agency ? () => trackContact("property", property.id, "call") : undefined}
         />
+        {property.agency && (
+          <ListingAgencyCard
+            agency={property.agency}
+            anchor={sheet.panel.current}
+            kind="property"
+            listingId={property.id}
+            listingTitle={property.title}
+            project={property.project}
+          />
+        )}
+        {(property.units?.length ?? 0) > 0 && <Units units={property.units ?? []} period={per} />}
         <PlaceActions lat={lat} lng={lng} streetView={property.svAvailable === true} />
         <CopyCoordinates lat={lat} lng={lng} />
         {property.intent === "bnb" && (property.minNights || property.cleaningFee != null) && (
@@ -643,11 +717,13 @@ export function RentalPanel({
         )}
         <Chips label="Amenities" items={property.amenities} />
         <About title="About this property" text={property.description}>
-          <span style={{ fontSize: 14 }}>
-            {property.postedBy === "owner" ? "Listed by owner" : "Listed by broker"}:{" "}
-            {property.agent.name}
-            {property.agent.agency ? ` · ${property.agent.agency}` : ""}
-          </span>
+          {!property.agency && (
+            <span style={{ fontSize: 14 }}>
+              {property.postedBy === "owner" ? "Listed by owner" : "Listed by broker"}:{" "}
+              {property.agent.name}
+              {property.agent.agency ? ` · ${property.agent.agency}` : ""}
+            </span>
+          )}
         </About>
       </div>
       {sharing && (

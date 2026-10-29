@@ -3,7 +3,7 @@ import { api } from "./api";
 
 export interface Notification {
   id: string;
-  data: { type: string; message?: string; reference?: string };
+  data: { type: string; message?: string; reference?: string; agency_slug?: string };
   read_at: string | null;
   created_at: string;
 }
@@ -15,6 +15,7 @@ export function useNotifications() {
     queryKey: KEY,
     queryFn: () => api.get<Notification[]>("/user/notifications"),
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 

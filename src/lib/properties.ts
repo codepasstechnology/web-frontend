@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { api } from "./api";
 import { useAuth } from "./auth";
 import { bboxParam, type Bbox } from "./mapGeo";
+import { mapListingAgency, type ApiListingAgency, type ListingAgency } from "./listingAgency";
 
 export type PropertyIntent = "rent" | "bnb" | "sale";
 export type PropertyType =
@@ -10,6 +11,39 @@ export type PropertyStatus =
   "pending" | "available" | "taken" | "occupied" | "closed" | "suspended";
 export type BnbAvailability = "available" | "occupied" | "closed";
 export type PricePeriod = "month" | "night" | "total";
+
+/** One unit type in a building, e.g. "2 bedroom, KES 45,000, 6 of 20 available". */
+export interface PropertyUnit {
+  id?: string;
+  name: string;
+  bedrooms: number;
+  bathrooms: number;
+  price: number;
+  totalUnits: number;
+  availableUnits: number;
+}
+
+interface ApiPropertyUnit {
+  id: string;
+  name: string;
+  bedrooms: number;
+  bathrooms: number;
+  price: number;
+  total_units: number;
+  available_units: number;
+}
+
+function mapUnit(u: ApiPropertyUnit): PropertyUnit {
+  return {
+    id: u.id,
+    name: u.name,
+    bedrooms: u.bedrooms ?? 0,
+    bathrooms: u.bathrooms ?? 0,
+    price: u.price,
+    totalUnits: u.total_units,
+    availableUnits: u.available_units,
+  };
+}
 
 export interface Property {
   id: string;
@@ -35,6 +69,9 @@ export interface Property {
   photos: string[];
   featured: boolean;
   svAvailable?: boolean | null;
+  agency?: ListingAgency | null;
+  units?: PropertyUnit[];
+  project?: string | null;
 }
 
 export interface MyProperty {
@@ -54,9 +91,14 @@ export interface MyProperty {
   coverPhotoUrl: string | null;
   /** Hidden from the site and not using one of the plan's live listing slots. */
   paused?: boolean;
+  agentName?: string | null;
+  publishAt?: string | null;
 }
 
 export interface MyPropertyDetail extends MyProperty {
+  assignedAgentId: string | null;
+  projectId: string | null;
+  units: PropertyUnit[];
   description: string;
   bedrooms: number;
   bathrooms: number;
@@ -73,7 +115,7 @@ export interface MyPropertyDetail extends MyProperty {
   photoItems: { id: string; url: string }[];
 }
 
-interface ApiProperty {
+export interface ApiProperty {
   id: string;
   reference_number: string;
   title: string;
@@ -100,6 +142,9 @@ interface ApiProperty {
   photos: string[];
   featured: boolean;
   sv_available?: boolean | null;
+  agency?: ApiListingAgency | null;
+  units?: ApiPropertyUnit[];
+  project?: string | null;
 }
 
 interface ApiMyProperty {
@@ -118,9 +163,14 @@ interface ApiMyProperty {
   created_at: string;
   cover_photo_url: string | null;
   paused?: boolean;
+  agent_name?: string | null;
+  publish_at?: string | null;
 }
 
 interface ApiMyPropertyDetail extends ApiMyProperty {
+  assigned_agent_id?: string | null;
+  project_id?: string | null;
+  units?: ApiPropertyUnit[];
   description: string;
   bedrooms: number;
   bathrooms: number;
@@ -201,6 +251,9 @@ export function mapApiProperty(p: ApiProperty): Property {
     photos: Array.isArray(p.photos) ? p.photos : [],
     featured: p.featured ?? false,
     svAvailable: p.sv_available ?? null,
+    agency: mapListingAgency(p.agency),
+    units: (p.units ?? []).map(mapUnit),
+    project: p.project ?? null,
   };
 }
 
@@ -221,12 +274,17 @@ function mapApiMyProperty(p: ApiMyProperty): MyProperty {
     createdAt: p.created_at,
     coverPhotoUrl: p.cover_photo_url,
     paused: p.paused ?? false,
+    agentName: p.agent_name ?? null,
+    publishAt: p.publish_at ?? null,
   };
 }
 
 function mapApiMyPropertyDetail(p: ApiMyPropertyDetail): MyPropertyDetail {
   return {
     ...mapApiMyProperty(p),
+    assignedAgentId: p.assigned_agent_id ?? null,
+    projectId: p.project_id ?? null,
+    units: (p.units ?? []).map(mapUnit),
     description: p.description ?? "",
     bedrooms: p.bedrooms ?? 0,
     bathrooms: p.bathrooms ?? 0,
@@ -349,6 +407,11 @@ export interface PropertyDraft {
   longitude: number;
   photos?: File[];
   removePhotoIds?: string[];
+  /** Agency listings: building unit types (an empty list clears them), handler, project, go-live time. */
+  units?: PropertyUnit[];
+  assignedAgentId?: string;
+  projectId?: string;
+  publishAt?: string;
 }
 
 function toFormData(draft: PropertyDraft): FormData {
@@ -374,6 +437,21 @@ function toFormData(draft: PropertyDraft): FormData {
   (draft.amenities ?? []).forEach((a) => body.append("amenities[]", a));
   (draft.photos ?? []).forEach((f) => body.append("photos[]", f));
   (draft.removePhotoIds ?? []).forEach((id) => body.append("remove_photo_ids[]", id));
+  if (draft.assignedAgentId) body.append("assigned_agent_id", draft.assignedAgentId);
+  if (draft.projectId) body.append("project_id", draft.projectId);
+  if (draft.publishAt) body.append("publish_at", draft.publishAt);
+  if (draft.units) {
+    // An empty value tells the API to remove every unit type.
+    if (draft.units.length === 0) body.append("units", "");
+    draft.units.forEach((u, i) => {
+      body.append(`units[${i}][name]`, u.name);
+      body.append(`units[${i}][bedrooms]`, String(u.bedrooms));
+      body.append(`units[${i}][bathrooms]`, String(u.bathrooms));
+      body.append(`units[${i}][price]`, String(u.price));
+      body.append(`units[${i}][total_units]`, String(u.totalUnits));
+      body.append(`units[${i}][available_units]`, String(u.availableUnits));
+    });
+  }
 
   return body;
 }

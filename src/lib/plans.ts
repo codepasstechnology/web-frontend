@@ -12,6 +12,7 @@ export interface Plan {
   cta: string;
   badge?: { label: string; color: "accent" | "primary" };
   features: string[];
+  audience?: "individual" | "agency";
 }
 
 interface ApiPlan {
@@ -26,6 +27,7 @@ interface ApiPlan {
   max_documents: number;
   badge_label: string | null;
   features: string[];
+  audience?: "individual" | "agency";
 }
 
 function mapApiPlan(p: ApiPlan): Plan {
@@ -40,7 +42,18 @@ function mapApiPlan(p: ApiPlan): Plan {
     cta: `Choose ${p.name}`,
     badge: p.badge_label ? { label: p.badge_label, color: "accent" } : undefined,
     features: p.features,
+    audience: p.audience ?? "individual",
   };
+}
+
+/** The plans an account can pick: agency plans for agency members, individual plans for everyone else. */
+export function plansFor(plans: Plan[], agency: boolean): Plan[] {
+  return plans.filter((p) => (p.audience === "agency") === agency);
+}
+
+/** The plan an account drops to without a paid subscription: Agency Free or Free. */
+export function freePlanFor(plans: Plan[], agency: boolean): Plan | undefined {
+  return plansFor(plans, agency).find((p) => p.price === 0);
 }
 
 export function usePlans() {
