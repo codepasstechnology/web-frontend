@@ -37,6 +37,8 @@ vi.mock("@/lib/agency", async (importOriginal) => ({
   useUnseenLeads: () => ({ data: unseen }),
   useMarkLeadsSeen: () => ({ mutate: mockMarkSeen }),
 }));
+let unreadMessages = 0;
+vi.mock("@/lib/chat", () => ({ useUnreadMessages: () => ({ data: unreadMessages }) }));
 const mockToast = vi.fn();
 vi.mock("sonner", () => ({ toast: (...args: unknown[]) => mockToast(...args) }));
 
@@ -54,7 +56,10 @@ const expanded = () =>
   Array.from(document.querySelectorAll("nav [style*='grid-template-columns: 1fr']"));
 
 describe("DashboardShell — bottom nav", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    unreadMessages = 0;
+  });
 
   it("keeps every section reachable behind five slots", async () => {
     show("overview");
@@ -66,7 +71,7 @@ describe("DashboardShell — bottom nav", () => {
     );
 
     await userEvent.click(bar().getByRole("button", { name: "More sections" }));
-    ["Billing & Plan", "KYC Status", "Account Settings"].forEach((name) =>
+    ["Messages", "Billing & Plan", "KYC Status", "Account Settings"].forEach((name) =>
       expect(screen.getByRole("menuitem", { name })).toBeInTheDocument(),
     );
 
@@ -105,6 +110,17 @@ describe("DashboardShell — bottom nav", () => {
     expect(expanded()).toHaveLength(1);
     expect(bar().getByRole("button", { name: "More sections" })).toHaveTextContent("Billing");
     expect(bar().getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("counts unread conversations on Messages until the tab is open", () => {
+    unreadMessages = 3;
+    const { rerender } = show("overview");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("button", { name: /Messages/ })).toHaveTextContent("3");
+
+    rerender(<DashboardShell active="messages">content</DashboardShell>);
+    expect(sidebar.getByRole("button", { name: "Messages" })).not.toHaveTextContent("3");
   });
 
   it("highlights Upload in the sidebar on the upload pages", () => {
