@@ -14,11 +14,13 @@ import {
   Users,
   LineChart,
   ExternalLink,
+  MessagesSquare,
 } from "lucide-react";
 import { forwardRef, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { LEAD_SOURCE_LABELS, useMarkLeadsSeen, useUnseenLeads } from "@/lib/agency";
+import { useUnreadMessages } from "@/lib/chat";
 import { usePlans } from "@/lib/plans";
 import { useUsedListings } from "@/lib/properties";
 import { VerifyAccountModal } from "@/components/VerifyAccountModal";
@@ -36,6 +38,7 @@ export type DashTab =
   | "overview"
   | "listings"
   | "upload"
+  | "messages"
   | "analytics"
   | "billing"
   | "settings"
@@ -58,6 +61,12 @@ const ITEM: Record<DashTab, NavItem> = {
   },
   listings: { id: "listings", label: "My Listings", short: "Listings", icon: <List size={19} /> },
   upload: { id: "upload", label: "Upload", short: "Upload", icon: <Upload size={19} /> },
+  messages: {
+    id: "messages",
+    label: "Messages",
+    short: "Chats",
+    icon: <MessagesSquare size={19} />,
+  },
   leads: { id: "leads", label: "Leads", short: "Leads", icon: <Inbox size={19} /> },
   analytics: {
     id: "analytics",
@@ -88,6 +97,7 @@ const INDIVIDUAL_NAV: DashTab[] = [
   "listings",
   "upload",
   "analytics",
+  "messages",
   "billing",
   "kyc",
   "settings",
@@ -102,6 +112,7 @@ function navFor(agencyRole: string | undefined): NavItem[] {
     "listings",
     "leads",
     "upload",
+    "messages",
     "agency",
     "team",
     ...(manages ? (["insights"] as DashTab[]) : []),
@@ -215,7 +226,9 @@ export function DashboardShell({ active, onChange, onUpgrade, children }: Props)
     navigate({ to: "/dashboard", search: { tab: t } });
   };
   const unseenLeads = useLeadsBadge(active, () => handleSelect("leads"));
-  const badge = (id: DashTab) => (id === "leads" ? unseenLeads : 0);
+  const { data: unreadMessages = 0 } = useUnreadMessages();
+  const badge = (id: DashTab) =>
+    id === "leads" ? unseenLeads : id === "messages" && active !== "messages" ? unreadMessages : 0;
   const countLabel = (n: number) => (n > 99 ? "99+" : String(n));
 
   const planName = plans.find((p) => p.id === user?.plan)?.name ?? user?.plan;

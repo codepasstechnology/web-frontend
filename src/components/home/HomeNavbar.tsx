@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/hooks/useTheme";
+import { MessagesButton } from "@/components/MessagesButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import "@/components/dashboard/dashboard.css";
 import {
@@ -153,6 +154,7 @@ export function HomeNavbar() {
               >
                 Dashboard
               </Link>
+              <MessagesButton />
               <NotificationBell />
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger className="gd-avatar-btn" aria-label="Account menu">
