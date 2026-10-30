@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Create cPanel env
-        run: printf 'VITE_API_URL=https://api.codepasstech.top/api\nVITE_CPANEL=true\nVITE_GOOGLE_CLIENT_ID=78845422587-grvji9pj20gt9u1teea8sac8kheqg9ju.apps.googleusercontent.com\nVITE_SITE_URL=https://landconnect.codepasstech.top\n' > .env.cpanel
+        run: printf 'VITE_API_URL=https://api.codepasstech.top/api\nVITE_CPANEL=true\nVITE_GOOGLE_CLIENT_ID=78845422587-grvji9pj20gt9u1teea8sac8kheqg9ju.apps.googleusercontent.com\nVITE_SITE_URL=https://landconnect.codepasstech.top\nVITE_REVERB_APP_KEY=${{ vars.REVERB_APP_KEY }}\nVITE_REVERB_HOST=${{ vars.REVERB_HOST }}\nVITE_REVERB_PORT=${{ vars.REVERB_PORT }}\nVITE_REVERB_SCHEME=https\n' > .env.cpanel
 
       - name: Build (cPanel)
         run: npm run build:cpanel

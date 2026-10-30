@@ -35,6 +35,9 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: mockUser, logout: mockLog
 vi.mock("@/components/NotificationBell", () => ({
   NotificationBell: () => <button type="button">Notifications</button>,
 }));
+vi.mock("@/components/MessagesButton", () => ({
+  MessagesButton: () => <a href="/dashboard?tab=messages">Messages</a>,
+}));
 
 const { HomeNavbar } = await import("@/components/home/HomeNavbar");
 
@@ -59,6 +62,7 @@ describe("HomeNavbar", () => {
     render(<HomeNavbar />);
 
     expect(screen.getByRole("button", { name: "Notifications" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Messages" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pricing" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
     expect(screen.queryByRole("link", { name: "List a property" })).not.toBeInTheDocument();

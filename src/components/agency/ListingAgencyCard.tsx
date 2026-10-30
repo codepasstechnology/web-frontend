@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { CalendarClock, ChevronRight, Mail } from "lucide-react";
 import { AgencyLogo } from "@/components/agency/AgencyLogo";
 import { LeadSheet } from "@/components/agency/LeadSheet";
+import { MessageSellerSheet } from "@/components/MessageSellerSheet";
+import { useAuth } from "@/lib/auth";
 import type { ListingAgency } from "@/lib/listingAgency";
 
 /**
@@ -24,6 +26,7 @@ export function ListingAgencyCard({
   listingTitle: string;
   project?: string | null;
 }) {
+  const { user } = useAuth();
   const [lead, setLead] = useState<"message" | "viewing" | null>(null);
 
   return (
@@ -66,16 +69,27 @@ export function ListingAgencyCard({
       >
         View all listings from {agency.name}
       </Link>
-      {lead && (
-        <LeadSheet
+      {lead === "message" && user && user.role !== "account_manager" ? (
+        <MessageSellerSheet
           anchor={anchor}
-          agency={agency}
           kind={kind}
           listingId={listingId}
           listingTitle={listingTitle}
-          mode={lead}
+          recipient={agency.name}
           onClose={() => setLead(null)}
         />
+      ) : (
+        lead && (
+          <LeadSheet
+            anchor={anchor}
+            agency={agency}
+            kind={kind}
+            listingId={listingId}
+            listingTitle={listingTitle}
+            mode={lead}
+            onClose={() => setLead(null)}
+          />
+        )
       )}
     </div>
   );
