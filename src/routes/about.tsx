@@ -82,11 +82,6 @@ function AboutPage() {
               {para}
             </p>
           ))}
-          <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
-            Today, Geo Pin Properties brings plotted parcels, property listings and rentals together
-            on one GIS-powered map, so people can see the land, check it and connect with the right
-            person.
-          </p>
           <span className="gs-hand gs-tilt">find. connect. own.</span>
         </div>
       </section>
