@@ -53,17 +53,35 @@ function ContactPage() {
   const firstName = values.name.trim().split(/\s+/)[0] || "friend";
 
   const supportEmail = settings?.support_email;
-  const contactItems = [
-    {
-      icon: Mail,
-      label: "Email",
-      value: supportEmail || "[EMAIL ADDRESS]",
-      href: supportEmail ? `mailto:${supportEmail}` : undefined,
-    },
-    { icon: MessageSquare, label: "WhatsApp", value: "[WHATSAPP NUMBER]" },
-    { icon: Phone, label: "Phone", value: "[PHONE NUMBER]" },
-    { icon: Clock, label: "Hours", value: "Monday to Saturday, 9am–5pm EAT" },
-  ];
+  const whatsapp = settings?.contact_whatsapp;
+  const phone = settings?.contact_phone;
+  const hours = settings?.contact_hours;
+  const waDigits = whatsapp?.replace(/\D/g, "");
+  type ContactItem = { icon: typeof Mail; label: string; value: string; href?: string };
+  // Only show a channel once an admin has filled it in on the Settings page.
+  const contactItems = (
+    [
+      supportEmail && {
+        icon: Mail,
+        label: "Email",
+        value: supportEmail,
+        href: `mailto:${supportEmail}`,
+      },
+      whatsapp && {
+        icon: MessageSquare,
+        label: "WhatsApp",
+        value: whatsapp,
+        href: waDigits ? `https://wa.me/${waDigits}` : undefined,
+      },
+      phone && {
+        icon: Phone,
+        label: "Phone",
+        value: phone,
+        href: `tel:${phone.replace(/\s+/g, "")}`,
+      },
+      hours && { icon: Clock, label: "Hours", value: hours },
+    ] as (ContactItem | "" | undefined)[]
+  ).filter((x): x is ContactItem => Boolean(x));
 
   const field = (f: Field) => ({
     value: values[f],
@@ -134,8 +152,8 @@ function ContactPage() {
               </h2>
               <p className="gs-text">
                 Your message is on its way. We&apos;ll reply to{" "}
-                <strong style={{ color: "var(--ink)" }}>{values.email}</strong> within [RESPONSE
-                TIME].
+                <strong style={{ color: "var(--ink)" }}>{values.email}</strong> within{" "}
+                {settings?.contact_response_time || "1 business day"}.
               </p>
               <button type="button" className="gs-btn gs-ghost" onClick={handleReset}>
                 Send another message
@@ -272,7 +290,7 @@ function ContactPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="gs-mini-map gs-reveal">
             <KenyaMeshMap pin={NAIROBI} />
-            <span className="gs-mono gs-map-label">[OFFICE], NAIROBI</span>
+            <span className="gs-mono gs-map-label">NAIROBI, KENYA</span>
           </div>
           {contactItems.map(({ icon: Icon, label, value, href }) => {
             const body = (

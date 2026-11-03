@@ -4,6 +4,7 @@ import { KenyaMeshMap } from "@/components/site/KenyaMeshMap";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { PageHero } from "@/components/site/PageHero";
+import { usePublicSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -47,6 +48,13 @@ const verificationSteps = [
 ];
 
 function AboutPage() {
+  const { data: settings } = usePublicSettings();
+  // The founding story is set from the admin (Settings → About page); blank
+  // paragraphs are dropped, and an empty story simply hides this part.
+  const storyParagraphs = (settings?.about_story ?? "")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   return (
     <MarketingShell>
       <PageHero
@@ -69,11 +77,11 @@ function AboutPage() {
           <h2 id="story-title" className="gs-h gs-h2">
             Why we started
           </h2>
-          <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
-            [Your founding story: who started Geo Pin Properties, the problem you saw in
-            Kenya&apos;s land market, and the moment you decided to fix it. Two or three short
-            paragraphs work best.]
-          </p>
+          {storyParagraphs.map((para, i) => (
+            <p key={i} className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
+              {para}
+            </p>
+          ))}
           <p className="gs-text" style={{ fontSize: 18, lineHeight: 1.7 }}>
             Today, Geo Pin Properties brings plotted parcels, property listings and rentals together
             on one GIS-powered map, so people can see the land, check it and connect with the right
