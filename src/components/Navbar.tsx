@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/hooks/useTheme";
+import { MessagesButton } from "@/components/MessagesButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import {
   DropdownMenu,
@@ -251,6 +252,7 @@ export function Navbar({
               }`}
             />
           </div>
+          {user && <MessagesButton />}
           {user && <NotificationBell />}
           <button
             type="button"

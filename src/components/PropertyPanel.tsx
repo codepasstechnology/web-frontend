@@ -1,4 +1,10 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Check,
@@ -11,6 +17,7 @@ import {
   Hospital,
   MapPin,
   MessageCircle,
+  MessagesSquare,
   Navigation,
   PersonStanding,
   Phone,
@@ -32,6 +39,7 @@ import { DEAL_COLOR, DEAL_TAG, INTENT_COLOR } from "@/components/map/markers";
 import { ShareSheet, type ShareShape } from "@/components/map/ShareSheet";
 import { useMapToast } from "@/components/map/mapToastContext";
 import { ListingAgencyCard } from "@/components/agency/ListingAgencyCard";
+import { MessageSellerSheet } from "@/components/MessageSellerSheet";
 import { trackContact } from "@/lib/agency";
 import type { PropertyUnit } from "@/lib/properties";
 
@@ -199,8 +207,57 @@ function PriceRow({
   );
 }
 
+/** In-app chat with a private seller; agency listings offer it on the agency card. */
+function MessageAction({
+  panel,
+  kind,
+  listingId,
+  listingTitle,
+  recipient,
+}: {
+  panel: RefObject<HTMLElement | null>;
+  kind: "parcel" | "property";
+  listingId: string;
+  listingTitle: string;
+  recipient: string;
+}) {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const icon = <MessagesSquare width={18} height={18} aria-hidden />;
+
+  if (!user) {
+    return (
+      <SignInLink className="gm-act">
+        {icon}
+        Message
+      </SignInLink>
+    );
+  }
+  if (user.role === "account_manager") return null;
+
+  return (
+    <>
+      <button type="button" className="gm-act" onClick={() => setOpen(true)}>
+        {icon}
+        Message
+      </button>
+      {open && (
+        <MessageSellerSheet
+          anchor={panel.current}
+          kind={kind}
+          listingId={listingId}
+          listingTitle={listingTitle}
+          recipient={recipient}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 function ContactActions({
   save,
+  chat,
   onShare,
   phone,
   whatsapp,
@@ -209,6 +266,7 @@ function ContactActions({
   onCall,
 }: {
   save?: ReactNode;
+  chat?: ReactNode;
   onShare: () => void;
   phone: string;
   /** A separate WhatsApp number, when an agency has one. */
@@ -226,6 +284,7 @@ function ContactActions({
         <Share2 width={18} height={18} aria-hidden />
         Share
       </button>
+      {chat}
       {wa && (
         <a
           href={wa}
@@ -518,6 +577,17 @@ export function ParcelPanel({
               </SignInLink>
             )
           }
+          chat={
+            !parcel.agency && (
+              <MessageAction
+                panel={sheet.panel}
+                kind="parcel"
+                listingId={parcel.id}
+                listingTitle={parcel.title}
+                recipient={parcel.seller.name}
+              />
+            )
+          }
           onShare={() => setSharing(true)}
           phone={parcel.agency?.phone || parcel.seller.phone}
           whatsapp={parcel.agency?.whatsapp}
@@ -681,6 +751,17 @@ export function RentalPanel({
           size={property.bedrooms > 0 ? String(property.bedrooms) : TYPE_LABELS[property.type]}
         />
         <ContactActions
+          chat={
+            !property.agency && (
+              <MessageAction
+                panel={sheet.panel}
+                kind="property"
+                listingId={property.id}
+                listingTitle={property.title}
+                recipient={property.agent.name}
+              />
+            )
+          }
           onShare={() => setSharing(true)}
           phone={property.agency?.phone || property.agent.phone}
           whatsapp={property.agency?.whatsapp}

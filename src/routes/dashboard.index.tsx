@@ -16,6 +16,7 @@ import { AgencyTab } from "@/components/dashboard/AgencyTab";
 import { LeadsTab } from "@/components/dashboard/LeadsTab";
 import { TeamTab } from "@/components/dashboard/TeamTab";
 import { InsightsTab } from "@/components/dashboard/InsightsTab";
+import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { BecomeAgencyCard } from "@/components/dashboard/BecomeAgencyCard";
 import { MARKETING_FONT_LINKS } from "@/components/site/marketingFonts";
 
@@ -27,11 +28,12 @@ export const Route = createFileRoute("/dashboard/")({
     links: MARKETING_FONT_LINKS,
   }),
   ssr: false,
-  validateSearch: (s: Record<string, unknown>) => {
+  validateSearch: (s: Record<string, unknown>): { tab?: DashTab; c?: string } => {
     const allowed: DashTab[] = [
       "overview",
       "listings",
       "upload",
+      "messages",
       "analytics",
       "billing",
       "settings",
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/dashboard/")({
     const raw = s.tab === "properties" ? "listings" : s.tab;
     const t =
       typeof raw === "string" && (allowed as string[]).includes(raw) ? (raw as DashTab) : undefined;
-    return { tab: t };
+    return { tab: t, c: t === "messages" && typeof s.c === "string" ? s.c : undefined };
   },
   component: DashboardPage,
 });
@@ -104,6 +106,14 @@ function DashboardPage() {
       )}
 
       {shown === "listings" && <ListingsTab />}
+
+      {shown === "messages" && (
+        <MessagesTab
+          conversationId={search.c}
+          onOpen={(c) => navigate({ to: "/dashboard", search: { tab: "messages", c } })}
+          onBack={() => navigate({ to: "/dashboard", search: { tab: "messages" } })}
+        />
+      )}
 
       {shown === "agency" && <AgencyTab />}
       {shown === "leads" && <LeadsTab />}

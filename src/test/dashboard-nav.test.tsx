@@ -37,6 +37,8 @@ vi.mock("@/lib/agency", async (importOriginal) => ({
   useUnseenLeads: () => ({ data: unseen }),
   useMarkLeadsSeen: () => ({ mutate: mockMarkSeen }),
 }));
+let unreadMessages = 0;
+vi.mock("@/lib/chat", () => ({ useUnreadMessages: () => ({ data: unreadMessages }) }));
 const mockToast = vi.fn();
 vi.mock("sonner", () => ({ toast: (...args: unknown[]) => mockToast(...args) }));
 
@@ -54,19 +56,22 @@ const expanded = () =>
   Array.from(document.querySelectorAll("nav [style*='grid-template-columns: 1fr']"));
 
 describe("DashboardShell — bottom nav", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    unreadMessages = 0;
+  });
 
   it("keeps every section reachable behind five slots", async () => {
     show("overview");
 
     const slots = bar().getAllByRole("button");
     expect(slots).toHaveLength(5);
-    ["Overview", "My Listings", "Upload", "Analytics", "More sections"].forEach((name) =>
+    ["Overview", "My Listings", "Upload", "Messages", "More sections"].forEach((name) =>
       expect(bar().getByRole("button", { name })).toBeInTheDocument(),
     );
 
     await userEvent.click(bar().getByRole("button", { name: "More sections" }));
-    ["Billing & Plan", "KYC Status", "Account Settings"].forEach((name) =>
+    ["Analytics", "Billing & Plan", "KYC Status", "Account Settings"].forEach((name) =>
       expect(screen.getByRole("menuitem", { name })).toBeInTheDocument(),
     );
 
@@ -75,21 +80,18 @@ describe("DashboardShell — bottom nav", () => {
   });
 
   it("expands exactly one pill, and marks it as the current page", () => {
-    show("analytics");
+    show("messages");
 
     expect(expanded()).toHaveLength(1);
-    expect(bar().getByRole("button", { name: "Analytics" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(bar().getByRole("button", { name: "Messages" })).toHaveAttribute("aria-current", "page");
     expect(bar().getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
   });
 
   it("routes a tab through the search param and Upload to its own page", async () => {
     show("overview");
 
-    await userEvent.click(bar().getByRole("button", { name: "Analytics" }));
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard", search: { tab: "analytics" } });
+    await userEvent.click(bar().getByRole("button", { name: "Messages" }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard", search: { tab: "messages" } });
 
     await userEvent.click(bar().getByRole("button", { name: "Upload" }));
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -105,6 +107,18 @@ describe("DashboardShell — bottom nav", () => {
     expect(expanded()).toHaveLength(1);
     expect(bar().getByRole("button", { name: "More sections" })).toHaveTextContent("Billing");
     expect(bar().getByRole("button", { name: "Overview" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("counts unread conversations on Messages until the tab is open", () => {
+    unreadMessages = 3;
+    const { rerender } = show("overview");
+
+    const sidebar = within(screen.getByRole("complementary", { name: "Dashboard" }));
+    expect(sidebar.getByRole("button", { name: /Messages/ })).toHaveTextContent("3");
+    expect(bar().getByRole("button", { name: "Messages, 3 new" })).toHaveTextContent("3");
+
+    rerender(<DashboardShell active="messages">content</DashboardShell>);
+    expect(sidebar.getByRole("button", { name: "Messages" })).not.toHaveTextContent("3");
   });
 
   it("highlights Upload in the sidebar on the upload pages", () => {

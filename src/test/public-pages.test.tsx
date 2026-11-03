@@ -295,9 +295,9 @@ describe("Contact page", () => {
     expect(screen.getByLabelText("Message")).toHaveValue("Is plot 42 still available?");
   });
 
-  it("links the support email from public settings, falling back to the placeholder", () => {
-    const { unmount } = render(<Contact />);
-    expect(screen.getByText("[EMAIL ADDRESS]")).toBeInTheDocument();
+  it("links the support email from public settings and hides it when unset", () => {
+    const { container, unmount } = render(<Contact />);
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull();
     unmount();
 
     settings.mockReturnValue({ support_email: "help@geopin.co.ke" });

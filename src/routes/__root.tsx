@@ -16,6 +16,7 @@ import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
 import { CookieBanner } from "@/components/CookieBanner";
+import { ChatRealtime } from "@/components/ChatRealtime";
 
 import appCss from "../styles.css?url";
 import "@/components/loading.css";
@@ -236,6 +237,7 @@ function RootComponent() {
         {showFooter && <SiteFooter />}
         <Toaster position="bottom-center" />
         <CookieBanner />
+        <ChatRealtime />
       </AuthProvider>
     </QueryClientProvider>
   );
