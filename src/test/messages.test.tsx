@@ -150,6 +150,30 @@ describe("MessagesTab", () => {
     );
   });
 
+  it("takes over the screen on mobile only while a conversation is open", async () => {
+    serve({
+      "/user/conversations?page=1": list([conversation()]),
+      "/user/conversations/c-1": conversation(),
+      "/user/conversations/c-1/messages": { data: [], has_more: false },
+    });
+    const { container, rerender } = renderWithQuery(
+      <MessagesTab onOpen={vi.fn()} onBack={vi.fn()} />,
+    );
+    const card = container.querySelector(".gd-card");
+    expect(card).not.toHaveClass("max-md:fixed");
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    rerender(
+      <QueryClientProvider client={client}>
+        <MessagesTab conversationId="c-1" onOpen={vi.fn()} onBack={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    expect(container.querySelector(".gd-card")).toHaveClass("max-md:fixed", "max-md:inset-0");
+    expect(await screen.findByRole("button", { name: "Back to messages" })).toHaveClass(
+      "md:hidden",
+    );
+  });
+
   it("sends with Enter, and offers a retry that reuses the same message id", async () => {
     serve({
       "/user/conversations?page=1": list([conversation()]),
