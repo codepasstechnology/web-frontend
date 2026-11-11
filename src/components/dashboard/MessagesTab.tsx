@@ -79,7 +79,13 @@ export function MessagesTab({
   return (
     <div className="flex flex-col gap-4">
       <h1 className={`gd-h1 ${conversationId ? "hidden md:block" : ""}`}>Messages</h1>
-      <div className="gd-card flex h-[calc(100dvh-220px)] min-h-[420px] overflow-hidden p-0 md:h-[calc(100vh-230px)]">
+      <div
+        className={`gd-card flex h-[calc(100dvh-220px)] min-h-[420px] overflow-hidden p-0 max-md:rounded-none max-md:border-0 md:h-[calc(100vh-230px)] ${
+          conversationId
+            ? "max-md:fixed max-md:inset-0 max-md:z-[100] max-md:h-auto max-md:min-h-0 max-md:bg-background max-md:pt-[env(safe-area-inset-top)] max-md:pb-[env(safe-area-inset-bottom)]"
+            : "max-md:-mx-4 max-md:bg-transparent"
+        }`}
+      >
         <div
           className={`${conversationId ? "hidden md:flex" : "flex"} w-full flex-col border-border md:w-[320px] md:flex-none md:border-r`}
         >
